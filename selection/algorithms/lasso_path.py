@@ -10,7 +10,7 @@ import numpy as np
 import regreg.api as rr
 
 from selection.algorithms.lasso import lasso
-from selection.constraints.affine import (constraints,
+from selection.constraints.affine import (constraints, gibbs_test,
                                           stack as con_stack)
 
 class lasso_path(lasso):
@@ -31,7 +31,8 @@ class lasso_path(lasso):
         self.problem = rr.simple_problem(self.loss, self.penalty)
         self.soln_path = []
 
-    def fit(self, **solve_args):
+    def fit(self, test_statistic, burnin=5000, ndraw=20000,
+            **solve_args):
         n, p = self.X.shape
 
         for idx, lam in enumerate(self.lambda_values):
@@ -40,17 +41,17 @@ class lasso_path(lasso):
             self.soln_path.append(soln.copy())
 
             active_set = np.nonzero(soln != 0)[0]
-            diff = self.ever_active.symmetric_difference(active_set)
+            diff = sorted(self.ever_active.symmetric_difference(active_set))
             self.ever_active = self.ever_active.union(active_set)
 
             if diff:
                 # carry out a test
-
+                ever_active = sorted(self.ever_active)
                 overall_upper_bd = np.ones(p) * np.inf
                 overall_lower_bd = -np.ones(p) * np.inf
                 
                 always_inactive = np.ones(p, np.bool)
-                always_inactive[sorted(self.ever_active)] = 0
+                always_inactive[ever_active] = 0
                 
                 overall_upper_bd = overall_upper_bd[always_inactive]
                 overall_lower_bd = overall_lower_bd[always_inactive]
@@ -71,14 +72,35 @@ class lasso_path(lasso):
                     overall_upper_bd = np.minimum(upper_bd, overall_upper_bd)
                     overall_lower_bd = np.minimum(lower_bd, overall_lower_bd)
 
-                    if (np.any(np.dot(self.X[:,always_inactive].T, self.y) > overall_upper_bd) or np.any(np.dot(self.X[:,always_inactive].T, self.y) < overall_lower_bd)):
-                        warnings.warn('bound violator!')
+                if (np.any(np.dot(self.X[:,always_inactive].T, self.y) > overall_upper_bd) or np.any(np.dot(self.X[:,always_inactive].T, self.y) < overall_lower_bd)):
+                    warnings.warn('bound violator!')
 
-                    conU = constraints(self.X[:,always_inactive].T,
-                                       overall_upper_bd)
-                    conL = constraints(-self.X[:,always_inactive].T,
-                                       -overall_lower_bd)
-                    inactive_con = con_stack(conU, conL)
+                conU = constraints(self.X[:,always_inactive].T,
+                                   overall_upper_bd)
+                conL = constraints(-self.X[:,always_inactive].T,
+                                   -overall_lower_bd)
+                inactive_con = con_stack(conU, conL)
+                conditional_con = inactive_con.conditional( \
+                    self.X[:,ever_active].T,
+                    np.dot(self.X[:,ever_active].T, self.y))
+
+                print conditional_con(self.y)
+
+                pval = gibbs_test(conditional_con,
+                                  self.y,
+                                  self.X[:,diff[0]],
+                                  sigma_known=False,
+                                  white=False,
+                                  ndraw=ndraw,
+                                  burnin=burnin,
+                                  UMPU=False,
+                                  use_random_directions=False,
+                                  tilt=None,
+                                  alternative='greater',
+                                  test_statistic=test_statistic,
+                                  )[0]
+                print pval, diff, self.ever_active
+
 
 def main():
 
@@ -88,7 +110,7 @@ def main():
     lam_values = lam_values[::-1]
 
     las_path = lasso_path(X, y, lam_values)
-    las_path.fit()
+    las_path.fit(None)
 
 if __name__ == "__main__":
     main()
