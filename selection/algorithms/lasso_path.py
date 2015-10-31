@@ -42,7 +42,6 @@ class lasso_path(lasso):
 
             active_set = np.nonzero(soln != 0)[0]
             diff = sorted(self.ever_active.symmetric_difference(active_set))
-            self.ever_active = self.ever_active.union(active_set)
 
             if diff:
                 # carry out a test
@@ -80,9 +79,12 @@ class lasso_path(lasso):
                 conL = constraints(-self.X[:,always_inactive].T,
                                    -overall_lower_bd)
                 inactive_con = con_stack(conU, conL)
-                conditional_con = inactive_con.conditional( \
-                    self.X[:,ever_active].T,
-                    np.dot(self.X[:,ever_active].T, self.y))
+                if ever_active:
+                    conditional_con = inactive_con.conditional( \
+                        self.X[:,ever_active].T,
+                        np.dot(self.X[:,ever_active].T, self.y))
+                else:
+                    conditional_con = inactive_con
 
                 print conditional_con(self.y)
 
@@ -100,6 +102,7 @@ class lasso_path(lasso):
                                   test_statistic=test_statistic,
                                   )[0]
                 print pval, diff, self.ever_active
+                self.ever_active = self.ever_active.union(active_set)
 
 
 def main():
@@ -110,7 +113,7 @@ def main():
     lam_values = lam_values[::-1]
 
     las_path = lasso_path(X, y, lam_values)
-    las_path.fit(None)
+    las_path.fit(None, tol=1.e-12, min_its=100)
 
 if __name__ == "__main__":
     main()
