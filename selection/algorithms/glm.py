@@ -30,6 +30,8 @@ class OLS_lasso(object):
 
     """
 
+    alpha = 0.05
+
     def __init__(self, X, Y, feature_weights):
         r"""
 
@@ -56,9 +58,6 @@ class OLS_lasso(object):
         self.feature_weights = np.asarray(feature_weights)
         if not self.feature_weights.shape:
             self.feature_weights = np.ones(self.X.shape[1]) * self.feature_weights
-        self.unpenalized = np.nonzero((self.feature_weights == 0))[0]
-        self.penalized = np.nonzero((self.feature_weights != 0))[0]
-
     def fit(self, solve_args={'min_its':50, 'tol':1.e-10}):
         """
         Fit the lasso using `regreg`.
@@ -108,6 +107,18 @@ class OLS_lasso(object):
             self._active_constraints = None
 
     @property
+    def unpenalized(self):
+        if not hasattr(self, "_unpenalized"):
+            self._unpenalized = np.nonzero((self.feature_weights == 0))[0]
+        return self._unpenalized
+
+    @property
+    def penalized(self):
+        if not hasattr(self, "_penalized"):
+            self._penalized = np.nonzero((self.feature_weights != 0))[0]
+        return self._penalized
+
+    @property
     def soln(self):
         """
         Solution to the lasso problem, set by `fit` method.
@@ -154,7 +165,7 @@ class OLS_lasso(object):
                 eta = I[j]
                 _interval = C.interval(eta, self._onestep,
                                        alpha=self.alpha)
-                self._intervals.append((self.active[i],
+                self._intervals.append((self.active[j],
                                         _interval[0], _interval[1]))
             self._intervals = np.array(self._intervals, 
                                        np.dtype([('index', np.int),
@@ -205,8 +216,6 @@ class PH_lasso(OLS_lasso):
         self.feature_weights = np.asarray(feature_weights)
         if not self.feature_weights.shape:
             self.feature_weights = np.ones(self.X.shape[1]) * self.feature_weights
-        self.unpenalized = np.nonzero((self.feature_weights == 0))[0]
-        self.penalized = np.nonzero((self.feature_weights != 0))[0]
 
 class Logistic_lasso(OLS_lasso):
 
@@ -248,8 +257,6 @@ class Logistic_lasso(OLS_lasso):
         self.feature_weights = np.asarray(feature_weights)
         if not self.feature_weights.shape:
             self.feature_weights = np.ones(self.X.shape[1]) * self.feature_weights
-        self.unpenalized = np.nonzero((self.feature_weights == 0))[0]
-        self.penalized = np.nonzero((self.feature_weights != 0))[0]
 
 class Poisson_lasso(OLS_lasso):
 
@@ -291,6 +298,4 @@ class Poisson_lasso(OLS_lasso):
         self.feature_weights = np.asarray(feature_weights)
         if not self.feature_weights.shape:
             self.feature_weights = np.ones(self.X.shape[1]) * self.feature_weights
-        self.unpenalized = np.nonzero((self.feature_weights == 0))[0]
-        self.penalized = np.nonzero((self.feature_weights != 0))[0]
 
