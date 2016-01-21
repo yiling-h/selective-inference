@@ -32,7 +32,7 @@ class OLS_lasso(object):
 
     alpha = 0.05
 
-    def __init__(self, X, Y, feature_weights):
+    def __init__(self, X, Y, feature_weights, sigma=1):
         r"""
 
         Usual LASSO problem.
@@ -54,7 +54,7 @@ class OLS_lasso(object):
 
         """
         self.X, self.Y = X, Y
-        self.loss = gaussian(X, Y)
+        self.loss = gaussian(X, Y, sigma=sigma)
         self.feature_weights = np.asarray(feature_weights)
         if not self.feature_weights.shape:
             self.feature_weights = np.ones(self.X.shape[1]) * self.feature_weights
