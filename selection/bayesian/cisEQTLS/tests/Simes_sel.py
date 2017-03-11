@@ -30,11 +30,11 @@ def BH_test():
 
 #BH_test()
 
-def Simes_sel_test_0(n):
+def Simes_sel_test_0(sample):
 
     X, y, true_beta, nonzero, noise_variance = sample.generate_response()
 
-    sel_simes = simes_selection(X, y, alpha=0.10/40000, randomizer='gaussian')
+    sel_simes = simes_selection(X, y, alpha=0.10/1000., randomizer='gaussian')
 
     if sel_simes is None:
 
@@ -44,19 +44,56 @@ def Simes_sel_test_0(n):
 
         return 1
 
+def Simes_sel_test_1(X,y,ngenes):
 
-n = 350
-p = 5000
-s = 0
-snr = 5.
+    sel_simes = simes_selection(X, y, alpha=0.10, randomizer='gaussian')
 
-sample = instance(n=n, p=p, s=s, sigma=1, rho=0, snr=snr)
+    if sel_simes is None:
 
-nsel = 0
+        return 0
 
-for i in range(20000):
+    else:
 
-    nsel += Simes_sel_test_0(n = 20000)
+        return 1
 
-print(nsel)
+def test_simes_trials():
+    n = 350
+    p = 7000
+    s = 10
+    snr = 5.
 
+    sample = instance(n=n, p=p, s=s, sigma=1, rho=0, snr=snr)
+    nsel = 0
+    for i in range(1000):
+        nsel += Simes_sel_test_0(sample)
+    print(nsel)
+
+def Simes_genes():
+
+    nsel = 0
+    for i in range(1000):
+        X, y, true_beta, nonzero, noise_variance = gaussian_instance(n=350, p=7000, s=10, sigma=1, rho=0, snr=5.)
+        nsel += Simes_sel_test_1(X, y,4000)
+
+    print("10",nsel)
+
+    for i in range(1000):
+        X, y, true_beta, nonzero, noise_variance = gaussian_instance(n=350, p=7000, s=5, sigma=1, rho=0, snr=5.)
+        nsel += Simes_sel_test_1(X, y,4000)
+
+    print("5",nsel)
+
+    for i in range(1000):
+        X, y, true_beta, nonzero, noise_variance = gaussian_instance(n=350, p=7000, s=1, sigma=1, rho=0, snr=5.)
+        nsel += Simes_sel_test_1(X, y,4000)
+
+    print("1",nsel)
+
+    for i in range(1000):
+        X, y, true_beta, nonzero, noise_variance = gaussian_instance(n=350, p=7000, s=0, sigma=1, rho=0, snr=5.)
+        nsel += Simes_sel_test_1(X, y,4000)
+
+    print("0",nsel)
+
+Simes_genes()
+#test_simes_trials()
