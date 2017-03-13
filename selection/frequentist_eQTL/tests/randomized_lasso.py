@@ -1,5 +1,6 @@
 from __future__ import print_function
 import sys
+import os
 import time
 
 import numpy as np
@@ -91,12 +92,13 @@ def randomized_lasso_trial(X,
             naive_length[j] = ci_naive[j, 1] - ci_naive[j, 0]
 
     list_results = np.transpose(np.vstack((sel_covered,
-                                          sel_length,
-                                          pivots,
-                                          naive_covered,
-                                          naive_pvals,
-                                          naive_length,
-                                          active_set)))
+                                           sel_length,
+                                           pivots,
+                                           naive_covered,
+                                           naive_pvals,
+                                           naive_length,
+                                           active_set)))
+
 
     return list_results
     #return sel_covered, sel_length, pivots, naive_covered, naive_pvals, naive_length, active_set
@@ -166,73 +168,104 @@ def multiple_trials(test_function = randomized_lasso_trial, n = 350, p = 5000, s
 
 if __name__ == "__main__":
 
-    np.random.seed(0)
-    n = 350
-    p = 5000
-    s = 10
-    snr = 5.
-    bh_level = 0.10
+    # read from command line
+    seedn = sys.argv[1]
+    outdir = sys.argv[2]
 
-    sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
+    outfile = os.path.join(outdir,"list_result_"+str(seedn)+".txt")
 
-    adjusted_coverage = 0.
-    unadjusted_coverage = 0.
+    print("Will save to: "+outfile)
 
-    adjusted_lengths = 0.
-    unadjusted_lengths = 0.
+    # change me later
+    np.savetxt(np.zeros(10), outfile)
 
-    FDR = 0.
-    power = 0.
-
-    niter = 10
-    for iter in xrange(niter):
-
-        X, y, beta, nonzero, sigma = sample.generate_response()
-
-        random_lasso = randomized_lasso_trial(X,
-                                              y,
-                                              beta,
-                                              sigma)
-
-        sel_covered = random_lasso[:,0]
-        sel_length = random_lasso[:,1]
-        pivots = random_lasso[:,2]
-        naive_covered = random_lasso[:,3]
-        naive_pvals = random_lasso[:,4]
-        naive_length = random_lasso[:,5]
-        active_set = random_lasso[:,6]
-
-        nactive = sel_covered.shape[0]
-        print("nactive", nactive)
-
-        adjusted_coverage += sel_covered.sum()/float(nactive)
-        unadjusted_coverage += naive_covered.sum()/float(nactive)
-
-        adjusted_lengths += sel_length.sum()/float(nactive)
-        unadjusted_lengths += naive_length.sum()/float(nactive)
-
-        p_BH = BH_q(pivots, bh_level)
-        false_discoveries = 0.
-        true_discoveries = 0.
-        discoveries = 0.
-
-        print("\n")
-        print("iteration completed", iter + 1)
-        print("results", adjusted_coverage, unadjusted_coverage)
-
-        if p_BH is not None:
-            for indx in p_BH[1]:
-                discoveries += 1.
-                if beta[active_set[indx]] == 0:
-                    false_discoveries += 1.
-                else:
-                    true_discoveries += 1.
-
-        FDR += false_discoveries / max(discoveries, 1.)
-        power += true_discoveries / float(s)
-
-        print("\n")
-        print("iteration completed", iter+1)
-        print("results", adjusted_lengths, unadjusted_lengths, FDR, power)
-
-    print(adjusted_coverage, unadjusted_coverage, adjusted_lengths, unadjusted_lengths, FDR, power)
+    # parameters
+    # n = 350
+    # p = 5000
+    # s = 10
+    # snr = 5.
+    # bh_level = 0.10
+    #
+    # # GENERATE X
+    # np.random.seed(0) # ensures same X
+    # sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
+    #
+    # # GENERATE Y BASED ON SEED
+    # np.random.seed(seedn) # ensures different y
+    # X, y, beta, nonzero, sigma = sample.generate_response()
+    #
+    # # RUN LASSO
+    # random_lasso = randomized_lasso_trial(X,
+    #                                       y,
+    #                                       beta,
+    #                                       sigma)
+    #
+    # # SAVE RESULT
+    # np.savetxt(random_lasso, outfile)
+    #
+    #
+    #
+    # # CLEAN BELOW
+    # sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
+    #
+    # adjusted_coverage = 0.
+    # unadjusted_coverage = 0.
+    #
+    # adjusted_lengths = 0.
+    # unadjusted_lengths = 0.
+    #
+    # FDR = 0.
+    # power = 0.
+    #
+    # niter = 10
+    # for iter in xrange(niter):
+    #
+    #     X, y, beta, nonzero, sigma = sample.generate_response()
+    #
+    #     random_lasso = randomized_lasso_trial(X,
+    #                                           y,
+    #                                           beta,
+    #                                           sigma)
+    #
+    #     sel_covered = random_lasso[:,0]
+    #     sel_length = random_lasso[:,1]
+    #     pivots = random_lasso[:,2]
+    #     naive_covered = random_lasso[:,3]
+    #     naive_pvals = random_lasso[:,4]
+    #     naive_length = random_lasso[:,5]
+    #     active_set = random_lasso[:,6]
+    #
+    #     nactive = sel_covered.shape[0]
+    #     print("nactive", nactive)
+    #
+    #     adjusted_coverage += sel_covered.sum()/float(nactive)
+    #     unadjusted_coverage += naive_covered.sum()/float(nactive)
+    #
+    #     adjusted_lengths += sel_length.sum()/float(nactive)
+    #     unadjusted_lengths += naive_length.sum()/float(nactive)
+    #
+    #     p_BH = BH_q(pivots, bh_level)
+    #     false_discoveries = 0.
+    #     true_discoveries = 0.
+    #     discoveries = 0.
+    #
+    #     print("\n")
+    #     print("iteration completed", iter + 1)
+    #     print("results", adjusted_coverage, unadjusted_coverage)
+    #
+    #     if p_BH is not None:
+    #         for indx in p_BH[1]:
+    #             discoveries += 1.
+    #             if beta[active_set[indx]] == 0:
+    #                 false_discoveries += 1.
+    #             else:
+    #                 true_discoveries += 1.
+    #
+    #     FDR += false_discoveries / max(discoveries, 1.)
+    #     power += true_discoveries / float(s)
+    #
+    #     print("\n")
+    #     print("iteration completed", iter+1)
+    #     print("results", adjusted_lengths, unadjusted_lengths, FDR, power)
+    #
+    # print(adjusted_coverage, unadjusted_coverage, adjusted_lengths, unadjusted_lengths, FDR, power)
