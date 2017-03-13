@@ -86,6 +86,7 @@ def test_lasso(n=350,
             naive_covered[j] += 1
             naive_length[j] = ci_naive[j, 1] - ci_naive[j, 0]
 
+    print("coverage adjusted", sel_covered)
     return sel_covered, sel_length, pivots, naive_covered, naive_pvals, naive_length
 
 
