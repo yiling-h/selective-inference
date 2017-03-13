@@ -266,7 +266,7 @@ class approximate_conditional_density(rr.smooth_atom):
     def solve_approx(self):
 
         #defining the grid on which marginal conditional densities will be evaluated
-        grid_length = 241
+        grid_length = 401
 
         print("observed values", self.target_observed)
         self.ind_obs = np.zeros(self.nactive, int)
@@ -277,7 +277,7 @@ class approximate_conditional_density(rr.smooth_atom):
         for j in xrange(self.nactive):
             obs = self.target_observed[j]
 
-            self.grid[j,:] = np.linspace(self.target_observed[j]-6., self.target_observed[j]+6.,num=grid_length)
+            self.grid[j,:] = np.linspace(self.target_observed[j]-10., self.target_observed[j]+10.,num=401)
             grid_j = self.grid[j,:]
 
             self.norm[j] = self.target_cov[j,j]
@@ -295,10 +295,10 @@ class approximate_conditional_density(rr.smooth_atom):
 
         self.sel_alg.setup_map(j)
 
-        for i in xrange(self.grid.shape[0]):
+        for i in xrange(self.grid[j,:].shape[0]):
 
             approx = approximate_conditional_prob((self.grid[j,:])[i], self.sel_alg)
-            h_hat.append(-(approx.minimize2(j, nstep=100)[::-1])[0]) ## change number of steps here not to get zero intervals
+            h_hat.append(-(approx.minimize2(j, nstep=100)[::-1])[0])
 
         return np.array(h_hat)
 
@@ -307,7 +307,7 @@ class approximate_conditional_density(rr.smooth_atom):
         normalizer = 0.
         approx_nonnormalized = []
 
-        for i in xrange(self.grid[j:,].shape[0]):
+        for i in xrange(self.grid[j:,].shape[1]):
             approx_density = np.exp(-np.true_divide(((self.grid[j,:])[i] - mean) ** 2, 2 * self.norm[j])
                                     + (self.h_approx[j,:])[i])
             normalizer += approx_density

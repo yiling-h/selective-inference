@@ -11,7 +11,7 @@ from selection.randomized.query import naive_pvalues
 
 def test_lasso(n=350,
                p=5000,
-               s=5,
+               s=10,
                snr=5.,
                rho=0.,
                lam_frac = 1.2,

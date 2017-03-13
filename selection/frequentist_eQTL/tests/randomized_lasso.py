@@ -149,7 +149,11 @@ if __name__ == "__main__":
                 else:
                     true_discoveries += 1.
 
-        FDR += false_discoveries.sum() / max(float(p_BH.shape[0], 1.))
-        power += true_discoveries.sum() / float(s)
+        FDR += false_discoveries / max(float(p_BH.shape[0], 1.))
+        power += true_discoveries / float(s)
+
+        print("\n")
+        print("iteration completed", iter+1)
+        print("results", adjusted_coverage, unadjusted_coverage, adjusted_lengths, unadjusted_lengths, FDR, power)
 
     print(adjusted_coverage, unadjusted_coverage, adjusted_lengths, unadjusted_lengths, FDR, power)
