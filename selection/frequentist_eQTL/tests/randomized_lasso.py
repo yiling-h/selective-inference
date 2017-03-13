@@ -90,11 +90,87 @@ def randomized_lasso_trial(X,
             naive_covered[j] += 1
             naive_length[j] = ci_naive[j, 1] - ci_naive[j, 0]
 
-    return sel_covered, sel_length, pivots, naive_covered, naive_pvals, naive_length, active_set
+    list_results = np.transpose(np.vstack((sel_covered,
+                                          sel_length,
+                                          pivots,
+                                          naive_covered,
+                                          naive_pvals,
+                                          naive_length,
+                                          active_set)))
+
+    return list_results
+    #return sel_covered, sel_length, pivots, naive_covered, naive_pvals, naive_length, active_set
+
+def multiple_trials(test_function = randomized_lasso_trial, n = 350, p = 5000, s = 10, snr = 5., bh_level = 0.10, seed_number = 0):
+
+    np.random.seed(seed_number)
+
+    sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
+
+    adjusted_coverage = 0.
+    unadjusted_coverage = 0.
+
+    adjusted_lengths = 0.
+    unadjusted_lengths = 0.
+
+    FDR = 0.
+    power = 0.
+
+    niter = 10
+    for iter in xrange(niter):
+
+        X, y, beta, nonzero, sigma = sample.generate_response()
+
+        random_lasso = test_function(X,
+                                     y,
+                                     beta,
+                                     sigma)
+
+        sel_covered = random_lasso[0]
+        sel_length = random_lasso[1]
+        pivots = random_lasso[2]
+        naive_covered = random_lasso[3]
+        naive_pvals = random_lasso[4]
+        naive_length = random_lasso[5]
+        active_set = random_lasso[6]
+
+        nactive = sel_covered.shape[0]
+
+        adjusted_coverage += float(sel_covered.sum() / nactive)
+        unadjusted_coverage += float(naive_covered.sum() / nactive)
+
+        adjusted_lengths += float(sel_length.sum() / nactive)
+        unadjusted_lengths += float(naive_length.sum() / nactive)
+
+        p_BH = BH_q(pivots, bh_level)
+        false_discoveries = 0.
+        true_discoveries = 0.
+
+        print("\n")
+        print("iteration completed", iter + 1)
+        print("results", adjusted_coverage, unadjusted_coverage)
+
+        if p_BH is not None:
+            for indx in p_BH[1]:
+                if beta[active_set[indx]] == 0:
+                    false_discoveries += 1.
+                else:
+                    true_discoveries += 1.
+
+        FDR += false_discoveries / max(float(p_BH[1].shape[0], 1.))
+        power += true_discoveries / float(s)
+
+        print("\n")
+        print("iteration completed", iter + 1)
+        print("results", adjusted_lengths, unadjusted_lengths, FDR, power)
+
+    print(adjusted_coverage, unadjusted_coverage, adjusted_lengths, unadjusted_lengths, FDR, power)
+
+
 
 if __name__ == "__main__":
 
-    np.random.seed(19)
+    np.random.seed(0)
     n = 350
     p = 5000
     s = 10
@@ -142,6 +218,10 @@ if __name__ == "__main__":
         false_discoveries = 0.
         true_discoveries = 0.
 
+        print("\n")
+        print("iteration completed", iter + 1)
+        print("results", adjusted_coverage, unadjusted_coverage)
+
         if p_BH is not None:
             for indx in p_BH[1]:
                 if beta[active_set[indx]] == 0:
@@ -149,11 +229,11 @@ if __name__ == "__main__":
                 else:
                     true_discoveries += 1.
 
-        FDR += false_discoveries / max(float(p_BH.shape[0], 1.))
+        FDR += false_discoveries / max(float(p_BH[1].shape[0], 1.))
         power += true_discoveries / float(s)
 
         print("\n")
         print("iteration completed", iter+1)
-        print("results", adjusted_coverage, unadjusted_coverage, adjusted_lengths, unadjusted_lengths, FDR, power)
+        print("results", adjusted_lengths, unadjusted_lengths, FDR, power)
 
     print(adjusted_coverage, unadjusted_coverage, adjusted_lengths, unadjusted_lengths, FDR, power)
