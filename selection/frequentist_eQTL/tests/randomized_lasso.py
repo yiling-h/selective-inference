@@ -121,18 +121,18 @@ def multiple_trials(test_function = randomized_lasso_trial, n = 350, p = 5000, s
 
         X, y, beta, nonzero, sigma = sample.generate_response()
 
-        random_lasso = test_function(X,
+        list_results = test_function(X,
                                      y,
                                      beta,
                                      sigma)
 
-        sel_covered = random_lasso[0]
-        sel_length = random_lasso[1]
-        pivots = random_lasso[2]
-        naive_covered = random_lasso[3]
-        naive_pvals = random_lasso[4]
-        naive_length = random_lasso[5]
-        active_set = random_lasso[6]
+        sel_covered = list_results[:,0]
+        sel_length = list_results[:,1]
+        pivots = list_results[:,2]
+        naive_covered = list_results[:,3]
+        naive_pvals = list_results[:,4]
+        naive_length = list_results[:,5]
+        active_set = list_results[:,6]
 
         nactive = sel_covered.shape[0]
 
@@ -145,10 +145,6 @@ def multiple_trials(test_function = randomized_lasso_trial, n = 350, p = 5000, s
         p_BH = BH_q(pivots, bh_level)
         false_discoveries = 0.
         true_discoveries = 0.
-
-        print("\n")
-        print("iteration completed", iter + 1)
-        print("results", adjusted_coverage, unadjusted_coverage)
 
         if p_BH is not None:
             for indx in p_BH[1]:
@@ -198,25 +194,27 @@ if __name__ == "__main__":
                                               beta,
                                               sigma)
 
-        sel_covered = random_lasso[0]
-        sel_length = random_lasso[1]
-        pivots = random_lasso[2]
-        naive_covered = random_lasso[3]
-        naive_pvals = random_lasso[4]
-        naive_length = random_lasso[5]
-        active_set = random_lasso[6]
+        sel_covered = random_lasso[:,0]
+        sel_length = random_lasso[:,1]
+        pivots = random_lasso[:,2]
+        naive_covered = random_lasso[:,3]
+        naive_pvals = random_lasso[:,4]
+        naive_length = random_lasso[:,5]
+        active_set = random_lasso[:,6]
 
         nactive = sel_covered.shape[0]
+        print("nactive", nactive)
 
-        adjusted_coverage += float(sel_covered.sum() /nactive)
-        unadjusted_coverage += float(naive_covered.sum() /nactive)
+        adjusted_coverage += sel_covered.sum()/float(nactive)
+        unadjusted_coverage += naive_covered.sum()/float(nactive)
 
-        adjusted_lengths += float(sel_length.sum()/nactive)
-        unadjusted_lengths += float(naive_length.sum()/nactive)
+        adjusted_lengths += sel_length.sum()/float(nactive)
+        unadjusted_lengths += naive_length.sum()/float(nactive)
 
         p_BH = BH_q(pivots, bh_level)
         false_discoveries = 0.
         true_discoveries = 0.
+        discoveries = 0.
 
         print("\n")
         print("iteration completed", iter + 1)
@@ -224,12 +222,13 @@ if __name__ == "__main__":
 
         if p_BH is not None:
             for indx in p_BH[1]:
+                discoveries += 1.
                 if beta[active_set[indx]] == 0:
                     false_discoveries += 1.
                 else:
                     true_discoveries += 1.
 
-        FDR += false_discoveries / max(float(p_BH[1].shape[0], 1.))
+        FDR += false_discoveries / max(discoveries, 1.)
         power += true_discoveries / float(s)
 
         print("\n")
