@@ -9,9 +9,11 @@ from selection.frequentist_eQTL.estimator import M_estimator_exact
 from selection.randomized.query import naive_confidence_intervals
 from selection.randomized.query import naive_pvalues
 
+from selection.bayesian.cisEQTLS.Simes_selection import BH_q
+
 def test_lasso(n=350,
                p=5000,
-               s=10,
+               s=5,
                snr=5.,
                rho=0.,
                lam_frac = 1.2,
@@ -84,10 +86,30 @@ def test_lasso(n=350,
         # naive ci
         if (ci_naive[j, 0] <= true_vec[j]) and (ci_naive[j, 1] >= true_vec[j]):
             naive_covered[j] += 1
-            naive_length[j] = ci_naive[j, 1] - ci_naive[j, 0]
+        naive_length[j] = ci_naive[j, 1] - ci_naive[j, 0]
 
-    print("coverage adjusted", sel_covered)
-    return sel_covered, sel_length, pivots, naive_covered, naive_pvals, naive_length
+    p_BH = BH_q(pivots, 0.10)
+    discoveries_active = np.zeros(nactive)
+    false_d = 0.
+    power = 0.
+    FDR = 0.
+    power = 0.
+
+    if p_BH is not None:
+        for indx in p_BH[1]:
+            discoveries_active[indx] = 1
+            if true_support[active_set[indx]] == 0.:
+                false_d += 1
+            else:
+                power += 1
+
+        FDR = false_d / float(max(p_BH[1].shape[0], 1.))
+        if s>0:
+            power = power / float(s)
+
+
+    #print("coverage adjusted", sel_covered)
+    return sel_covered, sel_length, pivots, naive_covered, naive_pvals, naive_length, FDR, power
 
 
 print(test_lasso())
