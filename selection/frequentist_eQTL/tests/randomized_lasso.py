@@ -132,7 +132,7 @@ def randomized_lasso_trial(X,
 if __name__ == "__main__":
 
      # read from command line
-     seedn = sys.argv[1]
+     seedn = int(sys.argv[1])
      outdir = sys.argv[2]
 
      outfile = os.path.join(outdir,"list_result_"+str(seedn)+".txt")
