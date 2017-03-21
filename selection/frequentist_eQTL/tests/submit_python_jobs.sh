@@ -5,7 +5,7 @@
 
 # setup dir if needed
 
-DIR=/scratch/users/snigdha/freq_cis_eqtl/outputs/sparsity_10
+DIR=/scratch/users/snigdha/freq_cis_eqtl/outputs/sparsity_5
 
 mkdir -p $DIR
 
