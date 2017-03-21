@@ -6,10 +6,10 @@
 #SBATCH --job-name=job
 #################  
 #a file for job output, you can check job progress, append the job ID with %j to make it unique
-#SBATCH --output=job.%j.out
+#SBATCH --output=jobs/%j.out
 #################
 # a file for errors from the job
-#SBATCH --error=job.%j.err
+#SBATCH --error=jobs/%j.err
 #################
 #time you think you need; default is 2 hours
 #format could be dd-hh:mm:ss, hh:mm:ss, mm:ss, or mm
