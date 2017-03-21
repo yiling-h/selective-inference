@@ -143,7 +143,7 @@ if __name__ == "__main__":
     ### set parameters
     n = 350
     p = 5000
-    s = 10
+    s = 5
     snr = 5.
     bh_level = 0.10
 
