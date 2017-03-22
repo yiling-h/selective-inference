@@ -89,7 +89,7 @@ def randomized_lasso_trial(X,
         # naive ci
         if (ci_naive[j, 0] <= true_vec[j]) and (ci_naive[j, 1] >= true_vec[j]):
             naive_covered[j] += 1
-            naive_length[j] = ci_naive[j, 1] - ci_naive[j, 0]
+        naive_length[j] = ci_naive[j, 1] - ci_naive[j, 0]
 
     p_BH = BH_q(pivots, bh_level)
     discoveries_active = np.zeros(nactive)
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     ### set parameters
     n = 350
     p = 5000
-    s = 1
+    s = 0
     snr = 5.
     bh_level = 0.10
 
