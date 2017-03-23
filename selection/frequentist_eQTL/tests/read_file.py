@@ -1,7 +1,7 @@
 import glob
 import os, numpy as np, pandas, statsmodels.api as sm
 
-path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_10/sparsity_10'
+path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_1/sparsity_1'
 
 allFiles = glob.glob(path + "/*.txt")
 
@@ -13,7 +13,9 @@ for file_ in allFiles:
 
 def evaluation_per_file(list,s,snr =5.):
 
-    sel_covered = list[:, 0]
+    if list.ndim == 1:
+        list = list.reshape((list.shape[0], 1)).T
+    sel_covered = list[:,0]
     sel_length = list[:,1]
     pivots = list[:,2]
     naive_covered = list[:,3]
@@ -56,8 +58,8 @@ def summary_files(list_):
     print("number of simulations", length)
 
     for i in range(length):
-
-        results = evaluation_per_file(list_[i], s=10, snr=5.)
+        print("iteration", i)
+        results = evaluation_per_file(list_[i], s=1, snr=5.)
         coverage_ad += results[0]
         coverage_unad += results[1]
         length_ad += results[2]
