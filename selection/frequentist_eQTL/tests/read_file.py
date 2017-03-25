@@ -1,7 +1,7 @@
 import glob
 import os, numpy as np, pandas, statsmodels.api as sm
 
-path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_1/sparsity_1'
+path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_0/sparsity_0'
 
 allFiles = glob.glob(path + "/*.txt")
 
@@ -42,7 +42,8 @@ def evaluation_per_file(list,s,snr =5.):
                 false_discoveries += 1.
 
     FDR = false_discoveries / max(ndiscoveries, 1.)
-    power = true_discoveries / float(s)
+    #power = true_discoveries / float(s)
+    power = 0.
 
     return adjusted_coverage, unadjusted_coverage, adjusted_lengths, unadjusted_lengths, FDR, power
 
@@ -59,7 +60,7 @@ def summary_files(list_):
 
     for i in range(length):
         print("iteration", i)
-        results = evaluation_per_file(list_[i], s=1, snr=5.)
+        results = evaluation_per_file(list_[i], s=0, snr=5.)
         coverage_ad += results[0]
         coverage_unad += results[1]
         length_ad += results[2]
