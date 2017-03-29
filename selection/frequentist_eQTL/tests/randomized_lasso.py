@@ -110,120 +110,36 @@ def randomized_lasso_trial(X,
     print("list of results", list_results)
     return list_results
 
-# n = 350
-# p = 5000
-# s = 5
-# snr = 5.
-# bh_level = 0.10
-# #
-# sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
-# X, y, beta, nonzero, sigma = sample.generate_response()
-# results = randomized_lasso_trial(X,
-#                                  y,
-#                                  beta,
-#                                  sigma,
-#                                  bh_level,
-#                                  lam_frac = 1.2,
-#                                  loss='gaussian',
-#                                  randomizer='gaussian')
-#
-# print(results)
 
 if __name__ == "__main__":
 
 #read from command line
 
-    seedn = int(sys.argv[1])
-    outdir = sys.argv[2]
-
-    outfile = os.path.join(outdir,"list_result_"+str(seedn)+".txt")
-
-#print("Will save to: "+outfile)
+    seedn = 1
+    # seedn = int(sys.argv[1])
+    # outdir = sys.argv[2]
+    # outfile = os.path.join(outdir,"list_result_"+str(seedn)+".txt")
+    # print("Will save to: "+outfile)
 
     ### set parameters
-    n = 350
-    p = 7000
-    s = 3
+    n = 10
+    p = 10
+    s = 1
     snr = 5.
     bh_level = 0.10
 
-### GENERATE X
-    np.random.seed(0) # ensures same X
+    ### GENERATE X
+    np.random.seed(9999) # ensures same X
 
     sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
 
-### GENERATE Y BASED ON SEED
+    ### GENERATE Y BASED ON SEED
     np.random.seed(seedn) # ensures different y
     X, y, beta, nonzero, sigma = sample.generate_response()
 
-### RUN LASSO AND INFERENCE
-    random_lasso = randomized_lasso_trial(X,
-                                          y,
-                                          beta,
-                                          sigma,
-                                          bh_level)
+    ### RUN LASSO AND INFERENCE
+    random_lasso = randomized_lasso_trial(X, y, beta, sigma, bh_level)
 
-### SAVE RESULT
-    np.savetxt(outfile, random_lasso)
+    ### SAVE RESULT
+    # np.savetxt(outfile, random_lasso)
 
-
-# def multiple_trials(test_function = randomized_lasso_trial, n = 350, p = 5000, s = 10, snr = 5., bh_level = 0.10, seed_number = 0):
-#
-#     np.random.seed(seed_number)
-#
-#     sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
-#
-#     adjusted_coverage = 0.
-#     unadjusted_coverage = 0.
-#
-#     adjusted_lengths = 0.
-#     unadjusted_lengths = 0.
-#
-#     FDR = 0.
-#     power = 0.
-#
-#     niter = 10
-#     for iter in xrange(niter):
-#
-#         X, y, beta, nonzero, sigma = sample.generate_response()
-#
-#         list_results = test_function(X,
-#                                      y,
-#                                      beta,
-#                                      sigma)
-#
-#         sel_covered = list_results[:,0]
-#         sel_length = list_results[:,1]
-#         pivots = list_results[:,2]
-#         naive_covered = list_results[:,3]
-#         naive_pvals = list_results[:,4]
-#         naive_length = list_results[:,5]
-#         active_set = list_results[:,6]
-#
-#         nactive = sel_covered.shape[0]
-#
-#         adjusted_coverage += float(sel_covered.sum() / nactive)
-#         unadjusted_coverage += float(naive_covered.sum() / nactive)
-#
-#         adjusted_lengths += float(sel_length.sum() / nactive)
-#         unadjusted_lengths += float(naive_length.sum() / nactive)
-#
-#         p_BH = BH_q(pivots, bh_level)
-#         false_discoveries = 0.
-#         true_discoveries = 0.
-#
-#         if p_BH is not None:
-#             for indx in p_BH[1]:
-#                 if beta[active_set[indx]] == 0:
-#                     false_discoveries += 1.
-#                 else:
-#                     true_discoveries += 1.
-#
-#         FDR += false_discoveries / max(float(p_BH[1].shape[0], 1.))
-#         power += true_discoveries / float(s)
-#
-#         print("\n")
-#         print("iteration completed", iter + 1)
-#         print("results", adjusted_lengths, unadjusted_lengths, FDR, power)
-#
-#     print(adjusted_coverage, unadjusted_coverage, adjusted_lengths, unadjusted_lengths, FDR, power)
