@@ -7,6 +7,7 @@ import time
 import itertools
 
 import utils
+import sys
 
 def imerge(a, b, mode="concat"):
     if mode == "append":
@@ -324,7 +325,7 @@ class approximate_conditional_density(rr.smooth_atom):
         # self.sel_alg.setup_map(j)
         n_grid_points = self.grid[j,:].shape[0]
 
-        print("Approximating conditional probability for selected variable: {}".format(j))
+        sys.stderr.write("\nApproximating conditional probability for selected variable: {}\n".format(j))
         start_time = time.time()
         if self.n_cores==1: 
             h_hat_vals = np.zeros(n_grid_points)
@@ -339,7 +340,7 @@ class approximate_conditional_density(rr.smooth_atom):
             h_hat_vals = utils.multi_process(compute_h_hat_w_alg_path, fltuple, self.n_cores)
 
         used_time = time.time() - start_time
-        print("Computed {} grid points, used: {:.2f}s".format(n_grid_points, used_time))
+        sys.stderr.write("Computed {} grid points, used: {:.2f}s\n".format(n_grid_points, used_time))
         return h_hat_vals 
 
     def area_normalized_density(self, j, mean):

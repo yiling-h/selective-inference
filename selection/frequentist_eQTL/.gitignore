@@ -2,3 +2,4 @@
 *.swp
 tests/*pkl
 tests/*profile
+tests/jobs
