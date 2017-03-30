@@ -218,7 +218,7 @@ class approximate_conditional_prob(rr.smooth_atom):
         objective = lambda u: self.sel_prob_smooth_objective(u, 'func')
         grad = lambda u: self.sel_prob_smooth_objective(u, 'grad')
 
-        for itercount in range(nstep):
+        for itercount in xrange(nstep):
             newton_step = grad(current)
 
             # make sure proposal is feasible
@@ -281,7 +281,6 @@ class approximate_conditional_density(rr.smooth_atom):
 
         if self.sel_alg_path:
             utils.save_object(sel_alg, self.sel_alg_path)
-            print("Saved Mest object in: "+self.sel_alg_path)
 
         rr.smooth_atom.__init__(self,
                                 (1,),
@@ -325,27 +324,19 @@ class approximate_conditional_density(rr.smooth_atom):
         # self.sel_alg.setup_map(j)
         n_grid_points = self.grid[j,:].shape[0]
 
-
         print("Approximating conditional probability for selected variable: {}".format(j))
         start_time = time.time()
         if self.n_cores==1: 
             h_hat_vals = np.zeros(n_grid_points)
             for i in xrange(self.grid[j,:].shape[0]):
-                h_hat_vals[i] = compute_h_hat_w_sel_alg_path(self.grid[j,i], self.sel_alg_path, j)
-                # h_hat_vals[i] = compute_h_hat((self.grid[j,i], self.sel_alg, j)
+                # h_hat_vals[i] = compute_h_hat_w_alg_path((self.grid[j,i], self.sel_alg_path, j))
+                h_hat_vals[i] = compute_h_hat((self.grid[j,i], self.sel_alg, j))
         else: # multi-core for parallelization
-            sel_pathss = itertools.repeat(self.sel_alg_path, n_grid_points)
+            sel_paths = itertools.repeat(self.sel_alg_path, n_grid_points)
             j_vals = itertools.repeat(j, n_grid_points) 
             
             fltuple = itertools.izip(self.grid[j,:], sel_paths, j_vals) 
-            for f in fltuple:
-                print f
-            # h_hat_vals = multi_process_h_hat(fltuple, n_cores)
-            # print(pool.map(f,[1,2,3,4,5]) )
-            # h_hat_vals = pool.map(compute_h_hat,fltuple) 
-            # print(multi_process(f, [1,2,3,4,5],5))
-            fltuple = itertools.product(self.grid[j,:],[j])
-            # print(multi_process(compute_h_hat, fltuple,n_cores))
+            h_hat_vals = utils.multi_process(compute_h_hat_w_alg_path, fltuple, self.n_cores)
 
         used_time = time.time() - start_time
         print("Computed {} grid points, used: {:.2f}s".format(n_grid_points, used_time))

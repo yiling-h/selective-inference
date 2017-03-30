@@ -1,6 +1,7 @@
 from __future__ import print_function
 import sys
 import os
+import argparse
 
 import numpy as np
 import regreg.api as rr
@@ -22,7 +23,8 @@ def randomized_lasso_trial(X,
                            bh_level,
                            lam_frac = 1.2,
                            loss='gaussian',
-                           randomizer='gaussian'):
+                           randomizer='gaussian',
+                           n_cores = 1):
 
     from selection.api import randomization
     if beta[0] == 0:
@@ -62,7 +64,7 @@ def randomized_lasso_trial(X,
     
 
     # this part is the slowest
-    ci = approximate_conditional_density(M_est, sel_alg_path="M_est.pkl")
+    ci = approximate_conditional_density(M_est, sel_alg_path="M_est.pkl", n_cores=n_cores)
     ci.solve_approx()
 
 
@@ -117,35 +119,34 @@ def randomized_lasso_trial(X,
     return list_results
 
 
-if __name__ == "__main__":
-
-#read from command line
+def do_test(args):
 
     seedn = 1
-    # seedn = int(sys.argv[1])
-    # outdir = sys.argv[2]
-    # outfile = os.path.join(outdir,"list_result_"+str(seedn)+".txt")
-    # print("Will save to: "+outfile)
-
-    ### set parameters
     n = 10
     p = 10
     s = 1
     snr = 5.
     bh_level = 0.10
-
-    ### GENERATE X
     np.random.seed(9999) # ensures same X
-
     sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
-
-    ### GENERATE Y BASED ON SEED
     np.random.seed(seedn) # ensures different y
     X, y, beta, nonzero, sigma = sample.generate_response()
+    random_lasso = randomized_lasso_trial(X, y, beta, sigma, bh_level, n_cores=args.n_cores)
 
-    ### RUN LASSO AND INFERENCE
-    random_lasso = randomized_lasso_trial(X, y, beta, sigma, bh_level)
+if __name__ == "__main__":
 
-    ### SAVE RESULT
-    # np.savetxt(outfile, random_lasso)
+    parser = argparse.ArgumentParser(description="Run randomized Lasso and frequentist post-seleciton inference")
+    subparsers = parser.add_subparsers()
+
+    # program to test randomized lasso
+    command_parser = subparsers.add_parser('test', help='testing parallel processing') 
+    command_parser.add_argument('-n','--n_cores', type=int, default=1, help="number of processers to use")
+    command_parser.set_defaults(func=do_test)
+
+    ARGS = parser.parse_args()
+    if ARGS.func is None:
+        parser.print_help()
+        sys.exit(1)
+    else:
+        ARGS.func(ARGS)
 
