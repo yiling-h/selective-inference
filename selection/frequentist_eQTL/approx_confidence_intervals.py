@@ -3,6 +3,22 @@ import regreg.api as rr
 from selection.bayesian.selection_probability_rr import nonnegative_softmax_scaled
 from scipy.stats import norm
 
+import time
+import itertools
+
+import utils
+
+def imerge(a, b, mode="concat"):
+    if mode == "append":
+        for i, j in itertools.izip(a,b):
+            yield i + (j,)
+    elif mode == "concat":  
+        for i, j in itertools.izip(a,b):
+            yield i + j
+    else:
+        sys.stderr.write("Mode not recognized\n")
+        sys.exit(1) 
+
 class neg_log_cube_probability_laplace(rr.smooth_atom):
     def __init__(self,
                  q, #equals p - E in our case
@@ -90,16 +106,20 @@ class neg_log_cube_probability(rr.smooth_atom):
         arg_u = (arg + self.lagrange)/self.randomization_scale
         arg_l = (arg - self.lagrange)/self.randomization_scale
         prod_arg = np.exp(-(2. * self.lagrange * arg)/(self.randomization_scale**2))
-        neg_prod_arg = np.exp((2. * self.lagrange * arg)/(self.randomization_scale**2))
+
         cube_prob = norm.cdf(arg_u) - norm.cdf(arg_l)
-        log_cube_prob = -np.log(cube_prob).sum()
+        cube_prob = np.maximum(cube_prob, 10** -10) # avoid zero 
+        log_cube_prob = -np.log(cube_prob).sum()   
         threshold = 10 ** -10
+
         indicator = np.zeros(self.q, bool)
         indicator[(cube_prob > threshold)] = 1
         positive_arg = np.zeros(self.q, bool)
         positive_arg[(arg>0)] = 1
+        
         pos_index = np.logical_and(positive_arg, ~indicator)
         neg_index = np.logical_and(~positive_arg, ~indicator)
+
         log_cube_grad = np.zeros(self.q)
         log_cube_grad[indicator] = (np.true_divide(-norm.pdf(arg_u[indicator]) + norm.pdf(arg_l[indicator]),
                                         cube_prob[indicator]))/self.randomization_scale
@@ -108,9 +128,10 @@ class neg_log_cube_probability(rr.smooth_atom):
                                      ((prod_arg[pos_index]/arg_u[pos_index])-
                                       (1./arg_l[pos_index])))/self.randomization_scale
 
+        neg_prod_arg = np.exp((2. * self.lagrange * arg)/(self.randomization_scale**2)) 
+        # neg_prod_arg = np.exp(2. * self.lagrange * arg - np.log(self.randomization_scale**2) ) 
         log_cube_grad[neg_index] = ((arg_u[neg_index] -(arg_l[neg_index]*neg_prod_arg[neg_index]))
                                     /self.randomization_scale)/(1.- neg_prod_arg[neg_index])
-
 
         if mode == 'func':
             return self.scale(log_cube_prob)
@@ -249,9 +270,18 @@ class approximate_conditional_density(rr.smooth_atom):
                        coef=1.,
                        offset=None,
                        quadratic=None,
-                       nstep=10):
+                       nstep=10,
+                       sel_alg_path=None,
+                       n_cores = 1):
 
         self.sel_alg = sel_alg
+
+        self.sel_alg_path = sel_alg_path
+        self.n_cores = n_cores
+
+        if self.sel_alg_path:
+            utils.save_object(sel_alg, self.sel_alg_path)
+            print("Saved Mest object in: "+self.sel_alg_path)
 
         rr.smooth_atom.__init__(self,
                                 (1,),
@@ -291,16 +321,35 @@ class approximate_conditional_density(rr.smooth_atom):
 
 
     def approx_conditional_prob(self, j):
-        h_hat = []
 
-        self.sel_alg.setup_map(j)
+        # self.sel_alg.setup_map(j)
+        n_grid_points = self.grid[j,:].shape[0]
 
-        for i in xrange(self.grid[j,:].shape[0]):
 
-            approx = approximate_conditional_prob((self.grid[j,:])[i], self.sel_alg)
-            h_hat.append(-(approx.minimize2(j, nstep=100)[::-1])[0])
+        print("Approximating conditional probability for selected variable: {}".format(j))
+        start_time = time.time()
+        if self.n_cores==1: 
+            h_hat_vals = np.zeros(n_grid_points)
+            for i in xrange(self.grid[j,:].shape[0]):
+                h_hat_vals[i] = compute_h_hat_w_sel_alg_path(self.grid[j,i], self.sel_alg_path, j)
+                # h_hat_vals[i] = compute_h_hat((self.grid[j,i], self.sel_alg, j)
+        else: # multi-core for parallelization
+            sel_pathss = itertools.repeat(self.sel_alg_path, n_grid_points)
+            j_vals = itertools.repeat(j, n_grid_points) 
+            
+            fltuple = itertools.izip(self.grid[j,:], sel_paths, j_vals) 
+            for f in fltuple:
+                print f
+            # h_hat_vals = multi_process_h_hat(fltuple, n_cores)
+            # print(pool.map(f,[1,2,3,4,5]) )
+            # h_hat_vals = pool.map(compute_h_hat,fltuple) 
+            # print(multi_process(f, [1,2,3,4,5],5))
+            fltuple = itertools.product(self.grid[j,:],[j])
+            # print(multi_process(compute_h_hat, fltuple,n_cores))
 
-        return np.array(h_hat)
+        used_time = time.time() - start_time
+        print("Computed {} grid points, used: {:.2f}s".format(n_grid_points, used_time))
+        return h_hat_vals 
 
     def area_normalized_density(self, j, mean):
 
@@ -337,3 +386,21 @@ class approximate_conditional_density(rr.smooth_atom):
         area = area_vec[self.ind_obs[j]]
 
         return 2*min(area, 1-area)
+
+def compute_h_hat_w_alg_path(fltuple):
+    i_grid, alg_path, j = fltuple
+    alg = utils.load_object(alg_path)
+    alg.setup_map(j)
+    approx = approximate_conditional_prob(i_grid, alg)
+    return(-(approx.minimize2(j, nstep=100)[::-1])[0])
+
+def compute_h_hat(fltuple):
+    i_grid, alg, j = fltuple
+    alg.setup_map(j)
+    approx = approximate_conditional_prob(i_grid, alg)
+    return(-(approx.minimize2(j, nstep=100)[::-1])[0])
+
+def f(x):
+    return x**2
+
+

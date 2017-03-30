@@ -86,6 +86,8 @@ def main(**extra_args):
                           'selection.sampling.tests',
                           'selection.randomized',
                           'selection.randomized.tests',
+                          'selection.frequentist_eQTL',
+                          'selection.frequentist_eQTL.tests',
                           'selection.tests'
                           ],
           ext_modules = EXTS,

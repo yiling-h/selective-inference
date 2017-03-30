@@ -58,8 +58,14 @@ def randomized_lasso_trial(X,
     true_vec = np.linalg.inv(X[:, active].T.dot(X[:, active])).dot(X[:, active].T).dot(X.dot(beta))
     sys.stderr.write("True target to be covered" + str(true_vec) + "\n")
 
-    ci = approximate_conditional_density(M_est)
+    # save M_est to file
+    
+
+    # this part is the slowest
+    ci = approximate_conditional_density(M_est, sel_alg_path="M_est.pkl")
     ci.solve_approx()
+
+
 
     ci_sel = np.zeros((nactive, 2))
     sel_covered = np.zeros(nactive, np.bool)
