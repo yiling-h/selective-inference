@@ -18,7 +18,6 @@ from selection.bayesian.cisEQTLS.Simes_selection import BH_q
 
 def randomized_lasso_trial(X,
                            y,
-                           beta,
                            sigma,
                            bh_level,
                            lam_frac = 1.2,
@@ -27,8 +26,6 @@ def randomized_lasso_trial(X,
                            n_cores = 1):
 
     from selection.api import randomization
-    if beta[0] == 0:
-        s = 0
 
     n, p = X.shape
     if loss == "gaussian":
@@ -47,32 +44,40 @@ def randomized_lasso_trial(X,
 
     M_est = M_estimator_exact(loss, epsilon, penalty, randomization, randomizer)
     M_est.solve_approx()
+
     active = M_est._overall
     active_set = np.asarray([i for i in range(p) if active[i]])
     nactive = np.sum(active)
-
-    print("lasso selects", nactive)
 
     if nactive == 0:
         return None
     sys.stderr.write("Active set selected by lasso"+str(active_set)+"\n")
 
-    true_vec = np.linalg.inv(X[:, active].T.dot(X[:, active])).dot(X[:, active].T).dot(X.dot(beta))
-    sys.stderr.write("True target to be covered" + str(true_vec) + "\n")
-
-    # save M_est to file
-    
-
     # this part is the slowest
     ci = approximate_conditional_density(M_est, n_cores=n_cores)
     ci.solve_approx()
 
-
-
     ci_sel = np.zeros((nactive, 2))
-    sel_covered = np.zeros(nactive, np.bool)
-    sel_length = np.zeros(nactive)
     pivots = np.zeros(nactive)
+
+    for j in xrange(nactive):
+        ci_sel[j, :] = np.array(ci.approximate_ci(j))
+        pivots[j] = ci.approximate_pvalue(j, 0.)
+
+    out_result = (ci_sel, pivots, active_set, M_est)
+    return(out_result)
+
+def evaluate_results(out_result, X, beta, bh_level=0.1):
+    # evaluate accuracy
+    ci_sel, pivots, active_set, M_est = out_result
+    n, p = X.shape
+
+    active = M_est._overall
+    active_set = np.asarray([i for i in range(p) if active[i]])
+    nactive = np.sum(active)
+
+    true_vec = np.linalg.inv(X[:, active].T.dot(X[:, active])).dot(X[:, active].T).dot(X.dot(beta))
+    sys.stderr.write("True target to be covered" + str(true_vec) + "\n")
 
     class target_class(object):
         def __init__(self, target_cov):
@@ -86,13 +91,14 @@ def randomized_lasso_trial(X,
     naive_covered = np.zeros(nactive, np.bool)
     naive_length = np.zeros(nactive)
 
+    sel_covered = np.zeros(nactive, np.bool)
+
+    sel_length = np.zeros(nactive)
     for j in xrange(nactive):
-        ci_sel[j, :] = np.array(ci.approximate_ci(j))
+        sel_length[j] = ci_sel[j, 1] - ci_sel[j, 0]
         if (ci_sel[j, 0] <= true_vec[j]) and (ci_sel[j, 1] >= true_vec[j]):
             sel_covered[j] = 1
-        sel_length[j] = ci_sel[j, 1] - ci_sel[j, 0]
         print(ci_sel[j, :])
-        pivots[j] = ci.approximate_pvalue(j, 0.)
 
         # naive ci
         if (ci_naive[j, 0] <= true_vec[j]) and (ci_naive[j, 1] >= true_vec[j]):
@@ -118,7 +124,6 @@ def randomized_lasso_trial(X,
     print("list of results", list_results)
     return list_results
 
-
 def do_test(args):
     seedn = 1
     n = 10
@@ -130,18 +135,17 @@ def do_test(args):
     sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
     np.random.seed(seedn) # ensures different y
     X, y, beta, nonzero, sigma = sample.generate_response()
-    # random_lasso = randomized_lasso_trial(X, y, beta, sigma, bh_level, n_cores=args.n_cores)
-
+    random_lasso_result = randomized_lasso_trial(X, y, sigma, bh_level, n_cores=args.n_cores)
+    evaluate_results(random_lasso_result, X, beta)
 
 def save_data(args):
-
     n = 350
     p = 7000
     s = 3
-    snr = 5.
-    bh_level = 0.10
+
+    snr = args.snr
     np.random.seed(0) # ensures same X
-    sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
+    sample = instance(n=n, p=p, s=s, sigma=args.sigma, rho=0, snr=snr)
 
     assert os.path.exists(args.data_dir), "data directory: {} does not exist".format(args.data_dir)
 
@@ -153,11 +157,14 @@ def save_data(args):
     for seedn in xrange(args.max_seed):
         np.random.seed(seedn) # ensures different y
         X_d, y, beta, nonzero, sigma = sample.generate_response()
-        assert np.array_equal(X, X_d), "X not correct"
+        # assert np.array_equal(X, X_d), "X not correct"
         y_fname = os.path.join(args.data_dir,"y_{}.npy".format(seedn)) 
         np.save(y_fname, y)
         sys.stderr.write("Written data to {}\n".format(y_fname))
 
+        b_fname = os.path.join(args.data_dir,"b_{}.npy".format(seedn)) 
+        np.save(b_fname, beta)
+        sys.stderr.write("Written data to {}\n".format(b_fname))
 
 if __name__ == "__main__":
 
@@ -172,6 +179,8 @@ if __name__ == "__main__":
     command_parser = subparsers.add_parser('gendata', help='generate data and save to file') 
     command_parser.add_argument('-s','--max_seed', type=int, default=49, help="maximum numbers of seeds to use")
     command_parser.add_argument('-o','--data_dir', default='/scratch/users/jjzhu/sim_eqtl_data', help="directory to save simulated data")
+    command_parser.add_argument('-r','--snr', type=float, default=5.0, help="signal to noise ratio")
+    command_parser.add_argument('-S','--sigma', type=float, default=1.0, help="variance of noise")
     command_parser.set_defaults(func=save_data)
 
     ARGS = parser.parse_args()
