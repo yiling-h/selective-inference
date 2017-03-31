@@ -64,7 +64,7 @@ def randomized_lasso_trial(X,
     
 
     # this part is the slowest
-    ci = approximate_conditional_density(M_est, sel_alg_path="M_est.pkl", n_cores=n_cores)
+    ci = approximate_conditional_density(M_est, n_cores=n_cores)
     ci.solve_approx()
 
 
@@ -120,7 +120,6 @@ def randomized_lasso_trial(X,
 
 
 def do_test(args):
-
     seedn = 1
     n = 10
     p = 10
@@ -131,7 +130,34 @@ def do_test(args):
     sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
     np.random.seed(seedn) # ensures different y
     X, y, beta, nonzero, sigma = sample.generate_response()
-    random_lasso = randomized_lasso_trial(X, y, beta, sigma, bh_level, n_cores=args.n_cores)
+    # random_lasso = randomized_lasso_trial(X, y, beta, sigma, bh_level, n_cores=args.n_cores)
+
+
+def save_data(args):
+
+    n = 350
+    p = 7000
+    s = 3
+    snr = 5.
+    bh_level = 0.10
+    np.random.seed(0) # ensures same X
+    sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
+
+    assert os.path.exists(args.data_dir), "data directory: {} does not exist".format(args.data_dir)
+
+    X = sample.X
+    X_fname = os.path.join(args.data_dir,"X.npy")
+    np.save(X_fname, X)
+    sys.stderr.write("Written data to {}\n".format(X_fname))
+     
+    for seedn in xrange(args.max_seed):
+        np.random.seed(seedn) # ensures different y
+        X_d, y, beta, nonzero, sigma = sample.generate_response()
+        assert np.array_equal(X, X_d), "X not correct"
+        y_fname = os.path.join(args.data_dir,"y_{}.npy".format(seedn)) 
+        np.save(y_fname, y)
+        sys.stderr.write("Written data to {}\n".format(y_fname))
+
 
 if __name__ == "__main__":
 
@@ -143,10 +169,14 @@ if __name__ == "__main__":
     command_parser.add_argument('-n','--n_cores', type=int, default=1, help="number of processers to use")
     command_parser.set_defaults(func=do_test)
 
+    command_parser = subparsers.add_parser('gendata', help='generate data and save to file') 
+    command_parser.add_argument('-s','--max_seed', type=int, default=49, help="maximum numbers of seeds to use")
+    command_parser.add_argument('-o','--data_dir', default='/scratch/users/jjzhu/sim_eqtl_data', help="directory to save simulated data")
+    command_parser.set_defaults(func=save_data)
+
     ARGS = parser.parse_args()
     if ARGS.func is None:
         parser.print_help()
         sys.exit(1)
     else:
         ARGS.func(ARGS)
-
