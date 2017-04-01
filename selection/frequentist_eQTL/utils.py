@@ -13,7 +13,7 @@ def load_object(filename):
 
 def multi_process(f, sequence, n_cores):
     sys.stderr.write("Using {} cores.\n".format(n_cores))
-    from multiprocessing import Pool
+    from pathos.multiprocessing import Pool
     pool = Pool(processes=n_cores)
     result = pool.map(f, sequence)
     pool.close()

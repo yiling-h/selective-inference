@@ -272,16 +272,10 @@ class approximate_conditional_density(rr.smooth_atom):
                        offset=None,
                        quadratic=None,
                        nstep=10,
-                       sel_alg_path=None,
                        n_cores = 1):
 
         self.sel_alg = sel_alg
-
-        self.sel_alg_path = sel_alg_path
         self.n_cores = n_cores
-
-        if self.sel_alg_path:
-            utils.save_object(sel_alg, self.sel_alg_path)
 
         rr.smooth_atom.__init__(self,
                                 (1,),
@@ -330,14 +324,13 @@ class approximate_conditional_density(rr.smooth_atom):
         if self.n_cores==1: 
             h_hat_vals = np.zeros(n_grid_points)
             for i in xrange(self.grid[j,:].shape[0]):
-                # h_hat_vals[i] = compute_h_hat_w_alg_path((self.grid[j,i], self.sel_alg_path, j))
                 h_hat_vals[i] = compute_h_hat((self.grid[j,i], self.sel_alg, j))
         else: # multi-core for parallelization
-            sel_paths = itertools.repeat(self.sel_alg_path, n_grid_points)
-            j_vals = itertools.repeat(j, n_grid_points) 
-            
-            fltuple = itertools.izip(self.grid[j,:], sel_paths, j_vals) 
-            h_hat_vals = utils.multi_process(compute_h_hat_w_alg_path, fltuple, self.n_cores)
+            fltuple = itertools.izip(self.grid[j,:], 
+                                     itertools.repeat(self.sel_alg, n_grid_points),
+                                     itertools.repeat(j, n_grid_points)) 
+
+            h_hat_vals = utils.multi_process(compute_h_hat, fltuple, self.n_cores)
 
         used_time = time.time() - start_time
         sys.stderr.write("Computed {} grid points, used: {:.2f}s\n".format(n_grid_points, used_time))
@@ -379,20 +372,8 @@ class approximate_conditional_density(rr.smooth_atom):
 
         return 2*min(area, 1-area)
 
-def compute_h_hat_w_alg_path(fltuple):
-    i_grid, alg_path, j = fltuple
-    alg = utils.load_object(alg_path)
-    alg.setup_map(j)
-    approx = approximate_conditional_prob(i_grid, alg)
-    return(-(approx.minimize2(j, nstep=100)[::-1])[0])
-
 def compute_h_hat(fltuple):
     i_grid, alg, j = fltuple
     alg.setup_map(j)
     approx = approximate_conditional_prob(i_grid, alg)
     return(-(approx.minimize2(j, nstep=100)[::-1])[0])
-
-def f(x):
-    return x**2
-
-

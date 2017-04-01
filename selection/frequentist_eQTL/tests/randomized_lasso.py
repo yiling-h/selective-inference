@@ -120,7 +120,6 @@ def evaluate_results(out_result, X, beta, bh_level=0.1):
                                            active_set,
                                            discoveries_active)))
 
-
     print("list of results", list_results)
     return list_results
 
@@ -139,11 +138,12 @@ def do_test(args):
     evaluate_results(random_lasso_result, X, beta)
 
 def save_data(args):
-    n = 350
-    p = 7000
-    s = 3
-
+    print(args)
+    n = args.n_obs
+    p = args.n_vars 
+    s = args.n_sig
     snr = args.snr
+
     np.random.seed(0) # ensures same X
     sample = instance(n=n, p=p, s=s, sigma=args.sigma, rho=0, snr=snr)
 
@@ -177,10 +177,13 @@ if __name__ == "__main__":
     command_parser.set_defaults(func=do_test)
 
     command_parser = subparsers.add_parser('gendata', help='generate data and save to file') 
-    command_parser.add_argument('-s','--max_seed', type=int, default=49, help="maximum numbers of seeds to use")
+    command_parser.add_argument('-s','--max_seed', type=int, default=50, help="maximum numbers of seeds to use")
     command_parser.add_argument('-o','--data_dir', default='/scratch/users/jjzhu/sim_eqtl_data', help="directory to save simulated data")
     command_parser.add_argument('-r','--snr', type=float, default=5.0, help="signal to noise ratio")
     command_parser.add_argument('-S','--sigma', type=float, default=1.0, help="variance of noise")
+    command_parser.add_argument('-m','--n_sig', type=int, default=0, help="number of signals")
+    command_parser.add_argument('-p','--n_vars', type=int, default=7000, help="number of variables")
+    command_parser.add_argument('-n','--n_obs', type=int, default=350, help="number of observations")
     command_parser.set_defaults(func=save_data)
 
     ARGS = parser.parse_args()
