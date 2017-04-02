@@ -143,9 +143,9 @@ if __name__ == "__main__":
     ### set parameters
     n = 350
     p = 7000
-    s = 3
+    s = 5
     snr = 5.
-    bh_level = 0.10
+    bh_level = 0.20
 
 ### GENERATE X
     np.random.seed(0) # ensures same X
