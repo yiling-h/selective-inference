@@ -9,7 +9,7 @@ DIR=/scratch/users/snigdha/freq_cis_eqtl/outputs/sparsity_1/level_1
 
 mkdir -p $DIR
 
-for i in {0..50}
+for i in {0..100}
 do
 	# bash single_python_run.sbatch $i $DIR
 	sbatch single_python_run.sbatch $i $DIR
