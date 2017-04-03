@@ -2,7 +2,7 @@ import glob
 import os, numpy as np, pandas, statsmodels.api as sm
 
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_5/dim_1/dim_1'
-path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_3/dim_1'
+path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_5/level_1'
 
 allFiles = glob.glob(path + "/*.txt")
 
@@ -63,7 +63,7 @@ def summary_files(list_):
 
     for i in range(length):
         print("iteration", i)
-        results = evaluation_per_file(list_[i], s=3, snr=5.)
+        results = evaluation_per_file(list_[i], s=5, snr=5.)
         coverage_ad += results[0]
         coverage_unad += results[1]
         length_ad += results[2]
