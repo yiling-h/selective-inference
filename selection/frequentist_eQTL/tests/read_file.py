@@ -2,7 +2,7 @@ import glob
 import os, numpy as np, pandas, statsmodels.api as sm
 
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_5/dim_1/dim_1'
-path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_0/level_1'
+path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_3/level_1'
 
 allFiles = glob.glob(path + "/*.txt")
 
