@@ -16,15 +16,13 @@ from selection.bayesian.initial_soln import selection, instance
 from selection.bayesian.cisEQTLS.Simes_selection import BH_q
 
 
-def randomized_lasso_trial(X,
-                           y,
-                           sigma,
-                           bh_level,
-                           lam_frac = 1.2,
-                           loss='gaussian',
-                           randomizer='gaussian',
-                           n_cores = 1):
-
+def randomized_lasso_selection(X,
+                               y,
+                               sigma,
+                               lam_frac = 1.2,
+                               loss='gaussian',
+                               randomizer='gaussian'):
+    # select active variables using randomized lasso
     from selection.api import randomization
 
     n, p = X.shape
@@ -48,6 +46,15 @@ def randomized_lasso_trial(X,
     active = M_est._overall
     active_set = np.asarray([i for i in range(p) if active[i]])
     nactive = np.sum(active)
+    sys.stderr.write("Active set selected by lasso"+str(active_set)+"\n")
+    return(M_est)
+
+def randomized_lasso_inference(M_est, n_cores = 1):
+    # compute the selective pivot and intervals for the selected set
+    active = M_est._overall
+    p = len(active)
+    active_set = np.asarray([i for i in range(p) if active[i]])
+    nactive = np.sum(active)
 
     if nactive == 0:
         return None
@@ -67,7 +74,18 @@ def randomized_lasso_trial(X,
     out_result = (ci_sel, pivots, active_set, M_est)
     return(out_result)
 
-def evaluate_results(out_result, X, beta, bh_level=0.1):
+def evaluate_selection(M_est, beta):
+    # evaluate accuracy
+    active = M_est._overall
+    assert len(active)==len(beta), "mismatch length of true and estimated signals"
+    n_disc = np.sum(active)
+    true_sig = beta > 0 
+    fdp = 1.0 * np.sum(active & ~true_sig) / n_disc
+    power = 1.0 * np.sum(active & true_sig) / np.sum(true_sig)
+    result = np.array([n_disc, fdp, power])
+    return(result)
+
+def evaluate_inference(out_result, X, beta, bh_level=0.1):
     # evaluate accuracy
     ci_sel, pivots, active_set, M_est = out_result
     n, p = X.shape
@@ -119,8 +137,6 @@ def evaluate_results(out_result, X, beta, bh_level=0.1):
                                            naive_length,
                                            active_set,
                                            discoveries_active)))
-
-    print("list of results", list_results)
     return list_results
 
 def do_test(args):
@@ -134,8 +150,11 @@ def do_test(args):
     sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
     np.random.seed(seedn) # ensures different y
     X, y, beta, nonzero, sigma = sample.generate_response()
-    random_lasso_result = randomized_lasso_trial(X, y, sigma, bh_level, n_cores=args.n_cores)
-    evaluate_results(random_lasso_result, X, beta)
+    selection_result = randomized_lasso_selection(X, y, sigma, lam_frac = 1.2)
+    print(evaluate_selection(selection_result, beta))
+    inference_result = randomized_lasso_inference(selection_result, n_cores=args.n_cores)
+    print(evaluate_inference(inference_result, X, beta))
+    
 
 def save_data(args):
     print(args)
