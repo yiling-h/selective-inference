@@ -2,6 +2,7 @@ from __future__ import print_function
 import sys
 import os
 import argparse
+import time
 
 import numpy as np
 import regreg.api as rr
@@ -25,6 +26,8 @@ def randomized_lasso_selection(X,
     # select active variables using randomized lasso
     from selection.api import randomization
 
+    sys.stderr.write("Running randomized lasso\n")
+    start_time = time.time()
     n, p = X.shape
     if loss == "gaussian":
         lam = lam_frac * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * sigma
@@ -45,8 +48,11 @@ def randomized_lasso_selection(X,
 
     active = M_est._overall
     active_set = np.asarray([i for i in range(p) if active[i]])
-    nactive = np.sum(active)
+   
+    used_time = time.time() - start_time
     sys.stderr.write("Active set selected by lasso"+str(active_set)+"\n")
+    sys.stderr.write("Used: {:.2f}s\n".format(used_time))
+
     return(M_est)
 
 def randomized_lasso_inference(M_est, n_cores = 1):
@@ -61,8 +67,12 @@ def randomized_lasso_inference(M_est, n_cores = 1):
     sys.stderr.write("Active set selected by lasso"+str(active_set)+"\n")
 
     # this part is the slowest
+    sys.stderr.write("Running inference\n")
+    start_time = time.time()
     ci = approximate_conditional_density(M_est, n_cores=n_cores)
     ci.solve_approx()
+    used_time = time.time() - start_time
+    sys.stderr.write("Used: {:.2f}s\n".format(used_time))
 
     ci_sel = np.zeros((nactive, 2))
     pivots = np.zeros(nactive)
@@ -80,8 +90,8 @@ def evaluate_selection(M_est, beta):
     assert len(active)==len(beta), "mismatch length of true and estimated signals"
     n_disc = np.sum(active)
     true_sig = beta > 0 
-    fdp = 1.0 * np.sum(active & ~true_sig) / n_disc
-    power = 1.0 * np.sum(active & true_sig) / np.sum(true_sig)
+    fdp = 1.0 * np.sum(active & ~true_sig) / np.max((n_disc,1))
+    power = 1.0 * np.sum(active & true_sig) / np.max((np.sum(true_sig),1))
     result = np.array([n_disc, fdp, power])
     return(result)
 
@@ -185,6 +195,31 @@ def save_data(args):
         np.save(b_fname, beta)
         sys.stderr.write("Written data to {}\n".format(b_fname))
 
+def select_only(args):
+    print(args)
+    # read X data
+    X_fname = os.path.join(args.data_dir,"X.npy")
+    X = np.load(X_fname)
+    for seedn in xrange(args.max_seed):
+        # read y data 
+        y_fname = os.path.join(args.data_dir,"y_{}.npy".format(seedn)) 
+        y = np.load(y_fname)
+        # read b data
+        b_fname = os.path.join(args.data_dir,"b_{}.npy".format(seedn)) 
+        beta = np.load(b_fname)
+        # randomize selection
+        selection_result = randomized_lasso_selection(X, y, sigma=args.sigma, lam_frac=args.lam)
+        # evaluate result
+        print(evaluate_selection(selection_result, beta))
+        # save active set 
+        active = selection_result._overall
+        p = len(active)
+        active_set = np.asarray([i for i in range(p) if active[i]])
+        a_fname = os.path.join(args.out_dir,"a_{}.npy".format(seedn)) 
+        np.save(a_fname, np.array(active_set))
+        sys.stderr.write("Saving active set to: {}.\n".format(a_fname))
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Run randomized Lasso and frequentist post-seleciton inference")
@@ -205,6 +240,13 @@ if __name__ == "__main__":
     command_parser.add_argument('-n','--n_obs', type=int, default=350, help="number of observations")
     command_parser.set_defaults(func=save_data)
 
+    command_parser = subparsers.add_parser('onlyselect', help='only apply randomized lasso selection') 
+    command_parser.add_argument('-s','--max_seed', type=int, default=50, help="maximum numbers of seeds to use")
+    command_parser.add_argument('-d','--data_dir', default='/scratch/users/jjzhu/sim_eqtl_data', help="directory to read simulated data")
+    command_parser.add_argument('-o','--out_dir', default='/scratch/users/jjzhu/sim_eqtl_data', help="directory to save results")
+    command_parser.add_argument('-l','--lam', type=float, default=1.2, help="directory to save results")
+    command_parser.add_argument('-S','--sigma', type=float, default=1.0, help="variance of noise")
+    command_parser.set_defaults(func=select_only)
     ARGS = parser.parse_args()
     if ARGS.func is None:
         parser.print_help()
