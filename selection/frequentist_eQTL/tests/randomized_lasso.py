@@ -201,11 +201,17 @@ def select_only(args):
     X_fname = os.path.join(args.data_dir,"X.npy")
     X = np.load(X_fname)
     for seedn in xrange(args.max_seed):
-        # read y data 
         y_fname = os.path.join(args.data_dir,"y_{}.npy".format(seedn)) 
+        b_fname = os.path.join(args.data_dir,"b_{}.npy".format(seedn)) 
+        a_fname = os.path.join(args.out_dir,"a_{}.npy".format(seedn)) 
+
+        if os.path.isfile(a_fname):
+            sys.stderr.write("Already created active set, skipping: {}.\n".format(a_fname))
+            continue
+
+        # read y data 
         y = np.load(y_fname)
         # read b data
-        b_fname = os.path.join(args.data_dir,"b_{}.npy".format(seedn)) 
         beta = np.load(b_fname)
         # randomize selection
         selection_result = randomized_lasso_selection(X, y, sigma=args.sigma, lam_frac=args.lam)
@@ -215,7 +221,6 @@ def select_only(args):
         active = selection_result._overall
         p = len(active)
         active_set = np.asarray([i for i in range(p) if active[i]])
-        a_fname = os.path.join(args.out_dir,"a_{}.npy".format(seedn)) 
         np.save(a_fname, np.array(active_set))
         sys.stderr.write("Saving active set to: {}.\n".format(a_fname))
 
