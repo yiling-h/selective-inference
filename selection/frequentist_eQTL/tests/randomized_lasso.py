@@ -17,6 +17,16 @@ from selection.bayesian.initial_soln import selection, instance
 from selection.bayesian.cisEQTLS.Simes_selection import BH_q
 
 
+def save_active_set(M_est, fname):
+        active = M_est._overall
+        p = len(active)
+        if p <= 0:
+            active_set = np.array([-1])
+        else: 
+            active_set = np.asarray([i for i in range(p) if active[i]])
+        np.save(fname, active_set)
+        sys.stderr.write("Saved active set to: {}.\n".format(fname))
+
 def randomized_lasso_selection(X,
                                y,
                                sigma,
@@ -52,10 +62,9 @@ def randomized_lasso_selection(X,
     used_time = time.time() - start_time
     sys.stderr.write("Active set selected by lasso"+str(active_set)+"\n")
     sys.stderr.write("Used: {:.2f}s\n".format(used_time))
-
     return(M_est)
 
-def randomized_lasso_inference(M_est, n_cores = 1):
+def randomized_lasso_multicore_inference(M_est, n_cores = 1):
     # compute the selective pivot and intervals for the selected set
     active = M_est._overall
     p = len(active)
@@ -81,7 +90,7 @@ def randomized_lasso_inference(M_est, n_cores = 1):
         ci_sel[j, :] = np.array(ci.approximate_ci(j))
         pivots[j] = ci.approximate_pvalue(j, 0.)
 
-    out_result = (ci_sel, pivots, active_set, M_est)
+    out_result = (ci_sel, pivots, M_est)
     return(out_result)
 
 def evaluate_selection(M_est, beta):
@@ -97,7 +106,7 @@ def evaluate_selection(M_est, beta):
 
 def evaluate_inference(out_result, X, beta, bh_level=0.1):
     # evaluate accuracy
-    ci_sel, pivots, active_set, M_est = out_result
+    ci_sel, pivots, M_est = out_result
     n, p = X.shape
 
     active = M_est._overall
@@ -114,13 +123,13 @@ def evaluate_inference(out_result, X, beta, bh_level=0.1):
 
     target = target_class(M_est.target_cov)
 
+    # calculate naive results
     ci_naive = naive_confidence_intervals(target, M_est.target_observed)
     naive_pvals = naive_pvalues(target, M_est.target_observed, true_vec)
     naive_covered = np.zeros(nactive, np.bool)
     naive_length = np.zeros(nactive)
 
     sel_covered = np.zeros(nactive, np.bool)
-
     sel_length = np.zeros(nactive)
     for j in xrange(nactive):
         sel_length[j] = ci_sel[j, 1] - ci_sel[j, 0]
@@ -139,32 +148,53 @@ def evaluate_inference(out_result, X, beta, bh_level=0.1):
         for indx in p_BH[1]:
             discoveries_active[indx] = 1
 
-    list_results = np.transpose(np.vstack((sel_covered,
-                                           sel_length,
-                                           pivots,
-                                           naive_covered,
-                                           naive_pvals,
-                                           naive_length,
-                                           active_set,
-                                           discoveries_active)))
-    return list_results
+    # list_results = np.transpose(np.vstack((sel_covered,
+    #                                        sel_length,
+    #                                        pivots,
+    #                                        naive_covered,
+    #                                        naive_pvals,
+    #                                        naive_length,
+    #                                        active_set,
+    #                                        discoveries_active)))
+
+    results = np.transpose(np.vstack((ci_sel[:,0], 
+                                          ci_sel[:,1], 
+                                          pivots, 
+                                          np.zeros(nactive), 
+                                          true_vec, 
+                                          sel_covered, 
+                                          discoveries_active,
+                                          ci_naive[:,0], 
+                                          ci_naive[:,1],                                           
+                                          naive_pvals, 
+                                          naive_covered)))
+
+    return(results)
 
 def do_test(args):
+    # parameters
     seedn = 1
-    n = 10
-    p = 10
+    # n = 10
+    # p = 10
+    n = 5
+    p = 5
     s = 1
     snr = 5.
     bh_level = 0.10
+    # data generation
     np.random.seed(9999) # ensures same X
     sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
     np.random.seed(seedn) # ensures different y
     X, y, beta, nonzero, sigma = sample.generate_response()
+    # selection
     selection_result = randomized_lasso_selection(X, y, sigma, lam_frac = 1.2)
     print(evaluate_selection(selection_result, beta))
-    inference_result = randomized_lasso_inference(selection_result, n_cores=args.n_cores)
-    print(evaluate_inference(inference_result, X, beta))
-    
+    save_active_set(selection_result, "test.npy"); # save active set 
+    # inference
+    inference_result = randomized_lasso_multicore_inference(selection_result, n_cores=args.n_cores)
+    results = evaluate_inference(inference_result, X, beta, bh_level=bh_level)
+    print(results)
+    np.save("result.npy", results)
 
 def save_data(args):
     print(args)
@@ -209,20 +239,14 @@ def select_only(args):
             sys.stderr.write("Already created active set, skipping: {}.\n".format(a_fname))
             continue
 
-        # read y data 
-        y = np.load(y_fname)
-        # read b data
-        beta = np.load(b_fname)
         # randomize selection
+        y = np.load(y_fname) # read y data 
         selection_result = randomized_lasso_selection(X, y, sigma=args.sigma, lam_frac=args.lam)
+        save_active_set(selection_result, a_fname); # save active set 
+
         # evaluate result
+        beta = np.load(b_fname) # read true signal data
         print(evaluate_selection(selection_result, beta))
-        # save active set 
-        active = selection_result._overall
-        p = len(active)
-        active_set = np.asarray([i for i in range(p) if active[i]])
-        np.save(a_fname, np.array(active_set))
-        sys.stderr.write("Saving active set to: {}.\n".format(a_fname))
 
 
 if __name__ == "__main__":
