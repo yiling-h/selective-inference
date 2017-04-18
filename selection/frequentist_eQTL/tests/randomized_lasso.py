@@ -20,7 +20,7 @@ def randomized_lasso_trial(X,
                            beta,
                            sigma,
                            bh_level,
-                           lam_frac = 1.2,
+                           lam_frac = 1.,
                            loss='gaussian',
                            randomizer='gaussian'):
 
@@ -143,9 +143,9 @@ if __name__ == "__main__":
     ### set parameters
     n = 350
     p = 7000
-    s = 3
+    s = 0
     snr = 5.
-    bh_level = 0.20
+    bh_level = 0.10
 
 ### GENERATE X
     np.random.seed(0) # ensures same X
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     np.savetxt(outfile, random_lasso)
 
 
-# def multiple_trials(test_function = randomized_lasso_trial, n = 350, p = 5000, s = 10, snr = 5., bh_level = 0.10, seed_number = 0):
+# def multiple_trials(test_function = randomized_lasso_trial, n = 350, p = 5000, s = 0, snr = 5., bh_level = 0.10, seed_number = 0):
 #
 #     np.random.seed(seed_number)
 #
@@ -190,7 +190,8 @@ if __name__ == "__main__":
 #         list_results = test_function(X,
 #                                      y,
 #                                      beta,
-#                                      sigma)
+#                                      sigma,
+#                                      bh_level)
 #
 #         sel_covered = list_results[:,0]
 #         sel_length = list_results[:,1]
@@ -227,3 +228,5 @@ if __name__ == "__main__":
 #         print("results", adjusted_lengths, unadjusted_lengths, FDR, power)
 #
 #     print(adjusted_coverage, unadjusted_coverage, adjusted_lengths, unadjusted_lengths, FDR, power)
+#
+# multiple_trials()

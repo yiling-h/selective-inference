@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 import regreg.api as rr
 from selection.bayesian.selection_probability_rr import nonnegative_softmax_scaled
 from scipy.stats import norm
@@ -197,7 +198,7 @@ class approximate_conditional_prob(rr.smooth_atom):
         objective = lambda u: self.sel_prob_smooth_objective(u, 'func')
         grad = lambda u: self.sel_prob_smooth_objective(u, 'grad')
 
-        for itercount in range(nstep):
+        for itercount in xrange(nstep):
             newton_step = grad(current)
 
             # make sure proposal is feasible
@@ -287,6 +288,8 @@ class approximate_conditional_density(rr.smooth_atom):
                 self.ind_obs[j] = grid_length-1
             else:
                 self.ind_obs[j] = np.argmin(np.abs(grid_j-obs))
+
+            sys.stderr.write("number of variable being computed: " + str(j) + "\n")
             self.h_approx[j, :] = self.approx_conditional_prob(j)
 
 
