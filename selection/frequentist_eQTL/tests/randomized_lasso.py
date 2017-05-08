@@ -106,14 +106,15 @@ def randomized_lasso_trial(X,
                                            active_set,
                                            discoveries_active)))
 
-
+    print("total covered",sel_covered.sum())
+    print("naive covered", naive_covered.sum())
     print("list of results", list_results)
     return list_results
 
 n = 350
-p = 7000
-s = 5
-snr = 5.
+p = 1000
+s = 3
+snr = 3.
 bh_level = 0.10
 #
 sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
@@ -127,7 +128,6 @@ results = randomized_lasso_trial(X,
                                  loss='gaussian',
                                  randomizer='gaussian')
 
-print(results)
 
 # if __name__ == "__main__":
 #
