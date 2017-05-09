@@ -82,7 +82,7 @@ class approximate_conditional_prob_2stage(rr.smooth_atom):
 
             active_conj_loss_simes = rr.affine_smooth(self.active_conjugate, _active_simes)
 
-            offset_inactive_simes = self.map.offset_inactive_simes + data_simes[self.map.nactive:]
+            offset_inactive_simes = self.map.offset_inactive_simes + data_simes[1:]
 
             cube_obj_simes = neg_log_cube_probability(self.q_simes, self.inactive_threshold, randomization_scale=1.)
 
@@ -176,3 +176,100 @@ class approximate_conditional_prob_2stage(rr.smooth_atom):
         value = objective(current)
 
         return current, value
+
+class approximate_conditional_density(rr.smooth_atom):
+
+    def __init__(self, sel_alg,
+                       coef=1.,
+                       offset=None,
+                       quadratic=None,
+                       nstep=10):
+
+        self.sel_alg = sel_alg
+
+        rr.smooth_atom.__init__(self,
+                                (1,),
+                                offset=offset,
+                                quadratic=quadratic,
+                                coef=coef)
+
+        self.target_observed = self.sel_alg.target_observed
+        self.nactive = self.target_observed.shape[0]
+        self.target_cov = self.sel_alg.target_cov
+
+    def solve_approx(self):
+
+        #defining the grid on which marginal conditional densities will be evaluated
+        grid_length = 601
+
+        print("observed values", self.target_observed)
+        self.ind_obs = np.zeros(self.nactive, int)
+        self.norm = np.zeros(self.nactive)
+        self.h_approx = np.zeros((self.nactive, grid_length))
+        self.grid = np.zeros((self.nactive, grid_length))
+
+        for j in xrange(self.nactive):
+            obs = self.target_observed[j]
+
+            self.grid[j,:] = np.linspace(self.target_observed[j]-15., self.target_observed[j]+15.,num=601)
+            grid_j = self.grid[j,:]
+
+            self.norm[j] = self.target_cov[j,j]
+            if obs < grid_j[0]:
+                self.ind_obs[j] = 0
+            elif obs > np.max(grid_j):
+                self.ind_obs[j] = grid_length-1
+            else:
+                self.ind_obs[j] = np.argmin(np.abs(grid_j-obs))
+
+            sys.stderr.write("number of variable being computed: " + str(j) + "\n")
+            self.h_approx[j, :] = self.approx_conditional_prob(j)
+
+
+    def approx_conditional_prob(self, j):
+        h_hat = []
+
+        self.sel_alg.setup_map(j)
+
+        for i in xrange(self.grid[j,:].shape[0]):
+
+            approx = approximate_conditional_prob((self.grid[j,:])[i], self.sel_alg)
+            h_hat.append(-(approx.minimize2(j, nstep=100)[::-1])[0])
+
+        return np.array(h_hat)
+
+    def area_normalized_density(self, j, mean):
+
+        normalizer = 0.
+        approx_nonnormalized = []
+
+        for i in xrange(self.grid[j:,].shape[1]):
+            approx_density = np.exp(-np.true_divide(((self.grid[j,:])[i] - mean) ** 2, 2 * self.norm[j])
+                                    + (self.h_approx[j,:])[i])
+            normalizer += approx_density
+            approx_nonnormalized.append(approx_density)
+
+        return np.cumsum(np.array(approx_nonnormalized / normalizer))
+
+    def approximate_ci(self, j):
+
+        grid_length = 361
+        param_grid = np.linspace(-8,10, num=grid_length)
+        area = np.zeros(param_grid.shape[0])
+
+        for k in xrange(param_grid.shape[0]):
+            area_vec = self.area_normalized_density(j, param_grid[k])
+            area[k] = area_vec[self.ind_obs[j]]
+
+        region = param_grid[(area >= 0.05) & (area <= 0.95)]
+        if region.size > 0:
+            return np.nanmin(region), np.nanmax(region)
+        else:
+            return 0, 0
+
+    def approximate_pvalue(self, j, param):
+
+        area_vec = self.area_normalized_density(j, param)
+        area = area_vec[self.ind_obs[j]]
+
+        return 2*min(area, 1-area)
