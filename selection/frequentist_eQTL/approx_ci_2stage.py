@@ -177,7 +177,7 @@ class approximate_conditional_prob_2stage(rr.smooth_atom):
 
         return current, value
 
-class approximate_conditional_density(rr.smooth_atom):
+class approximate_conditional_density_2stage(rr.smooth_atom):
 
     def __init__(self, sel_alg,
                        coef=1.,
@@ -233,7 +233,7 @@ class approximate_conditional_density(rr.smooth_atom):
 
         for i in xrange(self.grid[j,:].shape[0]):
 
-            approx = approximate_conditional_prob((self.grid[j,:])[i], self.sel_alg)
+            approx = approximate_conditional_prob_2stage((self.grid[j,:])[i], self.sel_alg)
             h_hat.append(-(approx.minimize2(j, nstep=100)[::-1])[0])
 
         return np.array(h_hat)
