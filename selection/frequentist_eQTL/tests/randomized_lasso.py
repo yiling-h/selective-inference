@@ -23,7 +23,7 @@ def randomized_lasso_trial(X,
                            beta,
                            sigma,
                            bh_level,
-                           lam_frac = 1.,
+                           lam_frac = 1.2,
                            loss='gaussian',
                            randomizer='gaussian'):
 
@@ -109,64 +109,65 @@ def randomized_lasso_trial(X,
                                            active_set,
                                            discoveries_active)))
 
-    #print("total covered",sel_covered.sum())
-    #print("naive covered", naive_covered.sum())
-    #print("list of results", list_results)
+
+    print("list of results", list_results)
+    print("total covered", sel_covered.sum())
+    print("naive covered", naive_covered.sum())
     return list_results
 
-# n = 500
-# p = 10000
-# s = 10
-# bh_level = 0.20
+n = 500
+p = 10000
+s = 10
+bh_level = 0.20
+
+sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
+X, y, beta, nonzero, sigma = sample.generate_response()
+results = randomized_lasso_trial(X,
+                                 y,
+                                 beta,
+                                 sigma,
+                                 bh_level,
+                                 lam_frac = 1.2,
+                                 loss='gaussian',
+                                 randomizer='gaussian')
+
+
+# if __name__ == "__main__":
 #
-# sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
-# X, y, beta, nonzero, sigma = sample.generate_response()
-# results = randomized_lasso_trial(X,
-#                                  y,
-#                                  beta,
-#                                  sigma,
-#                                  bh_level,
-#                                  lam_frac = 1.,
-#                                  loss='gaussian',
-#                                  randomizer='gaussian')
-
-
-if __name__ == "__main__":
-
-#read from command line
-
-    seedn = int(sys.argv[1])
-    outdir = sys.argv[2]
-
-    outfile = os.path.join(outdir,"list_result_"+str(seedn)+".txt")
-
-#print("Will save to: "+outfile)
-
-    ### set parameters
-    n = 500
-    p = 10000
-    s = 10
-   # snr = 5.
-    bh_level = 0.10
-
-### GENERATE X
-    np.random.seed(0) # ensures same X
-
-    sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
-
-### GENERATE Y BASED ON SEED
-    np.random.seed(seedn) # ensures different y
-    X, y, beta, nonzero, sigma = sample.generate_response()
-
-### RUN LASSO AND INFERENCE
-    random_lasso = randomized_lasso_trial(X,
-                                          y,
-                                          beta,
-                                          sigma,
-                                          bh_level)
-
-### SAVE RESULT
-    np.savetxt(outfile, random_lasso)
+# #read from command line
+#
+#     seedn = int(sys.argv[1])
+#     outdir = sys.argv[2]
+#
+#     outfile = os.path.join(outdir,"list_result_"+str(seedn)+".txt")
+#
+# #print("Will save to: "+outfile)
+#
+#     ### set parameters
+#     n = 500
+#     p = 10000
+#     s = 10
+#    # snr = 5.
+#     bh_level = 0.10
+#
+# ### GENERATE X
+#     np.random.seed(0) # ensures same X
+#
+#     sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
+#
+# ### GENERATE Y BASED ON SEED
+#     np.random.seed(seedn) # ensures different y
+#     X, y, beta, nonzero, sigma = sample.generate_response()
+#
+# ### RUN LASSO AND INFERENCE
+#     random_lasso = randomized_lasso_trial(X,
+#                                           y,
+#                                           beta,
+#                                           sigma,
+#                                           bh_level)
+#
+# ### SAVE RESULT
+#     np.savetxt(outfile, random_lasso)
 
 
 # def multiple_trials(test_function = randomized_lasso_trial, n = 350, p = 5000, s = 0, snr = 5., bh_level = 0.10, seed_number = 0):
