@@ -27,7 +27,7 @@ def hierarchical_lasso_trial(X,
                              T_sign,
                              threshold,
                              data_simes,
-                             bh_level = 0.10,
+                             bh_level,
                              lam_frac=1.,
                              loss='gaussian'):
 
