@@ -57,7 +57,7 @@ def random_lasso(X,
 if __name__ == "__main__":
     n = 350
     p = 1000
-    s = 3
+    s = 5
 
     np.random.seed(0)
     sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
@@ -70,7 +70,7 @@ if __name__ == "__main__":
                               y,
                               beta,
                               sigma,
-                              s=3)
+                              s=5)
 
-    print(power/3)
+    print(power/5)
 

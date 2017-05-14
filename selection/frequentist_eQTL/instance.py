@@ -18,7 +18,7 @@ class instance(object):
 
          self.beta = np.zeros(p)
 
-         self.beta[:self.s] = np.linspace(0.5, 5., num=s)
+         self.beta[:self.s] = np.linspace(2., 5., num=s)
 
          if random_signs:
              self.beta[:self.s] *= (2 * np.random.binomial(1, 0.5, size=(s,)) - 1.)

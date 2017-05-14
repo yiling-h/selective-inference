@@ -9,7 +9,7 @@ DIR=/scratch/users/snigdha/freq_cis_eqtl/outputs/high_dim_test
 
 mkdir -p $DIR
 
-for i in {0..50}
+for i in {0..100}
 do
 	# bash single_python_run.sbatch $i $DIR
 	sbatch single_python_run.sbatch $i $DIR

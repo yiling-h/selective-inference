@@ -108,10 +108,8 @@ class approximate_conditional_prob(rr.smooth_atom):
         active_conj_loss = rr.affine_smooth(self.active_conjugate,
                                             rr.affine_transform(self.map.B_active, offset_active))
 
-        if self.map.randomizer == 'laplace':
-            cube_obj = neg_log_cube_probability_laplace(self.q, self.inactive_lagrange, randomization_scale = 1.)
-        elif self.map.randomizer == 'gaussian':
-            cube_obj = neg_log_cube_probability(self.q, self.inactive_lagrange, randomization_scale = 1.)
+
+        cube_obj = neg_log_cube_probability(self.q, self.inactive_lagrange, randomization_scale = 1.)
 
         cube_loss = rr.affine_smooth(cube_obj, rr.affine_transform(self.map.B_inactive, offset_inactive))
 
@@ -124,8 +122,8 @@ class approximate_conditional_prob(rr.smooth_atom):
             return self.scale(f)
         elif mode == 'grad':
             g = total_loss.smooth_objective(param, 'grad')
-            print(active_conj_loss.smooth_objective(param, 'grad'), cube_loss.smooth_objective(param, 'grad'),
-                  self.nonnegative_barrier.smooth_objective(param, 'grad'))
+            #print(active_conj_loss.smooth_objective(param, 'grad'), cube_loss.smooth_objective(param, 'grad'),
+            #      self.nonnegative_barrier.smooth_objective(param, 'grad'))
             return self.scale(g)
         elif mode == 'both':
             f, g = total_loss.smooth_objective(param, 'both')
@@ -210,9 +208,9 @@ class approximate_conditional_density(rr.smooth_atom):
     def solve_approx(self):
 
         #defining the grid on which marginal conditional densities will be evaluated
-        grid_length = 601
+        grid_length = 401
 
-        print("observed values", self.target_observed)
+        #print("observed values", self.target_observed)
         self.ind_obs = np.zeros(self.nactive, int)
         self.norm = np.zeros(self.nactive)
         self.h_approx = np.zeros((self.nactive, grid_length))
@@ -221,7 +219,7 @@ class approximate_conditional_density(rr.smooth_atom):
         for j in xrange(self.nactive):
             obs = self.target_observed[j]
 
-            self.grid[j,:] = np.linspace(self.target_observed[j]-15., self.target_observed[j]+15.,num=601)
+            self.grid[j,:] = np.linspace(self.target_observed[j]-20., self.target_observed[j]+20.,num=401)
             grid_j = self.grid[j,:]
 
             self.norm[j] = self.target_cov[j,j]
