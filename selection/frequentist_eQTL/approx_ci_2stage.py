@@ -116,6 +116,8 @@ class approximate_conditional_prob_2stage(rr.smooth_atom):
             return self.scale(f)
         elif mode == 'grad':
             g = total_loss.smooth_objective(param, 'grad')
+            #print(active_conj_loss_lasso.smooth_objective(param, 'grad'), cube_loss_lasso.smooth_objective(param, 'grad'),
+            #      active_conj_loss_simes.smooth_objective(param, 'grad'), self.nonnegative_barrier.smooth_objective(param, 'grad'))
             return self.scale(g)
         elif mode == 'both':
             f, g = total_loss.smooth_objective(param, 'both')
@@ -154,6 +156,7 @@ class approximate_conditional_prob_2stage(rr.smooth_atom):
             while True:
                 proposal = current - step * newton_step
                 proposed_value = objective(proposal)
+                #print("proposal and proposed value", proposal, proposed_value)
                 #print(current_value, proposed_value, 'minimize')
                 if proposed_value <= current_value:
                     break
@@ -174,8 +177,11 @@ class approximate_conditional_prob_2stage(rr.smooth_atom):
 
         # print('iter', itercount)
         value = objective(current)
+        if value != float('Inf'):
+            return current, value
+        else:
+            raise ValueError("Numerical error")
 
-        return current, value
 
 class approximate_conditional_density_2stage(rr.smooth_atom):
 
@@ -200,7 +206,7 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
     def solve_approx(self):
 
         #defining the grid on which marginal conditional densities will be evaluated
-        grid_length = 601
+        grid_length = 401
 
         print("observed values", self.target_observed)
         self.ind_obs = np.zeros(self.nactive, int)
@@ -211,7 +217,7 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
         for j in xrange(self.nactive):
             obs = self.target_observed[j]
 
-            self.grid[j,:] = np.linspace(self.target_observed[j]-15., self.target_observed[j]+15.,num=601)
+            self.grid[j,:] = np.linspace(self.target_observed[j]-20., self.target_observed[j]+20.,num=grid_length)
             grid_j = self.grid[j,:]
 
             self.norm[j] = self.target_cov[j,j]
@@ -224,7 +230,7 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
 
             sys.stderr.write("number of variable being computed: " + str(j) + "\n")
             self.h_approx[j, :] = self.approx_conditional_prob(j)
-
+            print("approx prob", self.h_approx[j, :])
 
     def approx_conditional_prob(self, j):
         h_hat = []
@@ -232,9 +238,14 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
         self.sel_alg.setup_map(j)
 
         for i in xrange(self.grid[j,:].shape[0]):
-
-            approx = approximate_conditional_prob_2stage((self.grid[j,:])[i], self.sel_alg)
-            h_hat.append(-(approx.minimize2(j, nstep=100)[::-1])[0])
+            try:
+                approx = approximate_conditional_prob_2stage((self.grid[j,:])[i], self.sel_alg)
+                h_hat.append(-(approx.minimize2(nstep=100)[::-1])[0])
+            except ValueError:
+                if i==0:
+                    h_hat.append(0)
+                else:
+                    h_hat.append(h_hat[i-1])
 
         return np.array(h_hat)
 

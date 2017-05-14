@@ -3,11 +3,12 @@ from selection.randomized.M_estimator import M_estimator
 
 class M_estimator_exact(M_estimator):
 
-    def __init__(self, loss, epsilon, penalty, randomization, randomizer):
+    def __init__(self, loss, epsilon, penalty, randomization, randomizer='gaussian'):
         M_estimator.__init__(self, loss, epsilon, penalty, randomization)
         self.randomizer = randomizer
 
     def solve_approx(self):
+        np.random.seed(0)
         self.solve()
         (_opt_linear_term, _opt_affine_term) = self.opt_transform
         self._opt_linear_term = np.concatenate(
@@ -69,6 +70,7 @@ class M_estimator_2step(M_estimator):
 
     def solve_approx(self):
         #map from lasso
+        #np.random.seed(0)
         self.solve()
         (_opt_linear_term, _opt_affine_term) = self.opt_transform
         self._opt_linear_term = np.concatenate(
@@ -111,7 +113,8 @@ class M_estimator_2step(M_estimator):
         self.B_active_simes = np.identity(1)* self.T_sign
 
         if self.nactive_simes > 1:
-            self.score_cov_simes = np.zeros((self.nactive_simes, self._overall))
+            #print(self.nactive_simes, nactive)
+            self.score_cov_simes = np.zeros((self.nactive_simes, nactive))
             self.score_cov_simes[0,:] = (X_active_inv.dot(X[:,self._overall].T).dot(X[:,self.index])).T
             self.score_cov_simes[1:,] = (X_active_inv.dot(X[:,self._overall].T).dot(X[:,self.J])).T
             self.B_inactive_simes = np.zeros((self.nactive_simes-1,1))

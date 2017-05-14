@@ -17,7 +17,9 @@ class instance(object):
              self.X /= (self.X.std(0)[None, :] * np.sqrt(self.n))
 
          self.beta = np.zeros(p)
-         self.beta[:self.s] = np.linspace(2.5, 8.0, num=s)
+
+         self.beta[:self.s] = np.linspace(0.5, 5., num=s)
+
          if random_signs:
              self.beta[:self.s] *= (2 * np.random.binomial(1, 0.5, size=(s,)) - 1.)
          self.active = np.zeros(p, np.bool)

@@ -12,10 +12,10 @@ from selection.frequentist_eQTL.approx_ci_2stage import approximate_conditional_
 from selection.randomized.query import naive_confidence_intervals
 from selection.randomized.query import naive_pvalues
 
-from selection.bayesian.initial_soln import instance
+#from selection.bayesian.initial_soln import instance
 from selection.frequentist_eQTL.simes_BH_selection import BH_selection_egenes, simes_selection_egenes
 from selection.bayesian.cisEQTLS.Simes_selection import BH_q
-
+from selection.frequentist_eQTL.instance import instance
 
 def hierarchical_lasso_trial(X,
                              y,
@@ -107,7 +107,7 @@ def hierarchical_lasso_trial(X,
         if p_BH is not None:
             for indx in p_BH[1]:
                 discoveries_active[indx] = 1
-                if beta_active[indx] != 0:
+                if beta_active[indx] != 0.:
                     power += 1.
                 else:
                     false_discoveries += 1.
@@ -115,6 +115,9 @@ def hierarchical_lasso_trial(X,
         power = power/5.
         fdr = false_discoveries/(max(1.,discoveries_active.sum()))
 
+        sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
+        sys.stderr.write("True target to be covered" + str(true_vec) + "\n")
+        sys.stderr.write("Total discoveries" + str(discoveries_active.sum()) + "\n")
         sys.stderr.write("Power" + str(power) + "\n")
         sys.stderr.write("FDR" + str(fdr) + "\n")
 
@@ -136,8 +139,8 @@ if __name__ == "__main__":
     ### set parameters
     n = 350
     p = 1000
-    s = 0
-    snr = 5.
+    s = 5
+ #   snr = 5.
     bh_level = 0.20
 
     egenes =3000
@@ -145,9 +148,10 @@ if __name__ == "__main__":
     simes_level = 0.6*0.20
 
     np.random.seed(0)  # ensures same X
-    sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
+    #sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
+    sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
 
-    np.random.seed(3) #ensures different y for the same X
+    np.random.seed(116) #ensures different y for the same X
     X, y, beta, nonzero, sigma = sample.generate_response()
 
     simes = simes_selection_egenes(X, y)
@@ -187,7 +191,7 @@ if __name__ == "__main__":
                                            T_sign,
                                            threshold,
                                            data_simes,
-                                           bh_level=0.10,
+                                           bh_level=0.20,
                                            lam_frac=1.,
                                            loss='gaussian')
 
