@@ -150,7 +150,7 @@ if __name__ == "__main__":
     s = 5
     bh_level = 0.20
 
-    i = int(E_genes_5[1])
+    i = int(E_genes_5[2])
     np.random.seed(i)  # ensures same X
     sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
 

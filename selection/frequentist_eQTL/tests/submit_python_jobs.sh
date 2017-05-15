@@ -5,7 +5,7 @@
 
 # setup dir if needed
 
-DIR=/scratch/users/snigdha/freq_cis_eqtl/outputs/high_dim_test_0
+DIR=/scratch/users/snigdha/freq_cis_eqtl/outputs/high_dim_test_lowsignal
 
 mkdir -p $DIR
 
