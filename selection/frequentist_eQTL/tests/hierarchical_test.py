@@ -148,7 +148,7 @@ if __name__ == "__main__":
     ngenes = 5000
     simes_level = 0.6*0.20
 
-    np.random.seed(i)  # ensures same X
+    np.random.seed(0)  # ensures same X
     #sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
     sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
 

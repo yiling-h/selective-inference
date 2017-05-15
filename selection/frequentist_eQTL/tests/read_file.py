@@ -77,7 +77,7 @@ def summary_files(list_):
 
     return coverage_ad / length, coverage_unad / length, length_ad/length, length_unad/length, FDR / length, power / length
 
-#print(summary_files(list_))
+print(summary_files(list_))
 
 def plot_p_values():
 
@@ -128,7 +128,7 @@ def plot_p_values():
     plt.savefig('/Users/snigdhapanigrahi/Documents/Research/Python_plots/p_val.pdf', bbox_inches='tight')
 
 
-plot_p_values()
+#plot_p_values()
 
 
 

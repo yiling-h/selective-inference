@@ -127,7 +127,9 @@ def test_simes(bh_level=0.10, ngenes =5000, n= 350, p=1000):
 
     false_rej = (E_sel[E_sel>4500]).shape[0]
 
-    simes_level = K*bh_level/ngenes
+    simes_level = np.zeros(1)
+
+    simes_level[0] = K*bh_level/ngenes
 
     print("power", (K-false_rej)/4500.)
 
@@ -145,108 +147,113 @@ def test_simes(bh_level=0.10, ngenes =5000, n= 350, p=1000):
 
     print("regime 0 selected", E_sel[(E_sel >= 4500) & (E_sel < 5000)].shape[0])
 
-    return simes_level, E_sel
+    print("selected indices", E_sel)
 
+    return np.concatenate((simes_level, E_sel), axis =0)
 
-if __name__ == "__main__":
+test = test_simes()
+print("test output", test)
+output = np.savetxt('/Users/snigdhapanigrahi/Results_freq_EQTL/BH_output', test)
 
-    test = test_simes()
-
-    E_sel = test[1]
-
-    E_sel_5 = E_sel[E_sel<500]
-
-    sel_5 = E_sel_5.shape[0]
-
-    power_5 = 0.
-
-    for i in range(sel_5):
-        np.random.seed(E_sel_5[i])
-        sample = instance(n=350, p=1000, s=5, sigma=1., rho=0)
-        np.random.seed(E_sel_5[i])
-        X, y, beta, nonzero, sigma = sample.generate_response()
-        power_5 += random_lasso(X,
-                              y,
-                              beta,
-                              sigma,
-                              s=5)
-
-    E_sel_4 = E_sel[(E_sel >= 500) & (E_sel < 1000)]
-
-    sel_4 = E_sel_4.shape[0]
-
-    power_4 = 0.
-
-    for i in range(sel_4):
-        np.random.seed(E_sel_4[i])
-        sample = instance(n=350, p=1000, s=4, sigma=1., rho=0)
-        np.random.seed(E_sel_4[i])
-        X, y, beta, nonzero, sigma = sample.generate_response()
-        power_4 += random_lasso(X,
-                                y,
-                                beta,
-                                sigma,
-                                s=4)
-
-
-    E_sel_3 = E_sel[(E_sel >= 1000) & (E_sel < 1800)]
-
-    sel_3 = E_sel_3.shape[0]
-
-    power_3 = 0.
-
-    for i in range(sel_3):
-        np.random.seed(E_sel_3[i])
-        sample = instance(n=350, p=1000, s=3, sigma=1., rho=0)
-        np.random.seed(E_sel_3[i])
-        X, y, beta, nonzero, sigma = sample.generate_response()
-        power_3 += random_lasso(X,
-                                y,
-                                beta,
-                                sigma,
-                                s=3)
-
-
-    E_sel_2 = E_sel[(E_sel >= 1800) & (E_sel < 3000)]
-
-    sel_2 = E_sel_2.shape[0]
-
-    power_2 = 0.
-
-    for i in range(sel_2):
-        np.random.seed(E_sel_2[i])
-        sample = instance(n=350, p=1000, s=2, sigma=1., rho=0)
-        np.random.seed(E_sel_2[i])
-        X, y, beta, nonzero, sigma = sample.generate_response()
-        power_2 += random_lasso(X,
-                                y,
-                                beta,
-                                sigma,
-                                s=2)
-
-
-    E_sel_1 = E_sel[(E_sel >= 3000) & (E_sel < 4500)]
-
-    sel_1 = E_sel_1.shape[0]
-
-    power_1 = 0.
-
-    for i in range(sel_1):
-        np.random.seed(E_sel_1[i])
-        sample = instance(n=350, p=1000, s=1, sigma=1., rho=0)
-        np.random.seed(E_sel_1[i])
-        X, y, beta, nonzero, sigma = sample.generate_response()
-        power_1 += random_lasso(X,
-                                y,
-                                beta,
-                                sigma,
-                                s=1)
-
-    print("regime 5", power_5 / (5. * sel_5))
-    print("regime 4", power_4 / (4. * sel_4))
-    print("regime 3", power_3 / (3. * sel_3))
-    print("regime 2", power_2 / (2. * sel_2))
-    print("regime 1", power_1 / (1. * sel_1))
+# if __name__ == "__main__":
+#
+#     test = test_simes()
+#
+#     E_sel = test[1]
+#
+#     E_sel_5 = E_sel[E_sel<500]
+#
+#     sel_5 = E_sel_5.shape[0]
+#
+#     power_5 = 0.
+#
+#     for i in range(sel_5):
+#         np.random.seed(E_sel_5[i])
+#         sample = instance(n=350, p=1000, s=5, sigma=1., rho=0)
+#         np.random.seed(E_sel_5[i])
+#         X, y, beta, nonzero, sigma = sample.generate_response()
+#         power_5 += random_lasso(X,
+#                               y,
+#                               beta,
+#                               sigma,
+#                               s=5)
+#
+#     E_sel_4 = E_sel[(E_sel >= 500) & (E_sel < 1000)]
+#
+#     sel_4 = E_sel_4.shape[0]
+#
+#     power_4 = 0.
+#
+#     for i in range(sel_4):
+#         np.random.seed(E_sel_4[i])
+#         sample = instance(n=350, p=1000, s=4, sigma=1., rho=0)
+#         np.random.seed(E_sel_4[i])
+#         X, y, beta, nonzero, sigma = sample.generate_response()
+#         power_4 += random_lasso(X,
+#                                 y,
+#                                 beta,
+#                                 sigma,
+#                                 s=4)
+#
+#
+#     E_sel_3 = E_sel[(E_sel >= 1000) & (E_sel < 1800)]
+#
+#     sel_3 = E_sel_3.shape[0]
+#
+#     power_3 = 0.
+#
+#     for i in range(sel_3):
+#         np.random.seed(E_sel_3[i])
+#         sample = instance(n=350, p=1000, s=3, sigma=1., rho=0)
+#         np.random.seed(E_sel_3[i])
+#         X, y, beta, nonzero, sigma = sample.generate_response()
+#         power_3 += random_lasso(X,
+#                                 y,
+#                                 beta,
+#                                 sigma,
+#                                 s=3)
+#
+#
+#     E_sel_2 = E_sel[(E_sel >= 1800) & (E_sel < 3000)]
+#
+#     sel_2 = E_sel_2.shape[0]
+#
+#     power_2 = 0.
+#
+#     for i in range(sel_2):
+#         np.random.seed(E_sel_2[i])
+#         sample = instance(n=350, p=1000, s=2, sigma=1., rho=0)
+#         np.random.seed(E_sel_2[i])
+#         X, y, beta, nonzero, sigma = sample.generate_response()
+#         power_2 += random_lasso(X,
+#                                 y,
+#                                 beta,
+#                                 sigma,
+#                                 s=2)
+#
+#
+#     E_sel_1 = E_sel[(E_sel >= 3000) & (E_sel < 4500)]
+#
+#     sel_1 = E_sel_1.shape[0]
+#
+#     power_1 = 0.
+#
+#     for i in range(sel_1):
+#         np.random.seed(E_sel_1[i])
+#         sample = instance(n=350, p=1000, s=1, sigma=1., rho=0)
+#         np.random.seed(E_sel_1[i])
+#         X, y, beta, nonzero, sigma = sample.generate_response()
+#         power_1 += random_lasso(X,
+#                                 y,
+#                                 beta,
+#                                 sigma,
+#                                 s=1)
+#
+#     print("regime 5", power_5 / (5. * sel_5))
+#     print("regime 4", power_4 / (4. * sel_4))
+#     print("regime 3", power_3 / (3. * sel_3))
+#     print("regime 2", power_2 / (2. * sel_2))
+#     print("regime 1", power_1 / (1. * sel_1))
 
 
 # def selection_information(simes_level= 0.065):
