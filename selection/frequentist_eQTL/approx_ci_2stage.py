@@ -116,8 +116,6 @@ class approximate_conditional_prob_2stage(rr.smooth_atom):
             return self.scale(f)
         elif mode == 'grad':
             g = total_loss.smooth_objective(param, 'grad')
-            #print(active_conj_loss_lasso.smooth_objective(param, 'grad'), cube_loss_lasso.smooth_objective(param, 'grad'),
-            #      active_conj_loss_simes.smooth_objective(param, 'grad'), self.nonnegative_barrier.smooth_objective(param, 'grad'))
             return self.scale(g)
         elif mode == 'both':
             f, g = total_loss.smooth_objective(param, 'both')

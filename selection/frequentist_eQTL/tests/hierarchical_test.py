@@ -103,6 +103,7 @@ def hierarchical_lasso_trial(X,
         false_discoveries = 0.
         beta_active = beta[active]
         p_BH = BH_q(pivots, bh_level)
+        print("BH discovered indices", p_BH[1])
         discoveries_active = np.zeros(nactive)
         if p_BH is not None:
             for indx in p_BH[1]:
@@ -147,11 +148,11 @@ if __name__ == "__main__":
     ngenes = 5000
     simes_level = 0.6*0.20
 
-    np.random.seed(0)  # ensures same X
+    np.random.seed(i)  # ensures same X
     #sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
     sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
 
-    np.random.seed(116) #ensures different y for the same X
+    np.random.seed(115) #ensures different y for the same X
     X, y, beta, nonzero, sigma = sample.generate_response()
 
     simes = simes_selection_egenes(X, y)
@@ -168,6 +169,7 @@ if __name__ == "__main__":
         T_sign = sig_simes[3]
         i_0 = sig_simes[0]
         threshold = np.zeros(i_0 + 1)
+        print("i_0", i_0)
 
 
         ###setting the parameters from Simes

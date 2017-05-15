@@ -17,20 +17,21 @@ from selection.bayesian.cisEQTLS.Simes_selection import BH_q
 from selection.frequentist_eQTL.approx_ci_2stage import approximate_conditional_prob_2stage
 from selection.frequentist_eQTL.approx_confidence_intervals import approximate_conditional_prob
 from selection.frequentist_eQTL.simes_BH_selection import simes_selection, BH_simes, BH_selection_egenes, simes_selection_egenes
+from selection.frequentist_eQTL.instance import instance
 
 from selection.api import randomization
 
 n = 350
 p = 1000
-s = 0
-snr = 5.
-bh_level = 0.10
+s = 5
+#snr = 5.
+bh_level = 0.20
 simes_level = 0.6*0.20
 
 np.random.seed(0)  # ensures same X
-sample = instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
+sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
 
-np.random.seed(3) #ensures different y for the same X
+np.random.seed(113) #ensures different y for the same X
 X, y, beta, nonzero, sigma = sample.generate_response()
 
 simes = simes_selection_egenes(X, y)
@@ -96,39 +97,39 @@ if simes_p <= simes_level:
     u = feasible_point
     print("feasible", feasible_point)
 
-    test_objective = test.sel_prob_smooth_objective(u, 'grad')
+    test_objective = test.sel_prob_smooth_objective(u, 'func')
     print("test_objective", test_objective)
 
 
-    #########comparison with lasso
-    M_est_1 = M_estimator_exact(loss, epsilon, penalty, randomization, randomizer='gaussian')
-    M_est_1.solve_approx()
-    active_1 = M_est_1._overall
-    active_set_1 = np.asarray([i for i in range(p) if active_1[i]])
-    nactive_1 = np.sum(active_1)
-
-    obs_1 = M_est_1.target_observed[1]
-    print("target", obs_1)
-
-    M_est_1.setup_map(1)
-
-    test_1 = approximate_conditional_prob((grid[1, :])[300], M_est_1)
-
-    feasible_point_1 = M_est_1.feasible_point
-    u = feasible_point_1
-    print("feasible lasso", feasible_point_1)
-
-    test_objective_1 = test_1.sel_prob_smooth_objective(u, 'grad')
-    print("test_objective lasso", test_objective_1)
-
-
-    # test_prob = (test.minimize2(nstep=100)[::-1])[0]
-    # print("test_prob", test_prob)
-
-    # h_hat = []
+    # #########comparison with lasso
+    # M_est_1 = M_estimator_exact(loss, epsilon, penalty, randomization, randomizer='gaussian')
+    # M_est_1.solve_approx()
+    # active_1 = M_est_1._overall
+    # active_set_1 = np.asarray([i for i in range(p) if active_1[i]])
+    # nactive_1 = np.sum(active_1)
     #
-    # for i in xrange(grid[1, :].shape[0]):
-    #     approx = approximate_conditional_prob_2stage((grid[1, :])[i], M_est)
-    #     h_hat.append(-(approx.minimize2(nstep=100)[::-1])[0])
+    # obs_1 = M_est_1.target_observed[1]
+    # print("target", obs_1)
     #
-    # print(h_hat)
+    # M_est_1.setup_map(1)
+    #
+    # test_1 = approximate_conditional_prob((grid[1, :])[300], M_est_1)
+    #
+    # feasible_point_1 = M_est_1.feasible_point
+    # u = feasible_point_1
+    # print("feasible lasso", feasible_point_1)
+    #
+    # test_objective_1 = test_1.sel_prob_smooth_objective(u, 'grad')
+    # print("test_objective lasso", test_objective_1)
+    #
+    #
+    # # test_prob = (test.minimize2(nstep=100)[::-1])[0]
+    # # print("test_prob", test_prob)
+    #
+    # # h_hat = []
+    # #
+    # # for i in xrange(grid[1, :].shape[0]):
+    # #     approx = approximate_conditional_prob_2stage((grid[1, :])[i], M_est)
+    # #     h_hat.append(-(approx.minimize2(nstep=100)[::-1])[0])
+    # #
+    # # print(h_hat)

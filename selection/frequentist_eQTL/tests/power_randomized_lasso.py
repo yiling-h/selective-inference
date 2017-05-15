@@ -59,12 +59,12 @@ if __name__ == "__main__":
     p = 1000
     s = 5
 
-    np.random.seed(0)
-    sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
     power = 0.
 
     for i in range(100):
-        np.random.seed(i)  # ensures different y for the same X
+        np.random.seed(i)
+        sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
+        np.random.seed(i)
         X, y, beta, nonzero, sigma = sample.generate_response()
         power += random_lasso(X,
                               y,

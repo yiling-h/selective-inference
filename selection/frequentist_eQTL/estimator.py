@@ -110,17 +110,20 @@ class M_estimator_2step(M_estimator):
         self.B_active_lasso = self._opt_linear_term[:nactive, :nactive]
         self.B_inactive_lasso = self._opt_linear_term[nactive:, :nactive]
 
-        self.B_active_simes = np.identity(1)* self.T_sign
 
         if self.nactive_simes > 1:
             #print(self.nactive_simes, nactive)
             self.score_cov_simes = np.zeros((self.nactive_simes, nactive))
             self.score_cov_simes[0,:] = (X_active_inv.dot(X[:,self._overall].T).dot(X[:,self.index])).T
             self.score_cov_simes[1:,] = (X_active_inv.dot(X[:,self._overall].T).dot(X[:,self.J])).T
+            #self.B_active_simes = np.zeros((1,1))
+            #self.B_active_simes[0,0] = self.T_sign
+            self.B_active_simes = np.identity(1) * self.T_sign
             self.B_inactive_simes = np.zeros((self.nactive_simes-1,1))
             self.inactive_threshold = self.threshold[1:]
 
         else:
+            self.B_active_simes = np.identity(1) * self.T_sign
             self.score_cov_simes = (X_active_inv.dot(X[:, self._overall].T).dot(X[:, self.index]))
             self.inactive_threshold = -1
 
@@ -139,15 +142,15 @@ class M_estimator_2step(M_estimator):
             self.A_simes = np.dot(linear_simes, self.score_cov_simes[:, j]) / self.target_cov[j, j]
             self.null_statistic_simes = linear_simes.dot(self.data_simes) - self.A_simes * self.target_observed[j]
 
-            self.offset_active_simes = self.T_sign * self.threshold[-1] + self.null_statistic_simes[:self.nactive]
-            self.offset_inactive_simes = self.null_statistic_simes[self.nactive:]
+            self.offset_active_simes = self.T_sign * self.threshold[0] + self.null_statistic_simes[0]
+            self.offset_inactive_simes = self.null_statistic_simes[1:]
 
         else:
             linear_simes = -1.
             #print("shapes", self.score_cov_simes[j, :].shape, self.target_cov[j, j].shape)
             self.A_simes = linear_simes* (self.score_cov_simes[j] / self.target_cov[j, j])
             self.null_statistic_simes = linear_simes* (self.data_simes) - self.A_simes * self.target_observed[j]
-            self.offset_active_simes = self.T_sign * self.threshold[-1] + self.null_statistic_simes
+            self.offset_active_simes = self.T_sign * self.threshold[0] + self.null_statistic_simes
 
 
 

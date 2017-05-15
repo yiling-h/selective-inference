@@ -2,7 +2,7 @@ import numpy as np
 
 class instance(object):
 
-    def __init__(self, n, p, s, sigma=1., rho=0, random_signs=False, scale =True, center=True):
+    def __init__(self, n, p, s, snr=5., sigma=1., rho=0, random_signs=False, scale =True, center=True):
          (self.n, self.p, self.s,
          self.sigma,
          self.rho) = (n, p, s,
@@ -18,7 +18,28 @@ class instance(object):
 
          self.beta = np.zeros(p)
 
-         self.beta[:self.s] = np.linspace(0.5, 3.5, num=s)
+         if snr == 5.:
+             if s==5:
+                 self.beta[:self.s] = np.linspace(0.5, 5., num=s)
+             elif s==4:
+                 self.beta[:self.s] = np.linspace(1.0625, 4.4375, num=s)
+             elif s==3:
+                 self.beta[:self.s] = np.linspace(1.625, 3.875, num=s)
+             elif s==2:
+                 self.beta[:self.s] = np.linspace(2.1875, 3.3125, num=s)
+             elif s==1:
+                 self.beta[:self.s] = 2.75
+         elif snr == 3.5:
+             if s==5:
+                 self.beta[:self.s] = np.linspace(0.5, 3.5, num=s)
+             elif s==4:
+                 self.beta[:self.s] = np.linspace(0.875, 3.125, num=s)
+             elif s==3:
+                 self.beta[:self.s] = np.linspace(1.25, 2.75, num=s)
+             elif s==2:
+                 self.beta[:self.s] = np.linspace(1.625, 2.375, num=s)
+             elif s==1:
+                 self.beta[:self.s] = 2.
 
          if random_signs:
              self.beta[:self.s] *= (2 * np.random.binomial(1, 0.5, size=(s,)) - 1.)
