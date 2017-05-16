@@ -5,15 +5,19 @@ from scipy.stats import probplot, uniform
 
 
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_5/dim_1/dim_1'
-path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/high_dim_test_0'
+path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/high_dim_test_lowsignal'
+path_1 =r'/Users/snigdhapanigrahi/Results_freq_EQTL/high_dim_test_0'
 
 allFiles = glob.glob(path + "/*.txt")
-
+allFiles_1 = glob.glob(path_1 + "/*.txt")
 list_ = []
 for file_ in allFiles:
     df = np.loadtxt(file_)
     list_.append(df)
 
+for file_ in allFiles_1:
+    df = np.loadtxt(file_)
+    list_.append(df)
 
 def evaluation_per_file(list,s):
 
@@ -77,7 +81,7 @@ def summary_files(list_):
 
     return coverage_ad / length, coverage_unad / length, length_ad/length, length_unad/length, FDR / length, power / length
 
-print(summary_files(list_))
+#print(summary_files(list_))
 
 def plot_p_values():
 
@@ -125,10 +129,10 @@ def plot_p_values():
     ax.set_ylim([0, 1])
     ax.legend(loc='lower right')
 
-    #plt.savefig('/Users/snigdhapanigrahi/Documents/Research/Python_plots/p_val_hs.pdf', bbox_inches='tight')
+    plt.savefig('/Users/snigdhapanigrahi/Documents/Research/Python_plots/p_val_comb.pdf', bbox_inches='tight')
 
 
-#plot_p_values()
+plot_p_values()
 
 
 
