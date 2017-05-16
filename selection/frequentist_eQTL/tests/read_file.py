@@ -5,7 +5,7 @@ from scipy.stats import probplot, uniform
 
 
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_5/dim_1/dim_1'
-path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/high_dim_test'
+path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/high_dim_test_0'
 
 allFiles = glob.glob(path + "/*.txt")
 
@@ -125,7 +125,7 @@ def plot_p_values():
     ax.set_ylim([0, 1])
     ax.legend(loc='lower right')
 
-    plt.savefig('/Users/snigdhapanigrahi/Documents/Research/Python_plots/p_val.pdf', bbox_inches='tight')
+    #plt.savefig('/Users/snigdhapanigrahi/Documents/Research/Python_plots/p_val_hs.pdf', bbox_inches='tight')
 
 
 #plot_p_values()

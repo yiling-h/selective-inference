@@ -216,15 +216,14 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
             obs = self.target_observed[j]
 
             self.grid[j,:] = np.linspace(self.target_observed[j]-20., self.target_observed[j]+20.,num=grid_length)
-            grid_j = self.grid[j,:]
 
             self.norm[j] = self.target_cov[j,j]
-            if obs < grid_j[0]:
+            if obs < self.grid[j,0]:
                 self.ind_obs[j] = 0
-            elif obs > np.max(grid_j):
+            elif obs > np.max(self.grid[j,:]):
                 self.ind_obs[j] = grid_length-1
             else:
-                self.ind_obs[j] = np.argmin(np.abs(grid_j-obs))
+                self.ind_obs[j] = np.argmin(np.abs(self.grid[j,:]-obs))
 
             sys.stderr.write("number of variable being computed: " + str(j) + "\n")
             self.h_approx[j, :] = self.approx_conditional_prob(j)
@@ -269,6 +268,9 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
         for k in xrange(param_grid.shape[0]):
             area_vec = self.area_normalized_density(j, param_grid[k])
             area[k] = area_vec[self.ind_obs[j]]
+
+        #print("variable", j)
+        #print("area", area)
 
         region = param_grid[(area >= 0.05) & (area <= 0.95)]
         if region.size > 0:
