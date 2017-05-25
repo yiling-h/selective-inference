@@ -4,8 +4,9 @@ from scipy.stats import norm as normal
 import os, numpy as np, pandas, statsmodels.api as sm
 from selection.randomized.api import randomization
 from selection.tests.instance import gaussian_instance
+from selection.bayesian.initial_soln import selection, instance
 
-from selection.frequentist_eQTL.instance import instance
+#from selection.frequentist_eQTL.instance import instance
 
 from selection.frequentist_eQTL.simes_BH_selection import simes_selection, BH_simes, BH_selection_egenes, simes_selection_egenes
 from selection.frequentist_eQTL.tests.power_randomized_lasso import random_lasso
@@ -55,67 +56,67 @@ def power_test():
 
 #power_test()
 
-def test_simes(bh_level=0.10, ngenes =5000, n= 350, p=1000):
+def test_simes(bh_level=0.10, ngenes =5000, n= 350, p=250):
 
     p_simes = np.zeros(ngenes)
 
-    for i in range(500):
+    for i in range(600):
         np.random.seed(i)  # ensures same X
-        sample = instance(n=n, p=p, s=5, snr=5., sigma=1., rho=0)
+        sample = instance(n=n, p=p, s=1, snr=5., sigma=1., rho=0)
         np.random.seed(i)
         X, y, beta, nonzero, sigma = sample.generate_response()
         simes = simes_selection_egenes(X, y)
         p_simes[i] = simes.simes_p_value()
 
-    print("regime 5 done")
+    print("regime 1 done")
 
-    for i in range(500):
-        np.random.seed(i+ 500)  # ensures same X
-        sample = instance(n=n, p=p, s=4, snr=5., sigma=1., rho=0)
-        np.random.seed(i+ 500)
+    for i in range(480):
+        np.random.seed(i+ 600)  # ensures same X
+        sample = instance(n=n, p=p, s=2, snr=5., sigma=1., rho=0)
+        np.random.seed(i+ 600)
         X, y, beta, nonzero, sigma = sample.generate_response()
         simes = simes_selection_egenes(X, y)
-        p_simes[i + 500] = simes.simes_p_value()
+        p_simes[i + 600] = simes.simes_p_value()
 
-    print("regime 4 done")
+    print("regime 2 done")
 
-    for i in range(800):
-        np.random.seed(i + 1000)  # ensures same X
-        sample = instance(n=n, p=p, s=4, snr=5., sigma=1., rho=0)
-        np.random.seed(i + 1000)
+    for i in range(360):
+        np.random.seed(i + 1080)  # ensures same X
+        sample = instance(n=n, p=p, s=3, snr=5., sigma=1., rho=0)
+        np.random.seed(i + 1080)
         X, y, beta, nonzero, sigma = sample.generate_response()
         simes = simes_selection_egenes(X, y)
-        p_simes[i + 1000] = simes.simes_p_value()
+        p_simes[i + 1080] = simes.simes_p_value()
 
     print("regime 3 done")
 
-    for i in range(1200):
-        np.random.seed(i + 1800)  # ensures same X
+    for i in range(240):
+        np.random.seed(i + 1440)  # ensures same X
         sample = instance(n=n, p=p, s=4, snr=5., sigma=1., rho=0)
+        np.random.seed(i + 1440)
+        X, y, beta, nonzero, sigma = sample.generate_response()
+        simes = simes_selection_egenes(X, y)
+        p_simes[i + 1440] = simes.simes_p_value()
+
+    print("regime 4 done")
+
+    for i in range(120):
+        np.random.seed(i + 1680)  # ensures same X
+        sample = instance(n=n, p=p, s=5, snr=5., sigma=1., rho=0)
+        np.random.seed(i + 1680)
+        X, y, beta, nonzero, sigma = sample.generate_response()
+        simes = simes_selection_egenes(X, y)
+        p_simes[i + 1680] = simes.simes_p_value()
+
+    print("regime 5 done")
+
+    for i in range(3200):
+        np.random.seed(i + 1800)  # ensures same X
+        sample = instance(n=n, p=p, s=0, snr=5., sigma=1., rho=0)
         np.random.seed(i + 1800)
         X, y, beta, nonzero, sigma = sample.generate_response()
         simes = simes_selection_egenes(X, y)
         p_simes[i + 1800] = simes.simes_p_value()
-
-    print("regime 2 done")
-
-    for i in range(1500):
-        np.random.seed(i + 3000)  # ensures same X
-        sample = instance(n=n, p=p, s=4, snr=5., sigma=1., rho=0)
-        np.random.seed(i + 3000)
-        X, y, beta, nonzero, sigma = sample.generate_response()
-        simes = simes_selection_egenes(X, y)
-        p_simes[i + 3000] = simes.simes_p_value()
-
-    print("regime 1 done")
-
-    for i in range(500):
-        np.random.seed(i + 4500)  # ensures same X
-        sample = instance(n=n, p=p, s=4, snr=5., sigma=1., rho=0)
-        np.random.seed(i + 4500)
-        X, y, beta, nonzero, sigma = sample.generate_response()
-        simes = simes_selection_egenes(X, y)
-        p_simes[i + 4500] = simes.simes_p_value()
 
     print("regime 0 done")
 
@@ -125,27 +126,27 @@ def test_simes(bh_level=0.10, ngenes =5000, n= 350, p=1000):
 
     E_sel = np.sort(sig[1])
 
-    false_rej = (E_sel[E_sel>4500]).shape[0]
+    false_rej = (E_sel[E_sel>1800]).shape[0]
 
     simes_level = np.zeros(1)
 
     simes_level[0] = K*bh_level/ngenes
 
-    print("power", (K-false_rej)/4500.)
+    print("power", (K-false_rej)/1800.)
 
     print("fdr", false_rej/float(K))
 
-    print("regime 5 selected", E_sel[E_sel<500].shape[0])
+    print("regime 1 selected", E_sel[E_sel<600].shape[0])
 
-    print("regime 4 selected", E_sel[(E_sel >= 500) & (E_sel < 1000)].shape[0])
+    print("regime 2 selected", E_sel[(E_sel >= 600) & (E_sel < 1080)].shape[0])
 
-    print("regime 3 selected", E_sel[(E_sel >= 1000) & (E_sel < 1800)].shape[0])
+    print("regime 3 selected", E_sel[(E_sel >= 1080) & (E_sel < 1440)].shape[0])
 
-    print("regime 2 selected", E_sel[(E_sel >= 1800) & (E_sel < 3000)].shape[0])
+    print("regime 4 selected", E_sel[(E_sel >= 1440) & (E_sel < 1680)].shape[0])
 
-    print("regime 1 selected", E_sel[(E_sel >= 3000) & (E_sel < 4500)].shape[0])
+    print("regime 5 selected", E_sel[(E_sel >= 1680) & (E_sel < 1800)].shape[0])
 
-    print("regime 0 selected", E_sel[(E_sel >= 4500) & (E_sel < 5000)].shape[0])
+    print("regime 0 selected", E_sel[(E_sel >= 1800)].shape[0])
 
     print("selected indices", E_sel)
 
