@@ -57,6 +57,7 @@ def hierarchical_lasso_trial(X,
     active_set = np.asarray([i for i in range(p) if active[i]])
     nactive = np.sum(active)
     sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
+    sys.stderr.write("Observed target" + str(M_est.target_observed)+ "\n")
 
     if nactive == 0:
         return None
@@ -101,11 +102,13 @@ def hierarchical_lasso_trial(X,
         sys.stderr.write("Total adjusted covered" + str(sel_covered.sum()) + "\n")
         sys.stderr.write("Total naive covered" + str(naive_covered.sum()) + "\n")
 
+        sys.stderr.write("Pivots" + str(pivots) + "\n")
+
         power = 0.
         false_discoveries = 0.
         beta_active = beta[active]
         p_BH = BH_q(pivots, bh_level)
-        sys.stderr.write("BH discovered indices"+ str(p_BH[1]) + "\n")
+        #sys.stderr.write("BH discovered indices"+ str(p_BH[1]) + "\n")
 
         discoveries_active = np.zeros(nactive)
         if p_BH is not None:
@@ -116,7 +119,7 @@ def hierarchical_lasso_trial(X,
                 else:
                     false_discoveries += 1.
 
-        power = power/5.
+        power = power/1.
         fdr = false_discoveries/(max(1.,discoveries_active.sum()))
 
         sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
@@ -152,7 +155,7 @@ if __name__ == "__main__":
     s = 1
     bh_level = 0.20
 
-    i = int(E_genes_1[0])
+    i = int(E_genes_1[2])
     #np.random.seed(i)  # ensures same X
     #sample = instance(n=n, p=p, s=s, snr=6., sigma=1., rho=0)
 

@@ -13,8 +13,8 @@ def BH_q(p_value, level):
     #print("sorted p values", p_sorted-np.true_divide(level*(np.arange(m)+1.),2.*m))
     if np.any(p_sorted - np.true_divide(level*(np.arange(m)+1.),m)<=np.zeros(m)):
         order_sig = np.max(indices[p_sorted- np.true_divide(level*(np.arange(m)+1.),m)<=0])
-        sig_pvalues = indices_order[:order_sig]
-        return p_sorted[:order_sig], sig_pvalues
+        sig_pvalues = indices_order[:(order_sig+1)]
+        return p_sorted[:(order_sig+1)], sig_pvalues
 
     else:
         return None

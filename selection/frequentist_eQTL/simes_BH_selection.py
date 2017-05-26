@@ -114,8 +114,8 @@ def BH_selection_egenes(p_simes, level):
     #if np.any(p_sorted - np.true_divide(level * (np.arange(m) + 1.), m) <= np.zeros(m)):
 
     order_sig = np.max(indices[p_sorted - np.true_divide(level * (np.arange(m) + 1.), m) <= 0])
-    E_sel = indices_order[:order_sig]
+    E_sel = indices_order[:(order_sig+1)]
 
-    return order_sig, E_sel
+    return order_sig+1, E_sel
 
 

@@ -204,7 +204,7 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
     def solve_approx(self):
 
         #defining the grid on which marginal conditional densities will be evaluated
-        grid_length = 401
+        grid_length = 301
 
         #print("observed values", self.target_observed)
         self.ind_obs = np.zeros(self.nactive, int)
@@ -215,7 +215,7 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
         for j in xrange(self.nactive):
             obs = self.target_observed[j]
 
-            self.grid[j,:] = np.linspace(self.target_observed[j]-20., self.target_observed[j]+20.,num=grid_length)
+            self.grid[j,:] = np.linspace(self.target_observed[j]-15., self.target_observed[j]+15.,num=grid_length)
 
             self.norm[j] = self.target_cov[j,j]
             if obs < self.grid[j,0]:
@@ -262,15 +262,12 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
     def approximate_ci(self, j):
 
         grid_length = 361
-        param_grid = np.linspace(-8,10, num=grid_length)
+        param_grid = np.linspace(-6,12, num=grid_length)
         area = np.zeros(param_grid.shape[0])
 
         for k in xrange(param_grid.shape[0]):
             area_vec = self.area_normalized_density(j, param_grid[k])
             area[k] = area_vec[self.ind_obs[j]]
-
-        #print("variable", j)
-        #print("area", area)
 
         region = param_grid[(area >= 0.05) & (area <= 0.95)]
         if region.size > 0:
