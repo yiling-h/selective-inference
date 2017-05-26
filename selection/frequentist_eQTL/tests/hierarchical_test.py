@@ -12,10 +12,10 @@ from selection.frequentist_eQTL.approx_ci_2stage import approximate_conditional_
 from selection.randomized.query import naive_confidence_intervals
 from selection.randomized.query import naive_pvalues
 
-#from selection.bayesian.initial_soln import instance
+from selection.bayesian.initial_soln import instance
 from selection.frequentist_eQTL.simes_BH_selection import BH_selection_egenes, simes_selection_egenes
 from selection.bayesian.cisEQTLS.Simes_selection import BH_q
-from selection.frequentist_eQTL.instance import instance
+#from selection.frequentist_eQTL.instance import instance
 
 def hierarchical_lasso_trial(X,
                              y,

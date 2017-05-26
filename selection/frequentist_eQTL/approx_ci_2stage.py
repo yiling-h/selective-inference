@@ -206,7 +206,7 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
         #defining the grid on which marginal conditional densities will be evaluated
         grid_length = 401
 
-        print("observed values", self.target_observed)
+        #print("observed values", self.target_observed)
         self.ind_obs = np.zeros(self.nactive, int)
         self.norm = np.zeros(self.nactive)
         self.h_approx = np.zeros((self.nactive, grid_length))
@@ -227,7 +227,7 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
 
             sys.stderr.write("number of variable being computed: " + str(j) + "\n")
             self.h_approx[j, :] = self.approx_conditional_prob(j)
-            print("approx prob", self.h_approx[j, :])
+            #print("approx prob", self.h_approx[j, :])
 
     def approx_conditional_prob(self, j):
         h_hat = []

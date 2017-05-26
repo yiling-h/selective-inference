@@ -12,10 +12,10 @@ from selection.frequentist_eQTL.approx_ci_2stage import approximate_conditional_
 from selection.randomized.query import naive_confidence_intervals
 from selection.randomized.query import naive_pvalues
 
-#from selection.bayesian.initial_soln import instance
+from selection.bayesian.initial_soln import instance
 from selection.frequentist_eQTL.simes_BH_selection import BH_selection_egenes, simes_selection_egenes
 from selection.bayesian.cisEQTLS.Simes_selection import BH_q
-from selection.frequentist_eQTL.instance import instance
+#from selection.frequentist_eQTL.instance import instance
 
 
 def random_lasso(X,
@@ -56,21 +56,21 @@ def random_lasso(X,
 
 if __name__ == "__main__":
     n = 350
-    p = 1000
+    p = 250
     s = 5
 
     power = 0.
 
     for i in range(100):
         np.random.seed(i)
-        sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
+        sample = instance(n=n, p=p, s=s, snr=6., sigma=1., rho=0)
         np.random.seed(i)
         X, y, beta, nonzero, sigma = sample.generate_response()
         power += random_lasso(X,
                               y,
                               beta,
                               sigma,
-                              s=5)
+                              s=s)
 
-    print(power/5)
+    print(power/5.)
 

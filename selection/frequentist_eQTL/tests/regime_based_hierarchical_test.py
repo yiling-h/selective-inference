@@ -12,10 +12,11 @@ from selection.frequentist_eQTL.approx_ci_2stage import approximate_conditional_
 from selection.randomized.query import naive_confidence_intervals
 from selection.randomized.query import naive_pvalues
 
-#from selection.bayesian.initial_soln import instance
+from selection.bayesian.initial_soln import instance
 from selection.frequentist_eQTL.simes_BH_selection import BH_selection_egenes, simes_selection_egenes
 from selection.bayesian.cisEQTLS.Simes_selection import BH_q
-from selection.frequentist_eQTL.instance import instance
+#from selection.frequentist_eQTL.instance import instance
+from selection.tests.instance import gaussian_instance
 
 
 def hierarchical_lasso_trial(X,
@@ -139,23 +140,24 @@ def hierarchical_lasso_trial(X,
 
 if __name__ == "__main__":
 
-    BH_genes = np.loadtxt('/Users/snigdhapanigrahi/Results_freq_EQTL/BH_output')
+    #path needs to be changed for cluster
+    BH_genes = np.loadtxt('/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/tests/BH_output')
     E_genes = BH_genes[1:]
-    E_genes_5 = E_genes[E_genes<=500]
+    E_genes_1 = E_genes[E_genes<600]
     simes_level = BH_genes[0]
 
     ### set parameters
     n = 350
-    p = 1000
-    s = 5
+    p = 250
+    s = 1
     bh_level = 0.20
 
-    i = int(E_genes_5[4])
-    np.random.seed(i)  # ensures same X
-    sample = instance(n=n, p=p, s=s, sigma=1., rho=0)
+    i = int(E_genes_1[0])
+    #np.random.seed(i)  # ensures same X
+    #sample = instance(n=n, p=p, s=s, snr=6., sigma=1., rho=0)
 
     np.random.seed(i) #ensures different y for the same X
-    X, y, beta, nonzero, sigma = sample.generate_response()
+    X, y, beta, nonzero, sigma = gaussian_instance(n=n, p=p, s=s, sigma=1., rho=0, snr=6.)
 
     simes = simes_selection_egenes(X, y)
     simes_p = simes.simes_p_value()

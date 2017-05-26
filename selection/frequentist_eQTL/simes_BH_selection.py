@@ -28,6 +28,9 @@ def simes_selection(X, y, noise_level =1., randomizer= 'gaussian', randomization
     if randomizer == 'gaussian':
         perturb = np.random.standard_normal(p)
 
+    elif randomizer == "None":
+        perturb = np.zeros(p)
+
     sigma = noise_level
     T_stats = X.T.dot(y) / sigma
 
@@ -44,26 +47,35 @@ class simes_selection_egenes():
     def __init__(self,
                  X,
                  y,
+                 randomizer= 'gaussian',
                  noise_level = 1.,
-                 randomizer='gaussian',
                  randomization_scale=1.):
 
         self.X = X
         self.y = y
         self.n, self.p = self.X.shape
-
-        if randomizer == 'gaussian':
-            perturb = np.random.standard_normal(self.p)
-
         self.sigma = noise_level
         self.T_stats = self.X.T.dot(self.y) / self.sigma
 
-        self.randomized_T_stats = self.T_stats + randomization_scale * perturb
+        if randomizer == 'gaussian':
+            perturb = np.random.standard_normal(self.p)
+            self.randomized_T_stats = self.T_stats + randomization_scale * perturb
+            self.p_val_randomized = np.sort(
+                2 * (1. - normal.cdf(np.true_divide(np.abs(self.randomized_T_stats), np.sqrt(2.)))))
 
-        self.p_val_randomized = np.sort(2 * (1. - normal.cdf(np.true_divide(np.abs(self.randomized_T_stats), np.sqrt(2.)))))
+            self.indices_order = np.argsort(
+                2 * (1. - normal.cdf(np.true_divide(np.abs(self.randomized_T_stats), np.sqrt(2.)))))
 
-        self.indices_order = np.argsort(
-            2 * (1. - normal.cdf(np.true_divide(np.abs(self.randomized_T_stats), np.sqrt(2.)))))
+        elif randomizer == 'none':
+            perturb = np.zeros(self.p)
+            self.randomized_T_stats = self.T_stats + randomization_scale * perturb
+
+            self.p_val_randomized = np.sort(
+                2 * (1. - normal.cdf(np.true_divide(np.abs(self.randomized_T_stats), np.sqrt(1.)))))
+
+            self.indices_order = np.argsort(
+                2 * (1. - normal.cdf(np.true_divide(np.abs(self.randomized_T_stats), np.sqrt(1.)))))
+
 
     def simes_p_value(self):
 
