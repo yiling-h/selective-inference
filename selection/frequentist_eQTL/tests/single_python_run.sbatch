@@ -13,7 +13,7 @@
 #################
 #time you think you need; default is 2 hours
 #format could be dd-hh:mm:ss, hh:mm:ss, mm:ss, or mm
-#SBATCH --time=25:00:00
+#SBATCH --time=2:00:00
 #################
 #SBATCH --qos=normal
 #SBATCH -p normal 
@@ -38,5 +38,5 @@ source /home/snigdha/src/selective-inference/.env/bin/activate
 
 
 
-python randomized_lasso.py $SEED $DIR
+python regime_based_hierarchical_test.py $SEED $DIR
 

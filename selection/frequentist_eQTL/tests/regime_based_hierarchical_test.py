@@ -30,12 +30,24 @@ def hierarchical_lasso_trial(X,
                              threshold,
                              data_simes,
                              bh_level,
+                             regime='1',
                              lam_frac=1.,
                              loss='gaussian'):
 
     from selection.api import randomization
-    if beta[0] == 0:
-        s = 0
+
+    if regime == '1':
+        s=1
+    elif regime == '2':
+        s=2
+    elif regime == '3':
+        s=3
+    elif regime == '4':
+        s=4
+    elif regime == '5':
+        s=5
+    elif regime == '0':
+        s=0
 
     n, p = X.shape
     if loss == "gaussian":
@@ -99,10 +111,10 @@ def hierarchical_lasso_trial(X,
                 naive_covered[j] += 1
             naive_length[j] = ci_naive[j, 1] - ci_naive[j, 0]
 
-        sys.stderr.write("Total adjusted covered" + str(sel_covered.sum()) + "\n")
-        sys.stderr.write("Total naive covered" + str(naive_covered.sum()) + "\n")
+        #sys.stderr.write("Total adjusted covered" + str(sel_covered.sum()) + "\n")
+        #sys.stderr.write("Total naive covered" + str(naive_covered.sum()) + "\n")
 
-        sys.stderr.write("Pivots" + str(pivots) + "\n")
+        #sys.stderr.write("Pivots" + str(pivots) + "\n")
 
         power = 0.
         false_discoveries = 0.
@@ -118,12 +130,12 @@ def hierarchical_lasso_trial(X,
                 else:
                     false_discoveries += 1.
 
-        power = power/5.
+        power = power/float(s)
         fdr = false_discoveries/(max(1.,discoveries_active.sum()))
 
         sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
-        sys.stderr.write("True target to be covered" + str(true_vec) + "\n")
-        sys.stderr.write("Total discoveries" + str(discoveries_active.sum()) + "\n")
+        #sys.stderr.write("True target to be covered" + str(true_vec) + "\n")
+        #sys.stderr.write("Total discoveries" + str(discoveries_active.sum()) + "\n")
         sys.stderr.write("Power" + str(power) + "\n")
         sys.stderr.write("FDR" + str(fdr) + "\n")
 
@@ -142,31 +154,35 @@ def hierarchical_lasso_trial(X,
 
 if __name__ == "__main__":
 
-    #path needs to be changed for cluster
-    BH_genes = np.loadtxt('/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/tests/BH_output')
+    ###read an input file to set the correct seeds
+    BH_genes = np.loadtxt('/home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests/BH_output')
     E_genes = BH_genes[1:]
-    E_genes_1 = E_genes[E_genes>1680]
+    E_genes_1 = E_genes[E_genes<600]
     simes_level = BH_genes[0]
+
+    seedn = int(sys.argv[1])
+    outdir = sys.argv[2]
+
+    outfile = os.path.join(outdir, "list_result_" + str(seedn) + ".txt")
 
     ### set parameters
     n = 350
     p = 250
-    s = 5
+    s = 1
     bh_level = 0.20
 
-    i = int(E_genes_1[5])
-    #np.random.seed(i)  # ensures same X
-    #sample = instance(n=n, p=p, s=s, snr=6., sigma=1., rho=0)
+    i = int(E_genes_1[seedn])
 
-    np.random.seed(i) #ensures different y for the same X
+
+    np.random.seed(i)
     X, y, beta, nonzero, sigma = gaussian_instance(n=n, p=p, s=s, sigma=1., rho=0, snr=6.)
 
     simes = simes_selection_egenes(X, y)
     simes_p = simes.simes_p_value()
-    print("simes_p_value", simes_p)
-    print("simes level", simes_level)
+    sys.stderr.write("simes_p_value" + str(simes_p) + "\n")
+    sys.stderr.write("simes level" + str(simes_level) + "\n")
 
-    #proceed only if gene is an eGene, that is simes p-value is significant at the  BH cut-off level
+
     if simes_p <= simes_level:
 
         sig_simes = simes.post_BH_selection(simes_level)
@@ -175,8 +191,6 @@ if __name__ == "__main__":
         T_sign = sig_simes[3]
         i_0 = sig_simes[0]
         threshold = np.zeros(i_0 + 1)
-        print("i_0", i_0)
-
 
         ###setting the parameters from Simes
         if i_0 > 0:
@@ -199,8 +213,17 @@ if __name__ == "__main__":
                                            T_sign,
                                            threshold,
                                            data_simes,
+                                           regime='1',
                                            bh_level=0.20,
                                            lam_frac=1.,
                                            loss='gaussian')
 
-        print("inferential output", results)
+        ###save output results
+        np.savetxt(outfile, results)
+
+
+
+
+
+
+
