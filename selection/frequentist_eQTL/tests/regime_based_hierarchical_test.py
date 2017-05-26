@@ -108,7 +108,6 @@ def hierarchical_lasso_trial(X,
         false_discoveries = 0.
         beta_active = beta[active]
         p_BH = BH_q(pivots, bh_level)
-        #sys.stderr.write("BH discovered indices"+ str(p_BH[1]) + "\n")
 
         discoveries_active = np.zeros(nactive)
         if p_BH is not None:
@@ -119,7 +118,7 @@ def hierarchical_lasso_trial(X,
                 else:
                     false_discoveries += 1.
 
-        power = power/1.
+        power = power/5.
         fdr = false_discoveries/(max(1.,discoveries_active.sum()))
 
         sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
@@ -146,16 +145,16 @@ if __name__ == "__main__":
     #path needs to be changed for cluster
     BH_genes = np.loadtxt('/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/tests/BH_output')
     E_genes = BH_genes[1:]
-    E_genes_1 = E_genes[E_genes<600]
+    E_genes_1 = E_genes[E_genes>1680]
     simes_level = BH_genes[0]
 
     ### set parameters
     n = 350
     p = 250
-    s = 1
+    s = 5
     bh_level = 0.20
 
-    i = int(E_genes_1[2])
+    i = int(E_genes_1[5])
     #np.random.seed(i)  # ensures same X
     #sample = instance(n=n, p=p, s=s, snr=6., sigma=1., rho=0)
 
