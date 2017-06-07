@@ -607,7 +607,7 @@ if __name__ == "__main__":
 
     BH_genes = np.loadtxt('/home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests/BH_output')
     E_genes = BH_genes[1:]
-    E_genes_1 = E_genes[E_genes<600]
+    E_genes_1 = E_genes[(E_genes >= 1680) & (E_genes < 1800)]
     simes_level = BH_genes[0]
 
     seedn = int(sys.argv[1])
