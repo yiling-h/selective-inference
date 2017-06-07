@@ -17,8 +17,24 @@ from selection.randomized.query import naive_confidence_intervals
 from selection.randomized.query import naive_pvalues
 
 #from selection.frequentist_eQTL.simes_BH_selection import BH_selection_egenes, simes_selection_egenes
-from selection.bayesian.cisEQTLS.Simes_selection import BH_q
+#from selection.bayesian.cisEQTLS.Simes_selection import BH_q
 from selection.tests.instance import gaussian_instance
+
+def BH_q(p_value, level):
+
+    m = p_value.shape[0]
+    p_sorted = np.sort(p_value)
+    indices = np.arange(m)
+    indices_order = np.argsort(p_value)
+
+    #print("sorted p values", p_sorted-np.true_divide(level*(np.arange(m)+1.),2.*m))
+    if np.any(p_sorted - np.true_divide(level*(np.arange(m)+1.),m)<=np.zeros(m)):
+        order_sig = np.max(indices[p_sorted- np.true_divide(level*(np.arange(m)+1.),m)<=0])
+        sig_pvalues = indices_order[:(order_sig+1)]
+        return p_sorted[:(order_sig+1)], sig_pvalues
+
+    else:
+        return None
 
 class simes_selection_egenes():
 
@@ -602,7 +618,7 @@ if __name__ == "__main__":
     ### set parameters
     n = 350
     p = 250
-    s = 1
+    s = 5
     bh_level = 0.20
 
     i = int(E_genes_1[seedn])
@@ -647,7 +663,7 @@ if __name__ == "__main__":
                                            T_sign,
                                            threshold,
                                            data_simes,
-                                           regime='1',
+                                           regime='5',
                                            bh_level=0.20,
                                            lam_frac=1.,
                                            loss='gaussian')
