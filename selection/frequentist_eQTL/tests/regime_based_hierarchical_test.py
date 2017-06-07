@@ -14,10 +14,71 @@ from selection.randomized.query import naive_confidence_intervals
 from selection.randomized.query import naive_pvalues
 
 from selection.bayesian.initial_soln import instance
-from selection.frequentist_eQTL.simes_BH_selection import BH_selection_egenes, simes_selection_egenes
+#from selection.frequentist_eQTL.simes_BH_selection import BH_selection_egenes, simes_selection_egenes
 from selection.bayesian.cisEQTLS.Simes_selection import BH_q
 #from selection.frequentist_eQTL.instance import instance
 from selection.tests.instance import gaussian_instance
+
+class simes_selection_egenes():
+
+    def __init__(self,
+                 X,
+                 y,
+                 randomizer= 'gaussian',
+                 noise_level = 1.,
+                 randomization_scale=1.):
+
+        self.X = X
+        self.y = y
+        self.n, self.p = self.X.shape
+        self.sigma = noise_level
+        self.T_stats = self.X.T.dot(self.y) / self.sigma
+
+        if randomizer == 'gaussian':
+            perturb = np.random.standard_normal(self.p)
+            self.randomized_T_stats = self.T_stats + randomization_scale * perturb
+            self.p_val_randomized = np.sort(
+                2 * (1. - normal.cdf(np.true_divide(np.abs(self.randomized_T_stats), np.sqrt(2.)))))
+
+            self.indices_order = np.argsort(
+                2 * (1. - normal.cdf(np.true_divide(np.abs(self.randomized_T_stats), np.sqrt(2.)))))
+
+        elif randomizer == 'none':
+            perturb = np.zeros(self.p)
+            self.randomized_T_stats = self.T_stats + randomization_scale * perturb
+
+            self.p_val_randomized = np.sort(
+                2 * (1. - normal.cdf(np.true_divide(np.abs(self.randomized_T_stats), np.sqrt(1.)))))
+
+            self.indices_order = np.argsort(
+                2 * (1. - normal.cdf(np.true_divide(np.abs(self.randomized_T_stats), np.sqrt(1.)))))
+
+
+    def simes_p_value(self):
+
+        simes_p_randomized = np.min((self.p / (np.arange(self.p) + 1.)) * self.p_val_randomized)
+
+        return simes_p_randomized
+
+    def post_BH_selection(self, level):
+
+        indices = np.arange(self.p)
+
+        significant = indices[self.p_val_randomized - (((indices + 1.)/(self.p))*level)<= 0.]
+
+        i_0 = np.amin(significant)
+
+        t_0 = self.indices_order[i_0]
+
+        T_stats_active = self.T_stats[i_0]
+
+        if i_0 > 0:
+            J = self.indices_order[:i_0]
+
+        else:
+            J = -1 * np.ones(1)
+
+        return i_0, J, t_0, np.sign(T_stats_active)
 
 class M_estimator_2step(M_estimator):
 
