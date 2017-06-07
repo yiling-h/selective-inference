@@ -6,18 +6,14 @@ from scipy.stats import probplot, uniform
 
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_5/dim_1/dim_1'
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/high_dim_test_lowsignal'
-path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/high_dim_test_0'
+path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/hierarchical_1'
 
 allFiles = glob.glob(path + "/*.txt")
-#allFiles_1 = glob.glob(path_1 + "/*.txt")
 list_ = []
 for file_ in allFiles:
     df = np.loadtxt(file_)
     list_.append(df)
 
-# for file_ in allFiles_1:
-#     df = np.loadtxt(file_)
-#     list_.append(df)
 
 def evaluation_per_file(list,s):
 
@@ -27,10 +23,10 @@ def evaluation_per_file(list,s):
     sel_length = list[:,1]
     pivots = list[:,2]
     naive_covered = list[:,3]
-    naive_pvals = list[:,5]
-    naive_length = list[:,6]
-    active_set = (list[:,7]).astype(int)
-    discoveries = list[:,8]
+    naive_pvals = list[:,4]
+    naive_length = list[:,5]
+    active_set = (list[:,6]).astype(int)
+    discoveries = list[:,7]
     ndiscoveries = discoveries.sum()
 
     nactive = sel_covered.shape[0]
@@ -70,7 +66,7 @@ def summary_files(list_):
 
     for i in range(length):
         print("iteration", i)
-        results = evaluation_per_file(list_[i], s=5)
+        results = evaluation_per_file(list_[i], s=1)
         coverage_ad += results[0]
         coverage_unad += results[1]
         length_ad += results[2]
@@ -82,6 +78,10 @@ def summary_files(list_):
     return coverage_ad / length, coverage_unad / length, length_ad/length, length_unad/length, FDR / length, power / length
 
 print(summary_files(list_))
+
+
+
+
 
 def plot_p_values():
 
