@@ -231,8 +231,6 @@ def hierarchical_lasso_trial(X,
         fdr = false_discoveries/(max(1.,discoveries_active.sum()))
 
         sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
-        #sys.stderr.write("True target to be covered" + str(true_vec) + "\n")
-        #sys.stderr.write("Total discoveries" + str(discoveries_active.sum()) + "\n")
         sys.stderr.write("Power" + str(power) + "\n")
         sys.stderr.write("FDR" + str(fdr) + "\n")
 

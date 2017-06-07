@@ -16,6 +16,8 @@ from selection.bayesian.initial_soln import instance
 from selection.frequentist_eQTL.simes_BH_selection import BH_selection_egenes, simes_selection_egenes
 from selection.bayesian.cisEQTLS.Simes_selection import BH_q
 #from selection.frequentist_eQTL.instance import instance
+from selection.tests.instance import gaussian_instance
+
 
 
 def random_lasso(X,
@@ -56,16 +58,17 @@ def random_lasso(X,
 
 if __name__ == "__main__":
     n = 350
-    p = 250
+    p = 7000
     s = 5
+    snr = 6.
 
     power = 0.
 
     for i in range(100):
+        #np.random.seed(i)
+        #sample = instance(n=n, p=p, s=s, snr=6., sigma=1., rho=0)
         np.random.seed(i)
-        sample = instance(n=n, p=p, s=s, snr=6., sigma=1., rho=0)
-        np.random.seed(i)
-        X, y, beta, nonzero, sigma = sample.generate_response()
+        X, y, beta, nonzero, sigma = gaussian_instance(n=n, p=p, s=s, snr=snr, sigma=1., rho=0)
         power += random_lasso(X,
                               y,
                               beta,
