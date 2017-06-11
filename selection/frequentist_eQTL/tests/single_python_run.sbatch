@@ -38,5 +38,5 @@ source /home/snigdha/src/selective-inference/.env/bin/activate
 
 
 
-python regime_based_hierarchical_test.py $SEED $DIR
+python hierarchical_test_cluster.py $SEED $DIR
 

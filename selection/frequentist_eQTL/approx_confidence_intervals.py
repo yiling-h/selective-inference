@@ -63,6 +63,72 @@ class neg_log_cube_probability(rr.smooth_atom):
         else:
             raise ValueError("mode incorrectly specified")
 
+class neg_log_cube_probability_2sided(rr.smooth_atom):
+    def __init__(self,
+                 q, #equals p - E in our case
+                 lagrange_1,
+                 lagrange_2,
+                 randomization_scale = 1., #equals the randomization variance in our case
+                 coef=1.,
+                 offset=None,
+                 quadratic=None):
+
+        self.randomization_scale = randomization_scale
+        self.lagrange_1 = lagrange_1
+        self.lagrange_2 = lagrange_2
+        self.q = q
+
+        rr.smooth_atom.__init__(self,
+                                (self.q,),
+                                offset=offset,
+                                quadratic=quadratic,
+                                initial=None,
+                                coef=coef)
+
+    def smooth_objective(self, arg, mode='both', check_feasibility=False, tol=1.e-6):
+
+        arg = self.apply_offset(arg)
+
+        arg_u = (arg + self.lagrange_2)/self.randomization_scale
+        arg_l = (arg - self.lagrange_1)/self.randomization_scale
+
+        prod_arg = np.exp(-((self.lagrange_2-self.lagrange_1) * arg)/(self.randomization_scale**2))
+        neg_prod_arg = np.exp(((self.lagrange_2-self.lagrange_1) * arg)/(self.randomization_scale**2))
+
+        con_2 = np.exp(-(self.lagrange_2 ** 2)/(2.*(self.randomization_scale**2)))
+        con_1 = np.exp(-(self.lagrange_1 ** 2) / (2. * (self.randomization_scale ** 2)))
+
+        cube_prob = norm.cdf(arg_u) - norm.cdf(arg_l)
+        log_cube_prob = -np.log(cube_prob).sum()
+
+        threshold = 10 ** -10
+        indicator = np.zeros(self.q, bool)
+        indicator[(cube_prob > threshold)] = 1
+        positive_arg = np.zeros(self.q, bool)
+        positive_arg[(arg>=0)] = 1
+        pos_index = np.logical_and(positive_arg, ~indicator)
+        neg_index = np.logical_and(~positive_arg, ~indicator)
+        log_cube_grad = np.zeros(self.q)
+        log_cube_grad[indicator] = (np.true_divide(-norm.pdf(arg_u[indicator]) + norm.pdf(arg_l[indicator]),
+                                        cube_prob[indicator]))/self.randomization_scale
+
+        log_cube_grad[pos_index] = ((-con_1 + (con_2 * prod_arg[pos_index]))/
+                                     ((con_2 *(prod_arg[pos_index]/arg_u[pos_index]))-
+                                      (con_1/arg_l[pos_index])))/self.randomization_scale
+
+        log_cube_grad[neg_index] = ((con_2 * arg_u[neg_index] -(con_1 * arg_l[neg_index] * neg_prod_arg[neg_index]))
+                                    /self.randomization_scale)/(con_2- (con_1 * neg_prod_arg[neg_index]))
+
+
+        if mode == 'func':
+            return self.scale(log_cube_prob)
+        elif mode == 'grad':
+            return self.scale(log_cube_grad)
+        elif mode == 'both':
+            return self.scale(log_cube_prob), self.scale(log_cube_grad)
+        else:
+            raise ValueError("mode incorrectly specified")
+
 
 class approximate_conditional_prob(rr.smooth_atom):
 
