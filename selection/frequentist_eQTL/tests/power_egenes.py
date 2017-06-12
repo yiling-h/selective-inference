@@ -56,11 +56,11 @@ def power_test():
 
 #power_test()
 
-def test_simes_strong_sparse(bh_level=0.10, ngenes =5000, n= 350, p=7000, snr =6., randomizer = 'gaussian'):
+def test_simes_strong_sparse(bh_level=0.10, ngenes =5000, n= 350, p=250, snr =6., randomizer = 'gaussian'):
 
     p_simes = np.zeros(ngenes)
 
-    for i in range(600):
+    for i in range(650):
         #np.random.seed(i)  # ensures same X
         #sample = instance(n=n, p=p, s=1, snr=6., sigma=1., rho=0)
         np.random.seed(i)
@@ -70,37 +70,47 @@ def test_simes_strong_sparse(bh_level=0.10, ngenes =5000, n= 350, p=7000, snr =6
 
     print("regime 1 done")
 
-    for i in range(480):
+    for i in range(400):
         #np.random.seed(i+ 600)  # ensures same X
         #sample = instance(n=n, p=p, s=2, snr=6., sigma=1., rho=0)
-        np.random.seed(i+ 600)
+        np.random.seed(i+ 650)
         X, y, beta, nonzero, sigma = gaussian_instance(n= n, p= p, s=2, sigma=1., rho=0, snr=snr )
         simes = simes_selection_egenes(X, y, randomizer= randomizer)
-        p_simes[i + 600] = simes.simes_p_value()
+        p_simes[i + 650] = simes.simes_p_value()
 
     print("regime 2 done")
 
-    for i in range(360):
+    for i in range(270):
         #np.random.seed(i + 1080)  # ensures same X
         #sample = instance(n=n, p=p, s=3, snr=6., sigma=1., rho=0)
-        np.random.seed(i + 1080)
+        np.random.seed(i + 1050)
         X, y, beta, nonzero, sigma = gaussian_instance(n= n, p=p, s=3, sigma=1., rho=0, snr=snr )
         simes = simes_selection_egenes(X, y, randomizer= randomizer)
-        p_simes[i + 1080] = simes.simes_p_value()
+        p_simes[i + 1050] = simes.simes_p_value()
 
     print("regime 3 done")
 
-    for i in range(240):
+    for i in range(200):
         #np.random.seed(i + 1440)  # ensures same X
         #sample = instance(n=n, p=p, s=4, snr=6., sigma=1., rho=0)
-        np.random.seed(i + 1440)
+        np.random.seed(i + 1320)
         X, y, beta, nonzero, sigma = gaussian_instance(n= n, p= p, s=4, sigma=1., rho=0, snr=snr )
         simes = simes_selection_egenes(X, y, randomizer= randomizer)
-        p_simes[i + 1440] = simes.simes_p_value()
+        p_simes[i + 1320] = simes.simes_p_value()
 
     print("regime 4 done")
 
-    for i in range(120):
+    for i in range(160):
+        #np.random.seed(i + 1680)  # ensures same X
+        #sample = instance(n=n, p=p, s=5, snr=6., sigma=1., rho=0)
+        np.random.seed(i + 1520)
+        X, y, beta, nonzero, sigma = gaussian_instance(n= n, p=p, s=5, sigma=1., rho=0, snr=snr )
+        simes = simes_selection_egenes(X, y, randomizer= randomizer)
+        p_simes[i + 1520] = simes.simes_p_value()
+
+    print("regime 5 done")
+
+    for i in range(80):
         #np.random.seed(i + 1680)  # ensures same X
         #sample = instance(n=n, p=p, s=5, snr=6., sigma=1., rho=0)
         np.random.seed(i + 1680)
@@ -108,7 +118,17 @@ def test_simes_strong_sparse(bh_level=0.10, ngenes =5000, n= 350, p=7000, snr =6
         simes = simes_selection_egenes(X, y, randomizer= randomizer)
         p_simes[i + 1680] = simes.simes_p_value()
 
-    print("regime 5 done")
+    print("regime 10 done")
+
+    for i in range(40):
+        #np.random.seed(i + 1680)  # ensures same X
+        #sample = instance(n=n, p=p, s=5, snr=6., sigma=1., rho=0)
+        np.random.seed(i + 1760)
+        X, y, beta, nonzero, sigma = gaussian_instance(n= n, p=p, s=5, sigma=1., rho=0, snr=snr )
+        simes = simes_selection_egenes(X, y, randomizer= randomizer)
+        p_simes[i + 1760] = simes.simes_p_value()
+
+    print("regime 20 done")
 
     for i in range(3200):
         #np.random.seed(i + 1800)  # ensures same X
@@ -136,15 +156,19 @@ def test_simes_strong_sparse(bh_level=0.10, ngenes =5000, n= 350, p=7000, snr =6
 
     print("fdr", false_rej/float(K))
 
-    print("regime 1 selected", E_sel[E_sel<600].shape[0])
+    print("regime 1 selected", E_sel[E_sel<650].shape[0])
 
-    print("regime 2 selected", E_sel[(E_sel >= 600) & (E_sel < 1080)].shape[0])
+    print("regime 2 selected", E_sel[(E_sel >= 650) & (E_sel < 1050)].shape[0])
 
-    print("regime 3 selected", E_sel[(E_sel >= 1080) & (E_sel < 1440)].shape[0])
+    print("regime 3 selected", E_sel[(E_sel >= 1050) & (E_sel < 1320)].shape[0])
 
-    print("regime 4 selected", E_sel[(E_sel >= 1440) & (E_sel < 1680)].shape[0])
+    print("regime 4 selected", E_sel[(E_sel >= 1320) & (E_sel < 1520)].shape[0])
 
-    print("regime 5 selected", E_sel[(E_sel >= 1680) & (E_sel < 1800)].shape[0])
+    print("regime 5 selected", E_sel[(E_sel >= 1520) & (E_sel < 1680)].shape[0])
+
+    print("regime 10 selected", E_sel[(E_sel >= 1680) & (E_sel < 1760)].shape[0])
+
+    print("regime 20 selected", E_sel[(E_sel >= 1760) & (E_sel < 1800)].shape[0])
 
     print("regime 0 selected", E_sel[(E_sel >= 1800)].shape[0])
 
@@ -154,7 +178,7 @@ def test_simes_strong_sparse(bh_level=0.10, ngenes =5000, n= 350, p=7000, snr =6
 
 test = test_simes_strong_sparse()
 print("test output", test)
-#np.savetxt('/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/tests/BH_output', test)
+np.savetxt('/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/tests/BH_output_n350_p250', test)
 
 # if __name__ == "__main__":
 #

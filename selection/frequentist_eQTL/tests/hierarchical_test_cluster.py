@@ -439,6 +439,10 @@ def hierarchical_lasso_trial(X,
         s=4
     elif regime == '5':
         s=5
+    elif regime == '10':
+        s=10
+    elif regime == '20':
+        s=20
     elif regime == '0':
         s=0
 
@@ -546,9 +550,9 @@ if __name__ == "__main__":
 
     ###read an input file to set the correct seeds
 
-    BH_genes = np.loadtxt('/home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests/BH_output')
+    BH_genes = np.loadtxt('/home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests/BH_output_n350_p250')
     E_genes = BH_genes[1:]
-    E_genes_1 = E_genes[(E_genes >= 1080) & (E_genes < 1440)]
+    E_genes_1 = E_genes[(E_genes >= 1680) & (E_genes < 1760)]
     simes_level = BH_genes[0]
 
     seedn = int(sys.argv[1])
@@ -559,7 +563,7 @@ if __name__ == "__main__":
     ### set parameters
     n = 350
     p = 250
-    s = 3
+    s = 10
     bh_level = 0.20
 
     i = int(E_genes_1[seedn])
@@ -593,7 +597,7 @@ if __name__ == "__main__":
                                            l_threshold,
                                            u_threshold,
                                            data_simes,
-                                           regime='3',
+                                           regime='10',
                                            bh_level=0.20,
                                            lam_frac=1.,
                                            loss='gaussian')

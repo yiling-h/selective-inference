@@ -6,7 +6,7 @@ from scipy.stats import probplot, uniform
 
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_5/dim_1/dim_1'
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/high_dim_test_lowsignal'
-path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/hierarchical_5/hierarchical_5'
+path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/hierarchical_5/hierarchical_5/hierarchical_5'
 
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
@@ -22,6 +22,7 @@ def evaluation_per_file(list,s):
     sel_covered = list[:,0]
     sel_length = list[:,1]
     pivots = list[:,2]
+    print("pivots", pivots)
     naive_covered = list[:,3]
     naive_pvals = list[:,4]
     naive_length = list[:,5]
@@ -66,7 +67,7 @@ def summary_files(list_):
 
     for i in range(length):
         print("iteration", i)
-        results = evaluation_per_file(list_[i], s=5)
+        results = evaluation_per_file(list_[i], s=3)
         coverage_ad += results[0]
         coverage_unad += results[1]
         length_ad += results[2]

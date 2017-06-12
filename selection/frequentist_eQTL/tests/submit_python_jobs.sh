@@ -5,11 +5,11 @@
 
 # setup dir if needed
 
-DIR=/scratch/users/snigdha/freq_cis_eqtl/outputs/hierarchical_5
+DIR=/scratch/users/snigdha/freq_cis_eqtl/outputs/n_350_hierarchical_10
 
 mkdir -p $DIR
 
-for i in {0..100}
+for i in {0..78}
 do
 	# bash single_python_run.sbatch $i $DIR
 	sbatch single_python_run.sbatch $i $DIR
