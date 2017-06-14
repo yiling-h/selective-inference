@@ -333,7 +333,7 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
     def solve_approx(self):
 
         #defining the grid on which marginal conditional densities will be evaluated
-        grid_length = 401
+        grid_length = 241
 
         #print("observed values", self.target_observed)
         self.ind_obs = np.zeros(self.nactive, int)
@@ -344,7 +344,7 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
         for j in xrange(self.nactive):
             obs = self.target_observed[j]
 
-            self.grid[j,:] = np.linspace(self.target_observed[j]-15., self.target_observed[j]+15.,num=grid_length)
+            self.grid[j,:] = np.linspace(self.target_observed[j]-15., self.target_observed[j]+9.,num=grid_length)
 
             self.norm[j] = self.target_cov[j,j]
             if obs < self.grid[j,0]:

@@ -550,9 +550,9 @@ if __name__ == "__main__":
 
     ###read an input file to set the correct seeds
 
-    BH_genes = np.loadtxt('/home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests/BH_output_n350_p250')
+    BH_genes = np.loadtxt('/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/tests/BH_output_n350_p7000')
     E_genes = BH_genes[1:]
-    E_genes_1 = E_genes[(E_genes >= 1680) & (E_genes < 1760)]
+    E_genes_1 = E_genes[(E_genes >= 1520) & (E_genes < 1680)]
     simes_level = BH_genes[0]
 
     seedn = int(sys.argv[1])
@@ -562,12 +562,11 @@ if __name__ == "__main__":
 
     ### set parameters
     n = 350
-    p = 250
-    s = 10
+    p = 7000
+    s = 5
     bh_level = 0.20
 
-    i = int(E_genes_1[seedn])
-
+    i = int(E_genes_1[seedn+3])
 
     np.random.seed(i)
     X, y, beta, nonzero, sigma = gaussian_instance(n=n, p=p, s=s, sigma=1., rho=0, snr=6.)
@@ -576,7 +575,6 @@ if __name__ == "__main__":
     simes_p = simes.simes_p_value()
     sys.stderr.write("simes_p_value" + str(simes_p) + "\n")
     sys.stderr.write("simes level" + str(simes_level) + "\n")
-
 
     if simes_p <= simes_level:
 
@@ -597,7 +595,7 @@ if __name__ == "__main__":
                                            l_threshold,
                                            u_threshold,
                                            data_simes,
-                                           regime='10',
+                                           regime='5',
                                            bh_level=0.20,
                                            lam_frac=1.,
                                            loss='gaussian')

@@ -6,7 +6,7 @@ from scipy.stats import probplot, uniform
 
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_5/dim_1/dim_1'
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/high_dim_test_lowsignal'
-path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/n_350_hierarchical_10'
+path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/n_350_hierarchical_10_grid'
 
 allFiles = glob.glob(path + "/*.txt")
 list_ = []

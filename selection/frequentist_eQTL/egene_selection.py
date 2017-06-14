@@ -3,21 +3,6 @@ from scipy.stats import norm as normal
 import numpy as np
 import os
 
-def BH_selection_egenes(p_simes, level):
-
-    m = p_simes.shape[0]
-    p_sorted = np.sort(p_simes)
-    indices = np.arange(m)
-    indices_order = np.argsort(p_simes)
-
-    #if np.any(p_sorted - np.true_divide(level * (np.arange(m) + 1.), m) <= np.zeros(m)):
-
-    order_sig = np.max(indices[p_sorted - np.true_divide(level * (np.arange(m) + 1.), m) <= 0])
-    E_sel = indices_order[:(order_sig+1)]
-
-    return order_sig+1, E_sel
-
-
 class simes_selection_egenes():
 
     def __init__(self,
@@ -66,7 +51,10 @@ class simes_selection_egenes():
         u_1 = ((i_0 + 1.) / self.p) * np.min(
             np.delete((self.p / (np.arange(self.p) + 1.)) * self.p_val_randomized, i_0))
 
-        u_2 = self.p_val_randomized[i_0 + 1]
+        if i_0>p-2:
+            u_2 = -1
+        else:
+            u_2 = self.p_val_randomized[i_0 + 1]
 
         return simes_p_randomized, i_0, t_0, np.sign(T_stats_active), u_1, u_2
 
@@ -79,29 +67,38 @@ with open(gene_file) as g:
 content = [x.strip() for x in content]
 
 path = '/Users/snigdhapanigrahi/Results_freq_EQTL/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk001_mtx/'
-files = []
 
 if __name__ == "__main__":
 
-    for i in os.listdir(path):
-        if os.path.isfile(os.path.join(path, i)) and content[99] in i:
-            files.append(i)
+    simes_output = np.zeros((200,6))
 
-    for each_file in files:
-        if each_file.startswith('X'):
-            print(each_file)
-            X = np.asarray(np.load(os.path.join(path + str(each_file))))
-            n, p = X.shape
-            X -= X.mean(0)[None, :]
-            X /= (X.std(0)[None, :] * np.sqrt(n))
-        elif each_file.startswith('y'):
-            y = np.asarray(np.load(os.path.join(path + str(each_file))))
-            y = y.reshape((y.shape[0],))
-            print(each_file)
-        elif each_file.startswith('b'):
-            beta = np.load(os.path.join(path + str(each_file)))
-            print(each_file)
+    for j in range(200):
+        files = []
+        for i in os.listdir(path):
+            if os.path.isfile(os.path.join(path, i)) and content[j] in i:
+                files.append(i)
+                print("content", content[j])
 
-    simes = simes_selection_egenes(X, y, randomizer='gaussian')
+        for each_file in files:
+            if each_file.startswith('X'):
+                X = np.load(os.path.join(path + str(each_file)))
+                n, p = X.shape
 
-    print("p-value", simes.simes_p_value())
+                X -= X.mean(0)[None, :]
+                X /= (X.std(0)[None, :] * np.sqrt(n))
+
+            elif each_file.startswith('y'):
+                y = np.load(os.path.join(path + str(each_file)))
+                y = y.reshape((y.shape[0],))
+            elif each_file.startswith('b'):
+                beta = np.load(os.path.join(path + str(each_file)))
+
+                print("parameter", np.sum(beta>0.01))
+
+        simes = simes_selection_egenes(X, y, randomizer='gaussian')
+
+        simes_output[j,:] = simes.simes_p_value()
+
+        print("iteration", j)
+        print("p-value", simes_output[j,:])
+
