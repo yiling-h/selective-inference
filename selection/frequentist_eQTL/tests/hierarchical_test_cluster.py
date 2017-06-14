@@ -550,7 +550,7 @@ if __name__ == "__main__":
 
     ###read an input file to set the correct seeds
 
-    BH_genes = np.loadtxt('/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/tests/BH_output_n350_p7000')
+    BH_genes = np.loadtxt('/home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests/BH_output_n350_p7000')
     E_genes = BH_genes[1:]
     E_genes_1 = E_genes[(E_genes >= 1520) & (E_genes < 1680)]
     simes_level = BH_genes[0]
