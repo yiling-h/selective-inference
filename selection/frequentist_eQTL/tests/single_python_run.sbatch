@@ -13,7 +13,7 @@
 #################
 #time you think you need; default is 2 hours
 #format could be dd-hh:mm:ss, hh:mm:ss, mm:ss, or mm
-#SBATCH --time=20:00:00
+#SBATCH --time=2:00:00
 #################
 #SBATCH --qos=normal
 #SBATCH -p normal 
@@ -37,5 +37,5 @@ cd /home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests
 source /home/snigdha/src/selective-inference/.env/bin/activate
 
 
-python hierarchical_test_cluster.py $SEED $DIR
-
+#python hierarchical_test_cluster.py $SEED $DIR
+python egene_selection_simes.py $SEED $DIR
