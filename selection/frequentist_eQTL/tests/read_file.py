@@ -6,7 +6,7 @@ from scipy.stats import probplot, uniform
 
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_5/dim_1/dim_1'
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/high_dim_test_lowsignal'
-path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/hierarchical_5/hierarchical_5/hierarchical_5'
+path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/n_350_hierarchical_10'
 
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
@@ -67,7 +67,7 @@ def summary_files(list_):
 
     for i in range(length):
         print("iteration", i)
-        results = evaluation_per_file(list_[i], s=3)
+        results = evaluation_per_file(list_[i], s=10)
         coverage_ad += results[0]
         coverage_unad += results[1]
         length_ad += results[2]

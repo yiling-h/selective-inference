@@ -56,7 +56,7 @@ def power_test():
 
 #power_test()
 
-def test_simes_strong_sparse(bh_level=0.10, ngenes =5000, n= 350, p=250, snr =6., randomizer = 'gaussian'):
+def test_simes_strong_sparse(bh_level=0.10, ngenes =5000, n= 350, p=7000, snr =6., randomizer = 'gaussian'):
 
     p_simes = np.zeros(ngenes)
 
@@ -178,7 +178,7 @@ def test_simes_strong_sparse(bh_level=0.10, ngenes =5000, n= 350, p=250, snr =6.
 
 test = test_simes_strong_sparse()
 print("test output", test)
-np.savetxt('/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/tests/BH_output_n350_p250', test)
+np.savetxt('/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/tests/BH_output_n350_p7000', test)
 
 # if __name__ == "__main__":
 #

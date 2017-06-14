@@ -333,7 +333,7 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
     def solve_approx(self):
 
         #defining the grid on which marginal conditional densities will be evaluated
-        grid_length = 241
+        grid_length = 401
 
         #print("observed values", self.target_observed)
         self.ind_obs = np.zeros(self.nactive, int)
@@ -344,7 +344,7 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
         for j in xrange(self.nactive):
             obs = self.target_observed[j]
 
-            self.grid[j,:] = np.linspace(self.target_observed[j]-15., self.target_observed[j]+9.,num=grid_length)
+            self.grid[j,:] = np.linspace(self.target_observed[j]-15., self.target_observed[j]+15.,num=grid_length)
 
             self.norm[j] = self.target_cov[j,j]
             if obs < self.grid[j,0]:
@@ -424,7 +424,7 @@ def hierarchical_lasso_trial(X,
                              data_simes,
                              bh_level,
                              regime='1',
-                             lam_frac=1.,
+                             lam_frac=1.1,
                              loss='gaussian'):
 
     from selection.api import randomization
@@ -511,7 +511,7 @@ def hierarchical_lasso_trial(X,
         sys.stderr.write("Total adjusted covered" + str(sel_covered.sum()) + "\n")
         sys.stderr.write("Total naive covered" + str(naive_covered.sum()) + "\n")
 
-        #sys.stderr.write("Pivots" + str(pivots) + "\n")
+        sys.stderr.write("Pivots" + str(pivots) + "\n")
 
         power = 0.
         false_discoveries = 0.
@@ -550,23 +550,23 @@ if __name__ == "__main__":
 
     ###read an input file to set the correct seeds
 
-    BH_genes = np.loadtxt('/home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests/BH_output_n350_p250')
+    BH_genes = np.loadtxt('/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/tests/BH_output_n350_p7000')
     E_genes = BH_genes[1:]
-    E_genes_1 = E_genes[(E_genes >= 1680) & (E_genes < 1760)]
+    E_genes_1 = E_genes[(E_genes>= 1520) & (E_genes < 1680)]
     simes_level = BH_genes[0]
 
-    seedn = int(sys.argv[1])
-    outdir = sys.argv[2]
+    #seedn = int(sys.argv[1])
+    #outdir = sys.argv[2]
 
-    outfile = os.path.join(outdir, "list_result_" + str(seedn) + ".txt")
+    #outfile = os.path.join(outdir, "list_result_" + str(seedn) + ".txt")
 
     ### set parameters
     n = 350
-    p = 250
-    s = 10
+    p = 7000
+    s = 5
     bh_level = 0.20
 
-    i = int(E_genes_1[seedn])
+    i = int(E_genes_1[6])
 
 
     np.random.seed(i)
@@ -597,13 +597,11 @@ if __name__ == "__main__":
                                            l_threshold,
                                            u_threshold,
                                            data_simes,
-                                           regime='10',
+                                           regime='5',
                                            bh_level=0.20,
                                            lam_frac=1.,
                                            loss='gaussian')
 
+        print(results)
         ###save output results
-        np.savetxt(outfile, results)
-
-
-
+        #np.savetxt(outfile, results)

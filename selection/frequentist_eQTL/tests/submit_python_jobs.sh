@@ -5,7 +5,7 @@
 
 # setup dir if needed
 
-DIR=/scratch/users/snigdha/freq_cis_eqtl/outputs/n_350_hierarchical_10
+DIR=/scratch/users/snigdha/freq_cis_eqtl/outputs/n_350_hierarchical_10_grid
 
 mkdir -p $DIR
 

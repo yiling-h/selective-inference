@@ -37,6 +37,5 @@ cd /home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests
 source /home/snigdha/src/selective-inference/.env/bin/activate
 
 
-
 python hierarchical_test_cluster.py $SEED $DIR
 
