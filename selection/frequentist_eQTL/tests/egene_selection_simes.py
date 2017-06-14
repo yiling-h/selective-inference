@@ -51,7 +51,8 @@ def simes_selection_egene(X,
 
 if __name__ == "__main__":
 
-    gene_file = r'/Users/snigdhapanigrahi/Results_freq_EQTL/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk001_mtx/Genes.txt'
+    #gene_file = r'/Users/snigdhapanigrahi/Results_freq_EQTL/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk001_mtx/Genes.txt'
+    gene_file = r'/scratch/PI/jtaylo/snigdha_data/gtex/simulation_muscle/Muscle_Skeletal_chunk001_mtx/Genes.txt'
 
     with open(gene_file) as g:
         content = g.readlines()
@@ -60,8 +61,9 @@ if __name__ == "__main__":
     ngenes = len(content)
     output = np.zeros((ngenes, 8))
 
-    path = '/Users/snigdhapanigrahi/Results_freq_EQTL/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk001_mtx/'
-    outfile = os.path.join(path, "simes_output_" + str(0) + ".txt")
+    #path = '/Users/snigdhapanigrahi/Results_freq_EQTL/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk001_mtx/'
+    path = '/scratch/PI/jtaylo/snigdha_data/gtex/simulation_muscle/Muscle_Skeletal_chunk001_mtx/'
+    outfile = os.path.join(path, "simes_output_test" + str(0) + ".txt")
 
     for j in range(ngenes):
         X = np.load(os.path.join(path + "X_" + str(content[j]))+".npy")
@@ -85,7 +87,7 @@ if __name__ == "__main__":
 
     np.savetxt(outfile, output)
 
-    print(np.loadtxt(outfile))
+    #print(np.loadtxt(outfile))
 
 
 
