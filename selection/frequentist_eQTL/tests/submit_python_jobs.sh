@@ -5,7 +5,7 @@
 
 # setup dir if needed
 
-DIR=/scratch/users/snigdha/freq_cis_eqtl/outputs/n_350_hierarchical_test_time
+DIR=/scratch/users/snigdha/freq_cis_eqtl/outputs/TEST
 
 mkdir -p $DIR
 
