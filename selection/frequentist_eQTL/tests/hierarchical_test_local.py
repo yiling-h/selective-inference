@@ -390,8 +390,8 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
 
     def approximate_ci(self, j):
 
-        grid_length = 361
-        param_grid = np.linspace(-6,12, num=grid_length)
+        grid_length = 321
+        param_grid = np.linspace(-6,10, num=grid_length)
         area = np.zeros(param_grid.shape[0])
 
         for k in xrange(param_grid.shape[0]):
@@ -562,11 +562,11 @@ if __name__ == "__main__":
 
     ### set parameters
     n = 350
-    p = 7000
+    p = 5000
     s = 5
     bh_level = 0.20
 
-    i = int(E_genes_1[6])
+    i = int(E_genes_1[7])
 
 
     np.random.seed(i)
