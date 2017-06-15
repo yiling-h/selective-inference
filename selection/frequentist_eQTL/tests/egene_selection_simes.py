@@ -2,6 +2,7 @@ from __future__ import print_function
 from scipy.stats import norm as normal
 import numpy as np
 import os
+import sys
 
 def simes_selection_egene(X,
                           y,
@@ -51,6 +52,9 @@ def simes_selection_egene(X,
 
 if __name__ == "__main__":
 
+    geneid = int(sys.argv[1])
+    outdir = sys.argv[2]
+
     #gene_file = r'/Users/snigdhapanigrahi/Results_freq_EQTL/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk001_mtx/Genes.txt'
     gene_file = r'/scratch/PI/jtaylo/snigdha_data/gtex/simulation_muscle/Muscle_Skeletal_chunk001_mtx/Genes.txt'
 
@@ -59,38 +63,37 @@ if __name__ == "__main__":
 
     content = [x.strip() for x in content]
     ngenes = len(content)
-    output = np.zeros((ngenes, 8))
+    output = np.zeros((1, 8))
 
     print("here")
     #path = '/Users/snigdhapanigrahi/Results_freq_EQTL/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk001_mtx/'
     path = '/scratch/PI/jtaylo/snigdha_data/gtex/simulation_muscle/Muscle_Skeletal_chunk001_mtx/'
-    outfile = os.path.join(path, "simes_output_test" + str(0) + ".txt")
+    outfile = os.path.join(outdir, "simes_output_test" + str(0) + ".txt")
 
-    for j in range(ngenes):
-        X = np.load(os.path.join(path + "X_" + str(content[j]))+".npy")
-        print("here")
-        n, p = X.shape
 
-        X -= X.mean(0)[None, :]
-        X /= (X.std(0)[None, :] * np.sqrt(n))
+    X = np.load(os.path.join(path + "X_" + str(content[geneid]))+".npy")
+    print("here")
+    n, p = X.shape
 
-        y = np.load(os.path.join(path + "y_" + str(content[j]))+".npy")
-        print("here")
-        y = y.reshape((y.shape[0],))
+    X -= X.mean(0)[None, :]
+    X /= (X.std(0)[None, :] * np.sqrt(n))
 
-        beta = np.load(os.path.join(path + "b_" + str(content[j]))+".npy")
-        print("here")
-        simes = simes_selection_egene(X, y, randomizer='gaussian')
+    y = np.load(os.path.join(path + "y_" + str(content[geneid]))+".npy")
+    print("here")
+    y = y.reshape((y.shape[0],))
 
-        output[j, 0] = p
+    beta = np.load(os.path.join(path + "b_" + str(content[geneid]))+".npy")
+    print("here")
+    simes = simes_selection_egene(X, y, randomizer='gaussian')
 
-        output[j, 1] = np.sum(beta>0.01)
+    output[:, 0] = p
 
-        output[j, 2:] = simes
+    output[:, 1] = np.sum(beta>0.01)
+
+    output[:, 2:] = simes
 
     np.savetxt(outfile, output)
 
-    #print(np.loadtxt(outfile))
 
 
 
