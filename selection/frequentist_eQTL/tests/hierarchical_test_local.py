@@ -566,7 +566,7 @@ if __name__ == "__main__":
     s = 5
     bh_level = 0.20
 
-    i = int(E_genes_1[7])
+    i = int(E_genes_1[3])
 
 
     np.random.seed(i)

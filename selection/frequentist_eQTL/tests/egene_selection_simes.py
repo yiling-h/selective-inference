@@ -61,22 +61,25 @@ if __name__ == "__main__":
     ngenes = len(content)
     output = np.zeros((ngenes, 8))
 
+    print("here")
     #path = '/Users/snigdhapanigrahi/Results_freq_EQTL/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk001_mtx/'
     path = '/scratch/PI/jtaylo/snigdha_data/gtex/simulation_muscle/Muscle_Skeletal_chunk001_mtx/'
     outfile = os.path.join(path, "simes_output_test" + str(0) + ".txt")
 
     for j in range(ngenes):
         X = np.load(os.path.join(path + "X_" + str(content[j]))+".npy")
+        print("here")
         n, p = X.shape
 
         X -= X.mean(0)[None, :]
         X /= (X.std(0)[None, :] * np.sqrt(n))
 
         y = np.load(os.path.join(path + "y_" + str(content[j]))+".npy")
+        print("here")
         y = y.reshape((y.shape[0],))
 
         beta = np.load(os.path.join(path + "b_" + str(content[j]))+".npy")
-
+        print("here")
         simes = simes_selection_egene(X, y, randomizer='gaussian')
 
         output[j, 0] = p
