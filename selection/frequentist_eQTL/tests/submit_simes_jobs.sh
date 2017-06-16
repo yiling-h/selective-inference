@@ -13,6 +13,6 @@ do
     mkdir -p ${OUT}
     echo "${IN}"
     echo "${OUT}"
-	bash single_simes_python.sbatch ${IN} ${OUT}
-	#sbatch single_simes_python.sbatch ${IN} ${OUT}
+	# bash single_simes_python.sbatch ${IN} ${OUT}
+	sbatch single_simes_python.sbatch ${IN} ${OUT}
 done

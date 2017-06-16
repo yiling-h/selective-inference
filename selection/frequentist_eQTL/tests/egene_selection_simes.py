@@ -50,65 +50,41 @@ def simes_selection_egene(X,
     return simes_p_randomized, i_0, t_0, np.sign(T_stats_active), u_1, u_2
 
 
-# if __name__ == "__main__":
-#
-#     cluster = True
-#
-#     if cluster is True:
-#         gene_file = r'/scratch/PI/jtaylo/snigdha_data/gtex/simulation_muscle/Muscle_Skeletal_chunk001_mtx/Genes.txt'
-#         path = '/scratch/PI/jtaylo/snigdha_data/gtex/simulation_muscle/Muscle_Skeletal_chunk001_mtx/'
-#         geneid = int(sys.argv[1])
-#         outdir = sys.argv[2]
-#     else:
-#         gene_file = r'/Users/snigdhapanigrahi/Results_freq_EQTL/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk001_mtx/Genes.txt'
-#         path = '/Users/snigdhapanigrahi/Results_freq_EQTL/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk001_mtx/'
-#         outdir = '/Users/snigdhapanigrahi/Results_freq_EQTL/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk001_mtx/'
-#         geneid = 1
-#
-#     with open(gene_file) as g:
-#         content = g.readlines()
-#
-#     content = [x.strip() for x in content]
-#     output = np.zeros((1, 8))
-#
-#     outfile = os.path.join(outdir, "simes_output_test" + str(0) + ".txt")
-#
-#     #load X, y and beta
-#     X = np.load(os.path.join(path + "X_" + str(content[geneid]))+".npy")
-#     n, p = X.shape
-#
-#     X -= X.mean(0)[None, :]
-#     X /= (X.std(0)[None, :] * np.sqrt(n))
-#
-#     y = np.load(os.path.join(path + "y_" + str(content[geneid]))+".npy")
-#     y = y.reshape((y.shape[0],))
-#
-#     beta = np.load(os.path.join(path + "b_" + str(content[geneid]))+".npy")
-#
-#     #run Simes
-#     simes = simes_selection_egene(X, y, randomizer='gaussian')
-#
-#     output[:, 0] = p
-#
-#     output[:, 1] = np.sum(beta>0.01)
-#
-#     output[:, 2:] = simes
-#
-#     np.savetxt(outfile, output)
-
-
 if __name__ == "__main__":
 
     path = sys.argv[1]
     outdir = sys.argv[2]
 
-    print("paths", path, outdir)
+    outfile = os.path.join(outdir, "simes_output_test.txt")
 
     gene_file = path + "Genes.txt"
+
     with open(gene_file) as g:
         content = g.readlines()
 
     content = [x.strip() for x in content]
     print("length", len(content))
 
+    output = np.zeros((len(content), 8))
+
+    for j in range(len(content)):
+
+        X = np.load(os.path.join(path + "X_" + str(content[j])) + ".npy")
+        n, p = X.shape
+        X -= X.mean(0)[None, :]
+        X /= (X.std(0)[None, :] * np.sqrt(n))
+
+        y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
+        y = y.reshape((y.shape[0],))
+
+        beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
+
+        # run Simes
+        simes = simes_selection_egene(X, y, randomizer='gaussian')
+
+        output[:, 0] = p
+        output[:, 1] = np.sum(beta > 0.01)
+        output[:, 2:] = simes
+
+        np.savetxt(outfile, output)
 
