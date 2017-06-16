@@ -83,9 +83,9 @@ if __name__ == "__main__":
         # run Simes
         simes = simes_selection_egene(X, y, randomizer='gaussian')
 
-        output[:, 0] = p
-        output[:, 1] = np.sum(beta > 0.01)
-        output[:, 2:] = simes
+        output[j, 0] = p
+        output[j, 1] = np.sum(beta > 0.01)
+        output[j, 2:] = simes
 
         np.savetxt(outfile, output)
 
