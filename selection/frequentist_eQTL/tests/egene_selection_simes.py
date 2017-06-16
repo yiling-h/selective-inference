@@ -87,5 +87,5 @@ if __name__ == "__main__":
         output[j, 1] = np.sum(beta > 0.01)
         output[j, 2:] = simes
 
-        np.savetxt(outfile, output)
+    np.savetxt(outfile, output)
 
