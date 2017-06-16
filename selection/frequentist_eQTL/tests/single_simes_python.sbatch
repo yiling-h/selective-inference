@@ -30,6 +30,7 @@
 
 IN=$1
 OUT=$2
+i=$3
 
 # cd to program directory
 cd /home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests
@@ -38,4 +39,4 @@ source /home/snigdha/src/selective-inference/.env/bin/activate
 
 
 #python hierarchical_test_cluster.py $SEED $DIR
-python egene_selection_simes.py $IN $OUT
+python egene_selection_simes.py $IN $OUT $i

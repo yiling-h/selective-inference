@@ -54,8 +54,9 @@ if __name__ == "__main__":
 
     path = sys.argv[1]
     outdir = sys.argv[2]
+    result = sys.argv[3]
 
-    outfile = os.path.join(outdir, "simes_output_test.txt")
+    outfile = os.path.join(outdir, "simes_output_test"+ str(result) + ".txt")
 
     gene_file = path + "Genes.txt"
 
