@@ -66,7 +66,8 @@ if __name__ == "__main__":
     content = [x.strip() for x in content]
     print("length", len(content))
 
-    output = np.zeros((len(content), 8))
+    #output = np.zeros((len(content), 8))
+    output = np.zeros((len(content), 7))
 
     for j in range(len(content)):
 
@@ -84,8 +85,8 @@ if __name__ == "__main__":
         simes = simes_selection_egene(X, y, randomizer='gaussian')
 
         output[j, 0] = p
-        output[j, 1] = np.sum(beta > 0.01)
-        output[j, 2:] = simes
+        #output[j, 1] = np.sum(beta > 0.01)
+        output[j, 1:] = simes
 
     np.savetxt(outfile, output)
 
