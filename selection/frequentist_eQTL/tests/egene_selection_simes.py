@@ -78,7 +78,7 @@ if __name__ == "__main__":
         y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
         y = y.reshape((y.shape[0],))
 
-        beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
+        #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
 
         # run Simes
         simes = simes_selection_egene(X, y, randomizer='gaussian')
