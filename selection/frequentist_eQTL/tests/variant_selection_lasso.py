@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     content = [x.strip() for x in content]
 
-    intermediate = '/Users/snigdhapanigrahi/simes_output_Liver/egenes/'
+    intermediate = '/home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests/egenes/'
 
     egenes = np.loadtxt(os.path.join(intermediate, "egene_index_" + str(result)) + ".txt")
 
