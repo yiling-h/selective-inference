@@ -39,4 +39,4 @@ source /home/snigdha/src/selective-inference/.env/bin/activate
 
 
 #python hierarchical_test_cluster.py $SEED $DIR
-python egene_selection_simes.py $IN $OUT $i
+python variant_selection_lasso.py $IN $OUT $i
