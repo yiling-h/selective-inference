@@ -27,6 +27,7 @@ length = len(list_)
 simes_output = np.vstack(list_)
 
 p_simes = simes_output[:,2]
+#p_simes = simes_output[:,1]
 sig = BH_selection_egenes(p_simes, 0.10)
 
 true = (simes_output[:,1]>0.001).sum()
@@ -41,7 +42,7 @@ true_8 = (simes_output[:,1]==8).sum()
 true_9 = (simes_output[:,1]==9).sum()
 true_10 = (simes_output[:,1]==10).sum()
 
-print("egenes", true)
+#print("egenes", true)
 
 K = sig[0]
 E_sel = np.sort(sig[1])
