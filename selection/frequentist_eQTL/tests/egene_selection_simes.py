@@ -84,7 +84,7 @@ if __name__ == "__main__":
         #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
 
         # run Simes
-        simes = simes_selection_egene(X, y, randomizer='gaussian')
+        simes = simes_selection_egene(X, y, randomizer='none')
 
         output[j, 0] = p
         #output[j, 1] = np.sum(beta > 0.01)
