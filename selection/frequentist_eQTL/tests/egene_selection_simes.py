@@ -58,7 +58,7 @@ if __name__ == "__main__":
     outdir = sys.argv[2]
     result = sys.argv[3]
 
-    outfile = os.path.join(outdir, "simes_output_rand_0.10_"+ str(result) + ".txt")
+    outfile = os.path.join(outdir, "simes_output_norand_"+ str(result) + ".txt")
 
     gene_file = path + "Genes.txt"
 
