@@ -8,7 +8,7 @@ def simes_selection_egene(X,
                           y,
                           randomizer= 'gaussian',
                           noise_level = 1.,
-                          randomization_scale=0.5):
+                          randomization_scale=0.31):
 
     n, p = X.shape
     sigma = noise_level
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     outdir = sys.argv[2]
     result = sys.argv[3]
 
-    outfile = os.path.join(outdir, "simes_output_rand_0.25_"+ str(result) + ".txt")
+    outfile = os.path.join(outdir, "simes_output_rand_0.10_"+ str(result) + ".txt")
 
     gene_file = path + "Genes.txt"
 

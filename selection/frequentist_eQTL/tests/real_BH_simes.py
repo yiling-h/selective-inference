@@ -16,7 +16,7 @@ def BH_selection_egenes(p_simes, level):
     return order_sig+1, E_sel
 
 
-path='/Users/snigdhapanigrahi/simes_output_Liver/'
+path='/Users/snigdhapanigrahi/simes_output_Liver/simes_output_0.25/'
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
 shapes = []
@@ -48,37 +48,37 @@ print("SNPs", egene_p)
 #print("average number of SNPs", egene_p)
 
 
-# outdir = '/Users/snigdhapanigrahi/simes_output_Liver/egenes/'
-# for i in range(v.shape[0]):
-#
-#     if i == 0:
-#         outfile = os.path.join(outdir, "egene_index_" + str(format(i+1, '03')) + ".txt")
-#         E = E_sel[(E_sel< v[0])]
-#         if E.size>0:
-#             np.savetxt(outfile, E)
-#         else:
-#             E = (-1* np.ones(1)).reshape((1,))
-#             np.savetxt(outfile, E)
-#     elif i>0 and i<length-1:
-#         outfile = os.path.join(outdir, "egene_index_" + str(format(i+1, '03')) + ".txt")
-#         E = E_sel[(E_sel>= v[i-1]) & (E_sel< v[i])]-v[i-1]
-#         if E.size>0:
-#             np.savetxt(outfile, E)
-#         else:
-#             E = (-1* np.ones(1)).reshape((1,))
-#             np.savetxt(outfile, E)
-#     elif i == length-1:
-#         outfile = os.path.join(outdir, "egene_index_" + str(format(i+1, '03')) + ".txt")
-#         E = E_sel[(E_sel>= v[i-1])]-v[i-1]
-#         if E.size > 0:
-#             np.savetxt(outfile, E)
-#         else:
-#             E = (-1 * np.ones(1)).reshape((1,))
-#             np.savetxt(outfile, E)
+outdir = '/Users/snigdhapanigrahi/simes_output_Liver/simes_output_0.25/egenes/'
+for i in range(v.shape[0]):
 
-outdir = '/Users/snigdhapanigrahi/simes_output_Liver/egenes/egene_index_'
-indices = np.loadtxt(outdir + str(format(2, '03'))+ ".txt")
-print("dims", indices)
+    if i == 0:
+        outfile = os.path.join(outdir, "egene_index_" + str(format(i+1, '03')) + ".txt")
+        E = E_sel[(E_sel< v[0])]
+        if E.size>0:
+            np.savetxt(outfile, E)
+        else:
+            E = (-1* np.ones(1)).reshape((1,))
+            np.savetxt(outfile, E)
+    elif i>0 and i<length-1:
+        outfile = os.path.join(outdir, "egene_index_" + str(format(i+1, '03')) + ".txt")
+        E = E_sel[(E_sel>= v[i-1]) & (E_sel< v[i])]-v[i-1]
+        if E.size>0:
+            np.savetxt(outfile, E)
+        else:
+            E = (-1* np.ones(1)).reshape((1,))
+            np.savetxt(outfile, E)
+    elif i == length-1:
+        outfile = os.path.join(outdir, "egene_index_" + str(format(i+1, '03')) + ".txt")
+        E = E_sel[(E_sel>= v[i-1])]-v[i-1]
+        if E.size > 0:
+            np.savetxt(outfile, E)
+        else:
+            E = (-1 * np.ones(1)).reshape((1,))
+            np.savetxt(outfile, E)
+
+# outdir = '/Users/snigdhapanigrahi/simes_output_Liver/egenes/egene_index_'
+# indices = np.loadtxt(outdir + str(format(2, '03'))+ ".txt")
+# print("dims", indices)
 
 
 
