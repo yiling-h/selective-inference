@@ -26,8 +26,8 @@ def simes_selection_egene(X,
                                                                         np.sqrt(1.+(randomization_scale**2))))))
 
     elif randomizer == 'none':
-        perturb = np.zeros(p)
-        randomized_T_stats = T_stats + randomization_scale * perturb
+
+        randomized_T_stats = T_stats
 
         p_val_randomized = np.sort(2. * (1. - normal.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(1.)))))
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
         X = np.load(os.path.join(path + "X_" + str(content[j])) + ".npy")
         n, p = X.shape
-        X -= X.mean(0)[None, :]
+        #X -= X.mean(0)[None, :]
         X /= (X.std(0)[None, :] * np.sqrt(n))
 
         y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
