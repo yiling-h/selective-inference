@@ -8,7 +8,7 @@ def simes_selection_egene(X,
                           y,
                           randomizer= 'gaussian',
                           noise_level = 1.,
-                          randomization_scale=1.):
+                          randomization_scale=0.5):
 
     n, p = X.shape
     sigma = noise_level
@@ -19,9 +19,11 @@ def simes_selection_egene(X,
         perturb = np.random.standard_normal(p)
         randomized_T_stats = T_stats + randomization_scale * perturb
 
-        p_val_randomized = np.sort(2. * (1. - normal.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(2.)))))
+        p_val_randomized = np.sort(2. * (1. - normal.cdf(np.true_divide(np.abs(randomized_T_stats),
+                                                                        np.sqrt(1.+(randomization_scale**2))))))
 
-        indices_order = np.argsort(2. * (1. - normal.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(2.)))))
+        indices_order = np.argsort(2. * (1. - normal.cdf(np.true_divide(np.abs(randomized_T_stats),
+                                                                        np.sqrt(1.+(randomization_scale**2))))))
 
     elif randomizer == 'none':
         perturb = np.zeros(p)
@@ -56,7 +58,7 @@ if __name__ == "__main__":
     outdir = sys.argv[2]
     result = sys.argv[3]
 
-    outfile = os.path.join(outdir, "simes_output_test"+ str(result) + ".txt")
+    outfile = os.path.join(outdir, "simes_output_rand_0.25_"+ str(result) + ".txt")
 
     gene_file = path + "Genes.txt"
 

@@ -11,7 +11,7 @@ do
     #IN=/scratch/PI/sabatti/controlled_access_data/temp_transfer/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk${i}_mtx/
     #OUT=/scratch/PI/jtaylo/snigdha_data/gtex/simulation_muscle/Muscle_Skeletal_chunk${i}_mtx/
     IN=/scratch/PI/sabatti/controlled_access_data/fastqtl_tmp/Liver/Liver_97_chunk${i}_mtx/
-    OUT=/scratch/PI/jtaylo/snigdha_data/gtex/real_Liver/lasso_results/
+    OUT=/scratch/PI/jtaylo/snigdha_data/gtex/real_Liver/Liver_97_chunk${i}_mtx/
     mkdir -p ${OUT}
     #echo "${IN}"
     #echo "${OUT}"
