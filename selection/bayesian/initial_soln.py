@@ -51,9 +51,6 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
         sigma = 1.
     if method == "theoretical":
         lam = 1. * sigma * lam_frac * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 10000)))).max(0))
-    # elif method == "cross-validation":
-    #     lam = tuning_parameter_glmnet(X, y)[1]
-    #     print(lam)
 
     W = np.ones(p)*lam
     penalty = rr.group_lasso(np.arange(p), weights = dict(zip(np.arange(p), W)), lagrange=1.)
@@ -62,7 +59,6 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
 
     problem = rr.simple_problem(loss, penalty)
     random_term = rr.identity_quadratic(epsilon, 0, -randomization_scale * random_Z, 0)
-    solve_args = {'tol': 1.e-10, 'min_its': 100, 'max_its': 500}
 
 
     solve_args = {'tol': 1.e-10, 'min_its': 100, 'max_its': 500}
