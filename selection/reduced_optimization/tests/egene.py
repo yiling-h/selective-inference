@@ -46,8 +46,8 @@ y /= sigma
 tau = 1.
 
 np.random.seed(4)
-#random_Z = np.random.normal(loc=0.0, scale= 1., size= p)
-random_Z = np.zeros(p)
+random_Z = np.random.normal(loc=0.0, scale= 1., size= p)
+#random_Z = np.zeros(p)
 sel = selection(X, y, random_Z, randomization_scale=tau)
 
 lam, epsilon, active, betaE, cube, initial_soln = sel
@@ -73,6 +73,11 @@ Q = np.linalg.inv(prior_variance* (generative_X.dot(generative_X.T)) + noise_var
 post_mean = prior_variance * ((generative_X.T.dot(Q)).dot(y))
 post_var = prior_variance* np.identity(nactive) - ((prior_variance**2)*(generative_X.T.dot(Q).dot(generative_X)))
 unadjusted_intervals = np.vstack([post_mean - 1.65*np.sqrt(post_var.diagonal()),post_mean + 1.65*np.sqrt(post_var.diagonal())])
+print("unadjusted estimates", (sigma* unadjusted_intervals).T)
+
+cov = np.linalg.inv(X[:,active].T.dot(X[:, active])+ epsilon * np.identity(nactive))
+unadjusted_intervals[0,:] = cov.dot(X[:,active].T.dot(X[:,active])).dot(unadjusted_intervals[0,:])
+unadjusted_intervals[1,:] = cov.dot(X[:,active].T.dot(X[:,active])).dot(unadjusted_intervals[1,:])
 print("unadjusted estimates", (sigma* unadjusted_intervals).T)
 
 grad_map = sel_prob_gradient_map_lasso(X,
