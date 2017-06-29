@@ -9,7 +9,7 @@ from selection.reduced_optimization.lasso_reduced import nonnegative_softmax_sca
 
 def estimate_sigma(X, y, nstep=20, tol=1.e-4):
 
-    old_sigma = 0.445
+    old_sigma = 1.
     for itercount in range(nstep):
 
         random_Z = np.zeros(p)
@@ -46,8 +46,8 @@ y /= sigma
 tau = 1.
 
 np.random.seed(4)
-random_Z = np.random.normal(loc=0.0, scale= 1., size= p)
-#random_Z = np.zeros(p)
+#random_Z = np.random.normal(loc=0.0, scale= 1., size= p)
+random_Z = np.zeros(p)
 sel = selection(X, y, random_Z, randomization_scale=tau)
 
 lam, epsilon, active, betaE, cube, initial_soln = sel
@@ -66,14 +66,14 @@ feasible_point = np.fabs(betaE)
 lagrange = lam * np.ones(p)
 
 generative_X = X[:, active]
-prior_variance = 100.
+prior_variance = 1000.
 randomizer = randomization.isotropic_gaussian((p,), tau)
 
 Q = np.linalg.inv(prior_variance* (generative_X.dot(generative_X.T)) + noise_variance* np.identity(n))
 post_mean = prior_variance * ((generative_X.T.dot(Q)).dot(y))
 post_var = prior_variance* np.identity(nactive) - ((prior_variance**2)*(generative_X.T.dot(Q).dot(generative_X)))
 unadjusted_intervals = np.vstack([post_mean - 1.65*np.sqrt(post_var.diagonal()),post_mean + 1.65*np.sqrt(post_var.diagonal())])
-print("unadjusted estimates", sigma* post_mean, sigma* unadjusted_intervals)
+print("unadjusted estimates", (sigma* unadjusted_intervals).T)
 
 grad_map = sel_prob_gradient_map_lasso(X,
                                        feasible_point,
