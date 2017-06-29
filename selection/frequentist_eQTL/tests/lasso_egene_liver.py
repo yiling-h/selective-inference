@@ -57,6 +57,20 @@ W = np.ones(p) * lam
 penalty = rr.group_lasso(np.arange(p),
                          weights=dict(zip(np.arange(p), W)), lagrange=1.)
 
+# np.random.seed(4)
+# #random_Z = np.random.normal(loc=0.0, scale= 1., size= p)
+# random_Z = np.zeros(p)
+# sel = selection(X, y, random_Z, randomization_scale=1.)
+#
+# lam, epsilon, active, betaE, cube, initial_soln = sel
+#
+# print("value of tuning parameter",lam)
+# print("nactive", active.sum())
+# active_set = [i for i in range(p) if active[i]]
+# print("active variables", active_set)
+# print("initial lasso", betaE)
+# print("covariance inv", np.linalg.inv(X[:,active].T.dot(X[:, active])).diagonal())
+
 np.random.seed(4)
 randomization = randomization.isotropic_gaussian((p,), scale=1.)
 
@@ -70,12 +84,23 @@ sys.stderr.write("number of active selected by lasso" + str(nactive) + "\n")
 sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
 sys.stderr.write("Observed target" + str(M_est.target_observed)+ "\n")
 
+cov = np.linalg.inv(X[:,active].T.dot(X[:, active])+ epsilon * np.identity(nactive))
+target_ridge = cov.dot(X[:, active].T.dot(y))
+target_cov_ridge = cov.dot(X[:,active].T.dot(X[:, active])).dot(cov)
 
-class target_class(object):
-    def __init__(self, target_cov):
-        self.target_cov = target_cov
-        self.shape = target_cov.shape
+ci_naive_ridge = np.zeros((nactive,2))
+ci_naive_ridge[:,0] = target_ridge - 1.65* np.sqrt(target_cov_ridge.diagonal())
+ci_naive_ridge[:,1] = target_ridge + 1.65* np.sqrt(target_cov_ridge.diagonal())
+print("variances", target_cov_ridge.diagonal())
+print("unadjusted confidence intervals", sigma* ci_naive_ridge)
 
-target = target_class(M_est.target_cov)
-ci_naive = naive_confidence_intervals(target, M_est.target_observed)
-print("unadjusted confidence intervals", sigma* ci_naive)
+# sys.stderr.write("covariance inv"+ str(np.linalg.inv(X[:,active].T.dot(X[:, active])+ epsilon * np.identity(nactive)).diagonal())+ "\n")
+#
+# class target_class(object):
+#     def __init__(self, target_cov):
+#         self.target_cov = target_cov
+#         self.shape = target_cov.shape
+#
+# target = target_class(M_est.target_cov)
+# ci_naive = naive_confidence_intervals(target, M_est.target_observed)
+# print("unadjusted confidence intervals", sigma* ci_naive)
