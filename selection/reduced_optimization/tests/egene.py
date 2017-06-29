@@ -9,7 +9,7 @@ from selection.reduced_optimization.lasso_reduced import nonnegative_softmax_sca
 
 def estimate_sigma(X, y, nstep=20, tol=1.e-4):
 
-    old_sigma = 0.8
+    old_sigma = 1.
     for itercount in range(nstep):
 
         random_Z = np.zeros(p)
@@ -40,8 +40,8 @@ X /= (X.std(0)[None, :] * np.sqrt(n))
 y = np.load(os.path.join(path + "y_" + "ENSG00000131697.13") + ".npy")
 y = y.reshape((y.shape[0],))
 
-#sigma = estimate_sigma(X, y, nstep=20, tol=1.e-2)
-sigma = 0.37858429815791306
+sigma = estimate_sigma(X, y, nstep=20, tol=1.e-5)
+#sigma = 0.37858429815791306
 y /= sigma
 tau = 1.
 
@@ -104,5 +104,8 @@ print("unadjusted estimates", sigma* post_mean, sigma* unadjusted_intervals)
 print("\n")
 print("adjusted_intervals", sigma* sel_mean, sigma* adjusted_intervals)
 
+ad_length = sigma*(adjusted_intervals[1, :] - adjusted_intervals[0, :])
+unad_length = sigma*(unadjusted_intervals[1, :] - unadjusted_intervals[0, :])
 
-
+print("\n")
+print("unadjusted and adjusted lengths", unad_length.sum()/nactive, ad_length.sum()/nactive)
