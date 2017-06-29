@@ -7,19 +7,15 @@ import numpy as np, statsmodels.api as sm
 import regreg.api as rr
 from selection.frequentist_eQTL.estimator import M_estimator_exact
 
-from selection.bayesian.selection_probability_rr import nonnegative_softmax_scaled
-from selection.frequentist_eQTL.approx_confidence_intervals import neg_log_cube_probability
-
-from selection.randomized.M_estimator import M_estimator
 from selection.randomized.query import naive_confidence_intervals
 from selection.randomized.query import naive_pvalues
 from selection.tests.instance import gaussian_instance
 from selection.api import randomization
 from selection.bayesian.initial_soln import selection
 
-def estimate_sigma(X, y, nstep=20, tol=1.e-4):
+def estimate_sigma(X, y, nstep=20, tol=1.e-5):
 
-    old_sigma = 0.8
+    old_sigma = 1.
     for itercount in range(nstep):
 
         random_Z = np.zeros(p)
@@ -49,6 +45,7 @@ y = np.load(os.path.join(path + "y_" + "ENSG00000131697.13") + ".npy")
 y = y.reshape((y.shape[0],))
 
 sigma = estimate_sigma(X, y, nstep=20, tol=1.e-5)
+print("estimated sigma", sigma)
 y /= sigma
 
 lam = 1. * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * 1.
@@ -60,6 +57,7 @@ W = np.ones(p) * lam
 penalty = rr.group_lasso(np.arange(p),
                          weights=dict(zip(np.arange(p), W)), lagrange=1.)
 
+np.random.seed(4)
 randomization = randomization.isotropic_gaussian((p,), scale=1.)
 
 M_est = M_estimator_exact(loss, epsilon, penalty, randomization, randomizer='gaussian')
@@ -71,3 +69,13 @@ nactive = np.sum(active)
 sys.stderr.write("number of active selected by lasso" + str(nactive) + "\n")
 sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
 sys.stderr.write("Observed target" + str(M_est.target_observed)+ "\n")
+
+
+class target_class(object):
+    def __init__(self, target_cov):
+        self.target_cov = target_cov
+        self.shape = target_cov.shape
+
+target = target_class(M_est.target_cov)
+ci_naive = naive_confidence_intervals(target, M_est.target_observed)
+print("unadjusted confidence intervals", sigma* ci_naive)
