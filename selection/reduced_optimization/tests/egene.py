@@ -9,7 +9,7 @@ from selection.reduced_optimization.lasso_reduced import nonnegative_softmax_sca
 
 def estimate_sigma(X, y, nstep=20, tol=1.e-4):
 
-    old_sigma = 1.
+    old_sigma = 0.445
     for itercount in range(nstep):
 
         random_Z = np.zeros(p)
