@@ -144,14 +144,15 @@ class selection_probability_lasso(rr.smooth_atom):
                  mean_parameter,  # in R^n
                  noise_variance, #noise_level in data
                  randomizer, #specified randomization
-                 epsilon,  # ridge penalty for randomized lasso
+                 epsilon,# ridge penalty for randomized lasso
+                 step_size = 1.,
                  coef=1.,
                  offset=None,
                  quadratic=None,
                  nstep=10):
 
         n, p = X.shape
-
+        self.step_size = step_size
         self._X = X
 
         E = active.sum()
@@ -273,7 +274,7 @@ class selection_probability_lasso(rr.smooth_atom):
         grad = lambda u: self.smooth_objective(u, 'grad')
 
         for itercount in range(nstep):
-            newton_step = grad(current) * self.noise_variance
+            newton_step = grad(current) * self.noise_variance * self.step_size
 
             # make sure proposal is feasible
 
@@ -334,6 +335,7 @@ class sel_prob_gradient_map_lasso(rr.smooth_atom):
         self.E = active.sum()
         self.n, self.p = X.shape
         self.dim = generative_X.shape[1]
+        #self.step_size = 1./np.linalg.svd(np.linalg.inv(generative_X.T.dot(generative_X)))[1].max()
 
         self.noise_variance = noise_variance
 
@@ -383,6 +385,7 @@ class selective_inf_lasso(rr.smooth_atom):
                  grad_map,
                  prior_variance,
                  initial_soln,
+                 step_size,
                  coef=1.,
                  offset=None,
                  quadratic=None,
@@ -421,6 +424,7 @@ class selective_inf_lasso(rr.smooth_atom):
         #self.initial_state = initial
         #self.initial_state = initial_sampler
         self.initial_state = initial_soln
+        self.step_size = step_size
 
         self.total_loss_0 = rr.smooth_sum([self.likelihood_loss,
                                            self.log_prior_loss,
@@ -453,7 +457,7 @@ class selective_inf_lasso(rr.smooth_atom):
 
         current = self.initial_state
         current_value = np.inf
-        step = 1/10. * step
+        step = 1/12. * step
         objective = lambda u: self.smooth_objective(u, 'func')
         grad = lambda u: self.smooth_objective(u, 'grad')
 
@@ -496,7 +500,8 @@ class selective_inf_lasso(rr.smooth_atom):
         projection_map = lambda x: x
         #print("lipschitz", self.lipschitz)
         #stepsize = 1./self.lipschitz
-        stepsize = 1. / (self.E)
+        stepsize = 1. / (9.5* self.E)
+        #stepsize = self.step_size
         sampler = projected_langevin(state, gradient_map, projection_map, stepsize)
 
         samples = []
