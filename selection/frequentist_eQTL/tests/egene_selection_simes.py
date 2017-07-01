@@ -39,7 +39,7 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
 
 def estimate_sigma(X, y, nstep=20, tol=1.e-4):
 
-    old_sigma = 0.7
+    old_sigma = 0.1
     for itercount in range(nstep):
 
         random_Z = np.zeros(p)

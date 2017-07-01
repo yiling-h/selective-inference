@@ -16,7 +16,7 @@ def BH_selection_egenes(p_simes, level):
     return order_sig+1, E_sel
 
 
-path='/Users/snigdhapanigrahi/simes_output_Liver/simes_output_norand/'
+path='/Users/snigdhapanigrahi/simes_output_Liver/simes_output_sigma_est/'
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
 shapes = []
