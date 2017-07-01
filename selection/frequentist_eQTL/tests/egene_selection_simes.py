@@ -135,7 +135,7 @@ if __name__ == "__main__":
         y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
         y = y.reshape((y.shape[0],))
 
-        sigma = estimate_sigma(X, y, nstep=20, tol=1.e-5)
+        sigma = estimate_sigma(X, y, nstep=20, tol=1.e-2)
         y /= sigma
         #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
 
