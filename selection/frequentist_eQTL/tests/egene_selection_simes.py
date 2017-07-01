@@ -3,7 +3,7 @@ from scipy.stats import norm as normal
 import numpy as np
 import os
 import sys
-import regreg as rr
+import regreg.api as rr
 import statsmodels.api as sm
 
 def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoretical"):
