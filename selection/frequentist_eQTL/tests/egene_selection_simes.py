@@ -144,7 +144,8 @@ if __name__ == "__main__":
 
         sigma = estimate_sigma(X, y, nstep=30, tol=1.e-3)
         y /= sigma
-        sys.stderr.write("value error in interation" + str(j) + "\n")
+        sys.stderr.write("interation completed" + str(j) + "\n")
+        sys.stderr.write("est sigma" + str(sigma) + "\n")
         # run Simes
         simes = simes_selection_egene(X, y, randomizer='gaussian')
 
