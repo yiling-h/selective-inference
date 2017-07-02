@@ -50,7 +50,7 @@ def estimate_sigma(X, y, nstep=30, tol=1.e-4):
             lam, epsilon, active, betaE, cube, initial_soln = sel
             sys.stderr.write("active" + str(active.sum()) + "\n")
             ols_fit = sm.OLS(y, X[:, active]).fit()
-            sys.stderr.write("est_sigma" + str(n - active.sum() - 1) + "\n")
+            #sys.stderr.write("est_sigma" + str(n - active.sum() - 1) + "\n")
             new_sigma = np.linalg.norm(ols_fit.resid) / np.sqrt(n - active.sum() - 1)
 
         else:
@@ -69,7 +69,7 @@ def simes_selection_egene(X,
                           y,
                           randomizer= 'gaussian',
                           noise_level = 1.,
-                          randomization_scale=0.31):
+                          randomization_scale=1.):
 
     n, p = X.shape
     sigma = noise_level
