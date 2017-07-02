@@ -49,10 +49,11 @@ def estimate_sigma(X, y, nstep=30, tol=1.e-4):
         if sel is not None:
             lam, epsilon, active, betaE, cube, initial_soln = sel
             sys.stderr.write("active" + str(active.sum()) + "\n")
-            ols_fit = sm.OLS(y, X[:, active]).fit()
-            #sys.stderr.write("est_sigma" + str(n - active.sum() - 1) + "\n")
-            new_sigma = np.linalg.norm(ols_fit.resid) / np.sqrt(n - active.sum() - 1)
-
+            if active.sum()<n-1:
+                ols_fit = sm.OLS(y, X[:, active]).fit()
+                new_sigma = np.linalg.norm(ols_fit.resid) / np.sqrt(n - active.sum() - 1)
+            else:
+                new_sigma = np.linalg.norm(y)
         else:
             new_sigma = old_sigma/2.
 
