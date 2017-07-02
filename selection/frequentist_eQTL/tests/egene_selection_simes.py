@@ -141,19 +141,16 @@ if __name__ == "__main__":
 
         y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
         y = y.reshape((y.shape[0],))
-        try:
-            sigma = estimate_sigma(X, y, nstep=30, tol=1.e-3)
-            y /= sigma
-            sys.stderr.write("value error in interation" + str(j) + "\n")
-            # run Simes
-            simes = simes_selection_egene(X, y, randomizer='gaussian')
 
-            output[j, 0] = p
-            # output[j, 1] = np.sum(beta > 0.01)
-            output[j, 1:] = simes
+        sigma = estimate_sigma(X, y, nstep=30, tol=1.e-3)
+        y /= sigma
+        sys.stderr.write("value error in interation" + str(j) + "\n")
+        # run Simes
+        simes = simes_selection_egene(X, y, randomizer='gaussian')
 
-        except ValueError:
-            sys.stderr.write("value error in interation" + str(j) + "\n")
+        output[j, 0] = p
+        # output[j, 1] = np.sum(beta > 0.01)
+        output[j, 1:] = simes
 
         #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
 
