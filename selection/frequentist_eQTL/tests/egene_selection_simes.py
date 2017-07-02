@@ -39,21 +39,24 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
 
 def estimate_sigma(X, y, nstep=20, tol=1.e-4):
 
-    old_sigma = 0.1
+    old_sigma = 0.2
+    n, p = X.shape
+
     for itercount in range(nstep):
 
         random_Z = np.zeros(p)
         sel = selection(X, y, random_Z, sigma=old_sigma)
         if sel is not None:
             lam, epsilon, active, betaE, cube, initial_soln = sel
-            print("active", active.sum())
+            sys.stderr.write("active" + str(active.sum()) + "\n")
             ols_fit = sm.OLS(y, X[:, active]).fit()
+            sys.stderr.write("est_sigma" + str(n - active.sum() - 1) + "\n")
             new_sigma = np.linalg.norm(ols_fit.resid) / np.sqrt(n - active.sum() - 1)
 
         else:
-            raise ValueError("Selection is None")
+            new_sigma = old_sigma/2.
 
-        print("estimated sigma", new_sigma, old_sigma)
+        sys.stderr.write("est_sigma" + str(new_sigma) + str(old_sigma)+ "\n")
         if np.fabs(new_sigma - old_sigma) < tol :
             sigma = new_sigma
             break
