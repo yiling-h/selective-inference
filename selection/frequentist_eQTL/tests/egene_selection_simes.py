@@ -44,11 +44,14 @@ def estimate_sigma(X, y, nstep=20, tol=1.e-4):
 
         random_Z = np.zeros(p)
         sel = selection(X, y, random_Z, sigma=old_sigma)
-        lam, epsilon, active, betaE, cube, initial_soln = sel
-        print("active", active.sum())
-        ols_fit = sm.OLS(y, X[:, active]).fit()
-        new_sigma = np.linalg.norm(ols_fit.resid) / np.sqrt(n - active.sum() - 1)
+        if sel is not None:
+            lam, epsilon, active, betaE, cube, initial_soln = sel
+            print("active", active.sum())
+            ols_fit = sm.OLS(y, X[:, active]).fit()
+            new_sigma = np.linalg.norm(ols_fit.resid) / np.sqrt(n - active.sum() - 1)
 
+        else:
+            raise ValueError("Selection is None")
 
         print("estimated sigma", new_sigma, old_sigma)
         if np.fabs(new_sigma - old_sigma) < tol :
@@ -134,17 +137,22 @@ if __name__ == "__main__":
 
         y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
         y = y.reshape((y.shape[0],))
+        try:
+            sigma = estimate_sigma(X, y, nstep=20, tol=1.e-3)
+            y /= sigma
+            # run Simes
+            simes = simes_selection_egene(X, y, randomizer='gaussian')
 
-        sigma = estimate_sigma(X, y, nstep=20, tol=1.e-2)
-        y /= sigma
+            output[j, 0] = p
+            # output[j, 1] = np.sum(beta > 0.01)
+            output[j, 1:] = simes
+
+        except ValueError:
+            pass
+
         #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
 
-        # run Simes
-        simes = simes_selection_egene(X, y, randomizer='gaussian')
 
-        output[j, 0] = p
-        #output[j, 1] = np.sum(beta > 0.01)
-        output[j, 1:] = simes
 
     np.savetxt(outfile, output)
 

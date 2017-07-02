@@ -15,7 +15,7 @@ from selection.bayesian.initial_soln import selection
 
 def estimate_sigma(X, y, nstep=20, tol=1.e-5):
 
-    old_sigma = 1.
+    old_sigma = 0.2
     for itercount in range(nstep):
 
         random_Z = np.zeros(p)
@@ -44,7 +44,7 @@ X /= (X.std(0)[None, :] * np.sqrt(n))
 y = np.load(os.path.join(path + "y_" + "ENSG00000131697.13") + ".npy")
 y = y.reshape((y.shape[0],))
 
-sigma = estimate_sigma(X, y, nstep=20, tol=1.e-5)
+sigma = estimate_sigma(X, y, nstep=20, tol=1.e-3)
 print("estimated sigma", sigma)
 y /= sigma
 
