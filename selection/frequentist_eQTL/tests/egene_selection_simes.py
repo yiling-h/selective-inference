@@ -123,7 +123,7 @@ if __name__ == "__main__":
         content = g.readlines()
 
     content = [x.strip() for x in content]
-    print("length", len(content))
+    sys.stderr.write("length" + str(len(content)) + "\n")
 
     #output = np.zeros((len(content), 8))
     output = np.zeros((len(content), 7))
@@ -148,11 +148,9 @@ if __name__ == "__main__":
             output[j, 1:] = simes
 
         except ValueError:
-            pass
+            sys.stderr.write("value error in interation" + str(j) + "\n")
 
         #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
-
-
 
     np.savetxt(outfile, output)
 

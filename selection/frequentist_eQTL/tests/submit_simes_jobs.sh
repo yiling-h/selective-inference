@@ -6,7 +6,7 @@
 # setup dir if needed
 
 
-for i in $(seq -f %03g 1 100)
+for i in $(seq -f %03g 1 1)
 do
     #IN=/scratch/PI/sabatti/controlled_access_data/temp_transfer/Muscle_Skeletal_mixture4amp0.30/Muscle_Skeletal_chunk${i}_mtx/
     #OUT=/scratch/PI/jtaylo/snigdha_data/gtex/simulation_muscle/Muscle_Skeletal_chunk${i}_mtx/
