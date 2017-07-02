@@ -37,7 +37,7 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
     cube = subgradient[~active]/lam
     return lam, epsilon, active, betaE, cube, initial_soln
 
-def estimate_sigma(X, y, nstep=20, tol=1.e-4):
+def estimate_sigma(X, y, nstep=30, tol=1.e-4):
 
     old_sigma = 0.2
     n, p = X.shape
@@ -61,6 +61,7 @@ def estimate_sigma(X, y, nstep=20, tol=1.e-4):
             sigma = new_sigma
             break
         old_sigma = new_sigma
+        sigma = new_sigma
 
     return sigma
 
@@ -141,8 +142,9 @@ if __name__ == "__main__":
         y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
         y = y.reshape((y.shape[0],))
         try:
-            sigma = estimate_sigma(X, y, nstep=20, tol=1.e-3)
+            sigma = estimate_sigma(X, y, nstep=30, tol=1.e-3)
             y /= sigma
+            sys.stderr.write("value error in interation" + str(j) + "\n")
             # run Simes
             simes = simes_selection_egene(X, y, randomizer='gaussian')
 
