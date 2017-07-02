@@ -130,14 +130,13 @@ if __name__ == "__main__":
     content = [x.strip() for x in content]
     sys.stderr.write("length" + str(len(content)) + "\n")
 
-    #output = np.zeros((len(content), 8))
-    output = np.zeros((len(content), 7))
+    output = np.zeros((len(content), 8))
 
     for j in range(len(content)):
 
         X = np.load(os.path.join(path + "X_" + str(content[j])) + ".npy")
         n, p = X.shape
-        #X -= X.mean(0)[None, :]
+        X -= X.mean(0)[None, :]
         X /= (X.std(0)[None, :] * np.sqrt(n))
 
         y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
@@ -151,8 +150,8 @@ if __name__ == "__main__":
         simes = simes_selection_egene(X, y, randomizer='gaussian')
 
         output[j, 0] = p
-        # output[j, 1] = np.sum(beta > 0.01)
-        output[j, 1:] = simes
+        output[j, 1] = sigma
+        output[j, 2:] = simes
 
         #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
 
