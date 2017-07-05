@@ -384,8 +384,7 @@ class selective_inf_lasso(rr.smooth_atom):
                  y,
                  grad_map,
                  prior_variance,
-                 initial_soln,
-                 step_size,
+                 step_size =1.,
                  coef=1.,
                  offset=None,
                  quadratic=None,
@@ -400,8 +399,9 @@ class selective_inf_lasso(rr.smooth_atom):
 
         self.generative_X = grad_map.generative_X
 
-        #initial = np.zeros(grad_map.generative_X.shape[1])
-        initial = initial_soln
+        initial = np.zeros(grad_map.generative_X.shape[1])
+        #initial = initial_soln
+        #initial = np.multiply(grad_map.feasible_point, grad_map.active_sign)
 
         rr.smooth_atom.__init__(self,
                                 (self.param_shape,),
@@ -420,10 +420,10 @@ class selective_inf_lasso(rr.smooth_atom):
 
         self.set_prior(prior_variance)
 
-        #self.initial_state = np.multiply(grad_map.feasible_point, grad_map.active_sign)
+        self.initial_state = np.multiply(grad_map.feasible_point, grad_map.active_sign)
         #self.initial_state = initial
         #self.initial_state = initial_sampler
-        self.initial_state = initial_soln
+        #self.initial_state = initial
         self.step_size = step_size
 
         self.total_loss_0 = rr.smooth_sum([self.likelihood_loss,
@@ -492,7 +492,7 @@ class selective_inf_lasso(rr.smooth_atom):
         value = objective(current)
         return current, value
 
-    def posterior_samples(self, Langevin_steps=2000, burnin=50):
+    def posterior_samples(self, Langevin_steps=1000, burnin=50):
         state = self.initial_state
         #state = (self.map_solve(nstep = 100)[::-1])[1]
         sys.stderr.write("Number of selected variables by randomized lasso: "+str(state.shape)+"\n")
@@ -500,7 +500,7 @@ class selective_inf_lasso(rr.smooth_atom):
         projection_map = lambda x: x
         #print("lipschitz", self.lipschitz)
         #stepsize = 1./self.lipschitz
-        stepsize = 1. / (9.5* self.E)
+        stepsize = 1. / (.1 * self.E)
         #stepsize = self.step_size
         sampler = projected_langevin(state, gradient_map, projection_map, stepsize)
 
@@ -520,7 +520,7 @@ class selective_inf_lasso(rr.smooth_atom):
         sys.stderr.write("Number of selected variables by randomized lasso: "+str(state.shape)+"\n")
         gradient_map = lambda x: -self.smooth_objective(x, 'grad')
         projection_map = lambda x: x
-        stepsize = 1. / self.E
+        stepsize = 1. / (0.5* self.E)
         sampler = projected_langevin(state, gradient_map, projection_map, stepsize)
 
         post_risk_1 = 0.

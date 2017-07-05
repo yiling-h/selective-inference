@@ -391,7 +391,7 @@ class selective_inf_lasso(rr.smooth_atom):
     def __init__(self,
                  y,
                  grad_map,
-                 prior_coef,
+                 prior_variance,
                  coef=1.,
                  offset=None,
                  quadratic=None,
@@ -421,7 +421,7 @@ class selective_inf_lasso(rr.smooth_atom):
 
         self.set_likelihood(y, noise_variance, generative_X)
 
-        self.set_prior(prior_coef)
+        self.set_prior(prior_variance)
 
         #self.initial_state = np.multiply(grad_map.feasible_point, grad_map.active_sign)
         self.initial_state = initial
@@ -435,9 +435,9 @@ class selective_inf_lasso(rr.smooth_atom):
         likelihood_loss = rr.signal_approximator(y, coef=1. / noise_variance)
         self.likelihood_loss = rr.affine_smooth(likelihood_loss, generative_X)
 
-    def set_prior(self, prior_coef):
-        log_prior_loss = rr.signal_approximator(np.zeros(self.param_shape), coef=1.)
-        self.log_prior_loss = rr.affine_smooth(log_prior_loss, prior_coef)
+    def set_prior(self, prior_variance):
+        self.log_prior_loss = rr.signal_approximator(np.zeros(self.param_shape), coef=1./prior_variance)
+        #self.log_prior_loss = rr.affine_smooth(log_prior_loss, 1.)
 
     def smooth_objective(self, true_param, mode='both', check_feasibility=False):
 
@@ -494,13 +494,13 @@ class selective_inf_lasso(rr.smooth_atom):
         value = objective(current)
         return current, value
 
-    def posterior_samples(self, Langevin_steps=2000, burnin=50):
+    def posterior_samples(self, Langevin_steps=1000, burnin=50):
         state = self.initial_state
         #state = (self.map_solve(nstep = 100)[::-1])[1]
         #sys.stderr.write("Number of selected variables by randomized lasso: "+str(state.shape)+"\n")
         gradient_map = lambda x: -self.smooth_objective(x, 'grad')
         projection_map = lambda x: x
-        stepsize = 1. / self.E
+        stepsize = 1. / (0.05*self.E)
         sampler = projected_langevin(state, gradient_map, projection_map, stepsize)
 
         samples = []
