@@ -13,5 +13,5 @@ IN=/scratch/PI/sabatti/controlled_access_data/fastqtl_tmp/Liver/Liver_97_chunk00
 
 for i in {0..50}
 do
-	sbatch single_egene_python.sbatch $IN $OUT $i
+	sbatch submit_egene_python.sbatch $IN $OUT $i
 done
