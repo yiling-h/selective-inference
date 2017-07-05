@@ -183,7 +183,7 @@ if __name__ == "__main__":
     for i in range(niter):
 
          ### GENERATE Y BASED ON SEED
-         np.random.seed(i+7)  # ensures different y
+         np.random.seed(i+5)  # ensures different y
          X, y, beta, sigma = sample.generate_response()
 
          print("true mean", X.dot(beta))

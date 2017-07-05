@@ -500,7 +500,7 @@ class selective_inf_lasso(rr.smooth_atom):
         #sys.stderr.write("Number of selected variables by randomized lasso: "+str(state.shape)+"\n")
         gradient_map = lambda x: -self.smooth_objective(x, 'grad')
         projection_map = lambda x: x
-        stepsize = 1. / (0.05*self.E)
+        stepsize = 1. / (0.025*self.E)
         sampler = projected_langevin(state, gradient_map, projection_map, stepsize)
 
         samples = []
