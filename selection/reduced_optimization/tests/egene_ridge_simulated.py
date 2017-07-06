@@ -3,13 +3,44 @@ import time
 import sys
 
 import regreg.api as rr
-from selection.bayesian.initial_soln import selection
+#from selection.bayesian.initial_soln import selection
 from selection.randomized.api import randomization
 #from selection.reduced_optimization.lasso_reduced import nonnegative_softmax_scaled, neg_log_cube_probability, selection_probability_lasso, \
 #    sel_prob_gradient_map_lasso, selective_inf_lasso
 from selection.reduced_optimization.ridge_target import nonnegative_softmax_scaled, neg_log_cube_probability, selection_probability_lasso, \
     sel_prob_gradient_map_lasso, selective_inf_lasso
 from selection.reduced_optimization.estimator import M_estimator_exact
+
+def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoretical"):
+    n, p = X.shape
+    loss = rr.glm.gaussian(X,y)
+    epsilon = 1. / np.sqrt(n)
+    lam_frac = 1.2
+    if sigma is None:
+        sigma = 1.
+    if method == "theoretical":
+        lam = 1. * sigma * lam_frac * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 10000)))).max(0))
+
+    W = np.ones(p)*lam
+    penalty = rr.group_lasso(np.arange(p), weights = dict(zip(np.arange(p), W)), lagrange=1.)
+
+    # initial solution
+
+    problem = rr.simple_problem(loss, penalty)
+    random_term = rr.identity_quadratic(epsilon, 0, -randomization_scale * random_Z, 0)
+
+
+    solve_args = {'tol': 1.e-10, 'min_its': 100, 'max_its': 500}
+    initial_soln = problem.solve(random_term, **solve_args)
+    active = (initial_soln != 0)
+    if np.sum(active) == 0:
+        return None
+    initial_grad = loss.smooth_objective(initial_soln, mode='grad')
+    betaE = initial_soln[active]
+    subgradient = -(initial_grad+epsilon*initial_soln-randomization_scale*random_Z)
+    cube = subgradient[~active]/lam
+    return lam, epsilon, active, betaE, cube, initial_soln
+
 
 def randomized_lasso_trial(X,
                            y,
