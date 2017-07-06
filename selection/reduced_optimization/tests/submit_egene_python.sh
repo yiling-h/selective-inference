@@ -5,7 +5,7 @@
 
 # setup dir if needed
 
-OUT=/scratch/users/snigdha/freq_cis_eqtl/egene_3
+OUT=/scratch/users/snigdha/freq_cis_eqtl/egene_0
 
 mkdir -p $OUT
 

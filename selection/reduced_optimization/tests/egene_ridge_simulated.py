@@ -134,13 +134,13 @@ class generate_data():
              #u = np.random.choice(p, s)
              #u = np.linspace(0,p,5,endpoint=False).astype(int)
              u = np.array([0,1153,3283])
-             print("True positions of signals", u)
-             beta_true[0] = 10.
-             beta_true[1153] = -10.
-             beta_true[3283] = 10.
+             #print("True positions of signals", u)
+             #beta_true[0] = 12.
+             #beta_true[1153] = -12.
+             #beta_true[3283] = 12.
 
          self.beta = beta_true
-         print("correlation of positions", np.corrcoef(X[:, u].T))
+         #print("correlation of positions", np.corrcoef(X[:, u].T))
 
     def generate_response(self):
 
@@ -183,7 +183,7 @@ def unique_rows(a):
 #     for i in range(niter):
 #
 #          ### GENERATE Y BASED ON SEED
-#          np.random.seed(i+7)  # ensures different y
+#          np.random.seed(i+6)  # ensures different y
 #          X, y, beta, sigma = sample.generate_response()
 #
 #          print("true mean", X.dot(beta))

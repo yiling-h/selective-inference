@@ -135,8 +135,8 @@ class generate_data():
              #u = np.linspace(0,p,5,endpoint=False).astype(int)
              u = np.array([0,1153])
              print("True positions of signals", u)
-             beta_true[0] = 10.
-             beta_true[1153] = -10.
+             #beta_true[0] = 10.
+             #beta_true[1153] = -10.
              #beta_true[3283] = 10.
 
          self.beta = beta_true
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     for i in range(niter):
 
          ### GENERATE Y BASED ON SEED
-         np.random.seed(i+5)  # ensures different y
+         np.random.seed(i+8)  # ensures different y
          X, y, beta, sigma = sample.generate_response()
 
          print("true mean", X.dot(beta))
