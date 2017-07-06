@@ -118,26 +118,23 @@ class generate_data():
          (self.X, self.sigma) = (X, sigma)
 
          self.n, self.p = self.X.shape
-         beta_true = np.zeros(p)
+         beta_true = np.zeros(self.p)
 
          #print("correlation of positions", (abs(np.corrcoef(X.T))[3283,]))
 
          if model is "Bayesian":
              s = 0
-             u = np.random.uniform(0.,1.,p)
-             for i in range(p):
+             u = np.random.uniform(0.,1.,self.p)
+             for i in range(self.p):
                  if u[i]<= 0.95:
                      beta_true[i] = np.random.laplace(loc=0., scale= 0.1)
                  else:
                      beta_true[i] = np.random.laplace(loc=0., scale= 1.)
          else:
-             #u = np.random.choice(p, s)
-             #u = np.linspace(0,p,5,endpoint=False).astype(int)
              u = np.array([0,1153,3283])
-             #print("True positions of signals", u)
-             #beta_true[0] = 12.
-             #beta_true[1153] = -12.
-             #beta_true[3283] = 12.
+             #beta_true[0] = 10.
+             #beta_true[1153] = -10.
+             #beta_true[3283] = 10.
 
          self.beta = beta_true
          #print("correlation of positions", np.corrcoef(X[:, u].T))
@@ -183,7 +180,7 @@ def unique_rows(a):
 #     for i in range(niter):
 #
 #          ### GENERATE Y BASED ON SEED
-#          np.random.seed(i+6)  # ensures different y
+#          np.random.seed(i+2)  # ensures different y
 #          X, y, beta, sigma = sample.generate_response()
 #
 #          print("true mean", X.dot(beta))
