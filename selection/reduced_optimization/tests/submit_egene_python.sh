@@ -11,7 +11,7 @@ mkdir -p $OUT
 
 IN=/scratch/PI/sabatti/controlled_access_data/fastqtl_tmp/Liver/Liver_97_chunk001_mtx/
 
-for i in {0..100}
+for i in {0..0}
 do
 	sbatch submit_egene_python.sbatch $IN $OUT $i
 done
