@@ -23,7 +23,7 @@ class projected_langevin(object):
                            stepsize)
         self._shape = self.state.shape[0]
         self._sqrt_step = np.sqrt(self.stepsize)
-        self._noise = ndist(loc=0,scale=1)
+        self._noise = norm(loc=0,scale=1)
 
     def __iter__(self):
         return self
@@ -39,7 +39,7 @@ class projected_langevin(object):
             else:
                 self.state[:] = candidate
                 break
-                
+
 class nonnegative_softmax_scaled(rr.smooth_atom):
     """
     The nonnegative softmax objective
@@ -552,10 +552,11 @@ class selective_inf_lasso(rr.smooth_atom):
         for i in xrange(Langevin_steps):
             sampler.next()
             samples.append(sampler.state.copy())
-            print i, sampler.state.copy()
+            #print i, sampler.state.copy()
             #print("gradient at point",sampler.gradient_map(sampler.state.copy()))
             #print("check", self.generative_X.dot(sampler.state.copy()))
             sys.stderr.write("sample number: " + str(i)+"\n")
+            sys.stderr.write("sample: " + str(sampler.state.copy()) + "\n")
 
         samples = np.array(samples)
         return samples[burnin:, :]

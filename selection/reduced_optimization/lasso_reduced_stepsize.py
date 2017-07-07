@@ -499,8 +499,12 @@ class selective_inf_lasso(rr.smooth_atom):
         gradient_map = lambda x: -self.smooth_objective(x, 'grad')
         projection_map = lambda x: x
         #print("lipschitz", self.lipschitz)
-        #stepsize = 1./self.lipschitz
-        stepsize = 1. / (.1 * self.E)
+
+        gradient_initial = self.smooth_objective(self.initial_state, 'grad')
+        lipschitz = self.E * np.linalg.svd(np.linalg.inv(gradient_initial.T.dot(gradient_initial)))[1].max()
+        stepsize = 1. / lipschitz
+
+        #stepsize = 1. / (.1 * self.E)
         #stepsize = self.step_size
         sampler = projected_langevin(state, gradient_map, projection_map, stepsize)
 

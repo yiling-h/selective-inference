@@ -15,7 +15,7 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
     n, p = X.shape
     loss = rr.glm.gaussian(X,y)
     epsilon = 1. / np.sqrt(n)
-    lam_frac = 1.2
+    lam_frac = 1.8
     if sigma is None:
         sigma = 1.
     if method == "theoretical":
@@ -40,7 +40,6 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
     subgradient = -(initial_grad+epsilon*initial_soln-randomization_scale*random_Z)
     cube = subgradient[~active]/lam
     return lam, epsilon, active, betaE, cube, initial_soln
-
 
 def randomized_lasso_trial(X,
                            y,
@@ -93,9 +92,7 @@ def randomized_lasso_trial(X,
 
         print("unadjusted intervals", unadjusted_intervals)
 
-        coverage_ad = np.zeros(nactive)
         coverage_unad = np.zeros(nactive)
-        ad_length = np.zeros(nactive)
         unad_length = np.zeros(nactive)
 
         for l in range(nactive):
@@ -105,43 +102,14 @@ def randomized_lasso_trial(X,
 
         print("coverage unad", coverage_unad)
 
-        grad_map = sel_prob_gradient_map_lasso(X,
-                                               feasible_point,
-                                               active,
-                                               active_sign,
-                                               lagrange,
-                                               generative_X,
-                                               noise_variance,
-                                               randomizer,
-                                               epsilon)
-
-        inf = selective_inf_lasso(y, grad_map, prior_variance)
-
-        samples = inf.posterior_samples()
-
-        adjusted_intervals = np.vstack([np.percentile(samples, 5, axis=0), np.percentile(samples, 95, axis=0)])
-
-        selective_mean = np.mean(samples, axis=0)
-
-        print("adjusted intervals", adjusted_intervals)
-
-        for l in range(nactive):
-            if (adjusted_intervals[0, l] <= true_val[l]) and (true_val[l] <= adjusted_intervals[1, l]):
-                coverage_ad[l] += 1
-            ad_length[l] = adjusted_intervals[1, l] - adjusted_intervals[0, l]
-
-        sel_cov = coverage_ad.sum() / nactive
-        naive_cov = coverage_unad.sum() / nactive
-        ad_len = ad_length.sum() / nactive
-        unad_len = unad_length.sum() / nactive
-        bayes_risk_ad = np.power(selective_mean - true_val, 2.).sum() / nactive
         bayes_risk_unad = np.power(post_mean - true_val, 2.).sum() / nactive
 
-        print("results", sel_cov, naive_cov, ad_len, unad_len, bayes_risk_ad, bayes_risk_unad)
-        return np.vstack([sel_cov, naive_cov, ad_len, unad_len, bayes_risk_ad, bayes_risk_unad])
+        naive_cov = coverage_unad.sum() / nactive
 
-    else:
-        return None
+        unad_len = unad_length.sum()/nactive
+
+        return np.vstack([naive_cov, unad_len , bayes_risk_unad])
+
 
 class generate_data():
 
@@ -156,19 +124,21 @@ class generate_data():
          if model is "Bayesian":
              s = 0
              u = np.random.uniform(0.,1.,self.p)
-             for i in range(self.p):
+             for i in range(p):
                  if u[i]<= 0.95:
                      beta_true[i] = np.random.laplace(loc=0., scale= 0.1)
                  else:
                      beta_true[i] = np.random.laplace(loc=0., scale= 1.)
          else:
-             u = np.array([0,1153,3283])
-             #beta_true[0] = 10.
-             #beta_true[1153] = -10.
-             #beta_true[3283] = 10.
+             u = np.array([0,3283, 4395])
+             print("True positions of signals", u)
+             beta_true[0] = 10.
+             #beta_true[1463] = 10.
+             beta_true[3283] = 10.
+             beta_true[4395] = 10.
 
          self.beta = beta_true
-         #print("correlation of positions", np.corrcoef(X[:, u].T))
+         print("correlation of positions", np.corrcoef(X[:, u].T))
 
     def generate_response(self):
 
@@ -180,6 +150,7 @@ def unique_rows(a):
     a = np.ascontiguousarray(a)
     unique_a = np.unique(a.view([('', a.dtype)]*a.shape[1]))
     return unique_a.view(a.dtype).reshape((unique_a.shape[0], a.shape[1]))
+
 
 if __name__ == "__main__":
 
@@ -199,13 +170,10 @@ if __name__ == "__main__":
 
     sample = generate_data(X, sigma=1., s=5, model = "Frequentist")
 
-    niter = 1
+    niter = 50
 
-    ad_cov = 0.
     unad_cov = 0.
-    ad_len = 0.
     unad_len = 0.
-    ad_risk = 0.
     unad_risk = 0.
 
     for i in range(niter):
@@ -222,50 +190,16 @@ if __name__ == "__main__":
                                         sigma)
 
          if lasso is not None:
-             ad_cov += lasso[0,0]
-             unad_cov += lasso[1,0]
-             ad_len += lasso[2, 0]
-             unad_len += lasso[3, 0]
-             ad_risk += lasso[4, 0]
-             unad_risk += lasso[5, 0]
+             unad_cov += lasso[0,0]
+             unad_len += lasso[1, 0]
+             unad_risk += lasso[2, 0]
              print("\n")
              print("iteration completed", i)
              print("\n")
-             print("adjusted and unadjusted coverage", ad_cov, unad_cov)
-             print("adjusted and unadjusted lengths", ad_len, unad_len)
-             print("adjusted and unadjusted risks", ad_risk, unad_risk)
+             print("unadjusted coverage", unad_cov)
+             print("unadjusted lengths", unad_len)
+             print("unadjusted risks", unad_risk)
 
-# if __name__ == "__main__":
-# # read from command line
-#
-#     path = sys.argv[1]
-#     outdir = sys.argv[2]
-#     seedn = sys.argv[3]
-#
-#     outfile = os.path.join(outdir, "list_result_" + str(seedn) + ".txt")
-#
-# ### read X
-#
-#     X = np.load(os.path.join(path + "X_" + "ENSG00000131697.13") + ".npy")
-#     n, p = X.shape
-#     X -= X.mean(0)[None, :]
-#     X /= (X.std(0)[None, :] * np.sqrt(n))
-#
-#     X_transposed = unique_rows(X.T)
-#     X = X_transposed.T
-#
-#     n, p = X.shape
-#     print("dims", n, p)
-#
-#     sample = generate_data(X, sigma=1., s=5, model = "Frequentist")
-#
-# ### GENERATE Y BASED ON SEED
-#     np.random.seed(int(seedn)) # ensures different y
-#     X, y, beta, sigma = sample.generate_response()
-#
-#     lasso = randomized_lasso_trial(X,
-#                                    y,
-#                                    beta,
-#                                    sigma)
-#
-#     np.savetxt(outfile, lasso)
+    print("unadjusted coverage", unad_cov/niter)
+    print("unadjusted lengths", unad_len/niter)
+    print("unadjusted risks", unad_risk/niter)
