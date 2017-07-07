@@ -39,7 +39,8 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
 
 def estimate_sigma(X, y, nstep=30, tol=1.e-4):
 
-    old_sigma = 0.2
+    old_sigma = 0.5
+    old_old_sigma = old_sigma
     n, p = X.shape
 
     for itercount in range(nstep):
@@ -53,7 +54,7 @@ def estimate_sigma(X, y, nstep=30, tol=1.e-4):
                 ols_fit = sm.OLS(y, X[:, active]).fit()
                 new_sigma = np.linalg.norm(ols_fit.resid) / np.sqrt(n - active.sum() - 1)
             else:
-                new_sigma = np.linalg.norm(y)
+                new_sigma = 0.75
         else:
             new_sigma = old_sigma/2.
 
@@ -61,6 +62,10 @@ def estimate_sigma(X, y, nstep=30, tol=1.e-4):
         if np.fabs(new_sigma - old_sigma) < tol :
             sigma = new_sigma
             break
+        if np.fabs(new_sigma - old_old_sigma) < 0.001*tol :
+            sigma = new_sigma
+            break
+        old_old_sigma = old_sigma
         old_sigma = new_sigma
         sigma = new_sigma
 
@@ -120,7 +125,7 @@ if __name__ == "__main__":
     outdir = sys.argv[2]
     result = sys.argv[3]
 
-    outfile = os.path.join(outdir, "simes_output_sigma_est_"+ str(result) + ".txt")
+    outfile = os.path.join(outdir, "simes_output_sigma_estimated_"+ str(result) + ".txt")
 
     gene_file = path + "Genes.txt"
 
