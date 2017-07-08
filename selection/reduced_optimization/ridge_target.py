@@ -541,9 +541,11 @@ class selective_inf_lasso(rr.smooth_atom):
         #stepsize = 1. / (0.05 * self.E)
 
         if self.E > 5:
-            stepsize = 1. / (0.05*self.E)
+            stepsize = 1. / (0.1 * self.E)
+        #elif self.E == 5 or self.E == 4:
+        #    stepsize = 1. / (0.5 * self.E)
         else:
-            stepsize = 1./(1.*self.E)
+            stepsize = 1. / (1. * self.E)
 
         sampler = projected_langevin(state, gradient_map, projection_map, stepsize)
 
