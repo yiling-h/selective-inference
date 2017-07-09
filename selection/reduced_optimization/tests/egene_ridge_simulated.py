@@ -15,7 +15,7 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
     n, p = X.shape
     loss = rr.glm.gaussian(X,y)
     epsilon = 1. / np.sqrt(n)
-    lam_frac = 1.6
+    lam_frac = 1.8
     if sigma is None:
         sigma = 1.
     if method == "theoretical":
@@ -162,10 +162,11 @@ class generate_data():
                  else:
                      beta_true[i] = np.random.laplace(loc=0., scale= 1.)
          else:
-             u = np.array([0,1153,3283])
+             u = np.array([0,1153,4395])
              beta_true[0] = 10.
              #beta_true[1153] = -10.
              beta_true[3283] = 10.
+             beta_true[4395] = 10.
 
          self.beta = beta_true
          #print("correlation of positions", np.corrcoef(X[:, u].T))
@@ -211,7 +212,7 @@ if __name__ == "__main__":
     for i in range(niter):
 
          ### GENERATE Y BASED ON SEED
-         np.random.seed(i+1)  # ensures different y
+         np.random.seed(i+2)  # ensures different y
          X, y, beta, sigma = sample.generate_response()
 
          print("true mean", X.dot(beta))
