@@ -12,6 +12,23 @@ from selection.randomized.query import naive_pvalues
 from selection.tests.instance import gaussian_instance
 from selection.api import randomization
 from selection.bayesian.initial_soln import selection
+from selection.frequentist_eQTL.approx_ci_randomized_lasso import approximate_conditional_density
+
+def BH_q(p_value, level):
+
+    m = p_value.shape[0]
+    p_sorted = np.sort(p_value)
+    indices = np.arange(m)
+    indices_order = np.argsort(p_value)
+
+    #print("sorted p values", p_sorted-np.true_divide(level*(np.arange(m)+1.),2.*m))
+    if np.any(p_sorted - np.true_divide(level*(np.arange(m)+1.),m)<=np.zeros(m)):
+        order_sig = np.max(indices[p_sorted- np.true_divide(level*(np.arange(m)+1.),m)<=0])
+        sig_pvalues = indices_order[:(order_sig+1)]
+        return p_sorted[:(order_sig+1)], sig_pvalues
+
+    else:
+        return None
 
 def unique_rows(a):
     a = np.ascontiguousarray(a)
@@ -52,53 +69,120 @@ def estimate_sigma(X, y, nstep=30, tol=1.e-4):
 
     return sigma
 
+def randomized_lasso_egene_trial(X,
+                                 y,
+                                 sigma,
+                                 bh_level,
+                                 seedn,
+                                 lam_frac = 1.4,
+                                 loss='gaussian'):
 
-path = '/Users/snigdhapanigrahi/Results_bayesian/Egene_data/'
-X = np.load(os.path.join(path + "X_" + "ENSG00000131697.13") + ".npy")
-X_transposed = unique_rows(X.T)
-X = X_transposed.T
+    from selection.api import randomization
 
-n, p = X.shape
-X -= X.mean(0)[None, :]
-X /= (X.std(0)[None, :] * np.sqrt(n))
-print("dims", n,p)
+    np.random.seed(seedn)
 
-y = np.load(os.path.join(path + "y_" + "ENSG00000131697.13") + ".npy")
-y = y.reshape((y.shape[0],))
+    n, p = X.shape
+    if loss == "gaussian":
+        lam = lam_frac * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * sigma
+        loss = rr.glm.gaussian(X, y)
 
-sigma = estimate_sigma(X, y, nstep=30, tol=1.e-3)
-print("estimated sigma", sigma)
-y /= sigma
+    epsilon = 1. / np.sqrt(n)
 
-lam = 1. * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * 1.2
-loss = rr.glm.gaussian(X, y)
+    W = np.ones(p) * lam
+    penalty = rr.group_lasso(np.arange(p),
+                             weights=dict(zip(np.arange(p), W)), lagrange=1.)
 
-epsilon = 1. / np.sqrt(n)
 
-W = np.ones(p) * lam
-penalty = rr.group_lasso(np.arange(p),
-                         weights=dict(zip(np.arange(p), W)), lagrange=1.)
+    randomization = randomization.isotropic_gaussian((p,), scale=1.)
 
-np.random.seed(0)
-randomization = randomization.isotropic_gaussian((p,), scale=1.)
+    M_est = M_estimator_exact(loss, epsilon, penalty, randomization)
+    M_est.solve_approx()
+    active = M_est._overall
+    active_set = np.asarray([i for i in range(p) if active[i]])
+    nactive = np.sum(active)
 
-M_est = M_estimator_exact(loss, epsilon, penalty, randomization, randomizer='gaussian')
+    print("lasso selects", nactive)
 
-M_est.solve_approx()
-active = M_est._overall
-active_set = np.asarray([i for i in range(p) if active[i]])
-nactive = np.sum(active)
-sys.stderr.write("number of active selected by lasso" + str(nactive) + "\n")
-sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
-#sys.stderr.write("Observed target" + str(M_est.target_observed)+ "\n")
+    if nactive == 0:
+        return None
+    sys.stderr.write("number of active selected by lasso" + str(nactive) + "\n")
+    sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
 
-cov = np.linalg.inv(X[:,active].T.dot(X[:, active])+ 0.01 * epsilon * np.identity(nactive))
-target_ridge = cov.dot(X[:, active].T.dot(y))
-target_cov_ridge = cov.dot(X[:,active].T.dot(X[:, active])).dot(cov)
+    class target_class(object):
+        def __init__(self, target_cov):
+            self.target_cov = target_cov
+            self.shape = target_cov.shape
 
-ci_naive_ridge = np.zeros((nactive,2))
-ci_naive_ridge[:,0] = target_ridge - 1.65* np.sqrt(target_cov_ridge.diagonal())
-ci_naive_ridge[:,1] = target_ridge + 1.65* np.sqrt(target_cov_ridge.diagonal())
-print("variances", target_cov_ridge.diagonal())
-print("unadjusted confidence intervals", sigma* ci_naive_ridge)
+    target = target_class(M_est.target_cov)
+
+    ci_naive = naive_confidence_intervals(target, M_est.target_observed)
+    naive_length = np.zeros(nactive)
+
+    ci = approximate_conditional_density(M_est)
+    ci.solve_approx()
+
+    ci_sel = np.zeros((nactive, 2))
+    sel_length = np.zeros(nactive)
+    pivots = np.zeros(nactive)
+
+    for j in xrange(nactive):
+        ci_sel[j, :] = np.array(ci.approximate_ci(j))
+        sel_length[j] = ci_sel[j, 1] - ci_sel[j, 0]
+        naive_length[j] = ci_naive[j, 1] - ci_naive[j, 0]
+        pivots[j] = ci.approximate_pvalue(j, 0.)
+
+    p_BH = BH_q(pivots, bh_level)
+    discoveries_active = np.zeros(nactive)
+    if p_BH is not None:
+        for indx in p_BH[1]:
+            discoveries_active[indx] = 1
+
+    list_results = np.transpose(np.vstack((ci_sel[:,0],
+                                           ci_sel[:, 1],
+                                           ci_naive[:,0],
+                                           ci_naive[:,1],
+                                           sel_length,
+                                           naive_length,
+                                           discoveries_active)))
+
+    print("list of results", list_results)
+    return list_results
+
+if __name__ == "__main__":
+
+    path = '/Users/snigdhapanigrahi/Results_bayesian/Egene_data/'
+    X = np.load(os.path.join(path + "X_" + "ENSG00000131697.13") + ".npy")
+    X_transposed = unique_rows(X.T)
+    X = X_transposed.T
+    n, p = X.shape
+    X -= X.mean(0)[None, :]
+    X /= (X.std(0)[None, :] * np.sqrt(n))
+    print("dims", n,p)
+
+    y = np.load(os.path.join(path + "y_" + "ENSG00000131697.13") + ".npy")
+    y = y.reshape((y.shape[0],))
+
+    sigma = estimate_sigma(X, y, nstep=30, tol=1.e-3)
+    print("estimated sigma", sigma)
+    y /= sigma
+
+    seedn = 0
+    bh_level = 0.10
+
+    random_lasso = randomized_lasso_egene_trial(X,
+                                                y,
+                                                1.,
+                                                bh_level,
+                                                seedn)
+
+
+# cov = np.linalg.inv(X[:,active].T.dot(X[:, active])+ 0. * epsilon * np.identity(nactive))
+# target_ridge = cov.dot(X[:, active].T.dot(y))
+# target_cov_ridge = cov.dot(X[:,active].T.dot(X[:, active])).dot(cov)
+#
+# ci_naive_ridge = np.zeros((nactive,2))
+# ci_naive_ridge[:,0] = target_ridge - 1.65* np.sqrt(target_cov_ridge.diagonal())
+# ci_naive_ridge[:,1] = target_ridge + 1.65* np.sqrt(target_cov_ridge.diagonal())
+# print("variances", target_cov_ridge.diagonal())
+# print("unadjusted confidence intervals", sigma* ci_naive_ridge)
 
