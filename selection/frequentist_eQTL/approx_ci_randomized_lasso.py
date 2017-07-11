@@ -35,7 +35,7 @@ class neg_log_cube_probability(rr.smooth_atom):
         prod_arg = np.exp(-(2. * self.lagrange * arg)/(self.randomization_scale**2))
         neg_prod_arg = np.exp((2. * self.lagrange * arg)/(self.randomization_scale**2))
         cube_prob = norm.cdf(arg_u) - norm.cdf(arg_l)
-        log_cube_prob = -np.log(cube_prob).sum()
+
         threshold = 10 ** -10
         indicator = np.zeros(self.q, bool)
         indicator[(cube_prob > threshold)] = 1
@@ -43,6 +43,20 @@ class neg_log_cube_probability(rr.smooth_atom):
         positive_arg[(arg>0)] = 1
         pos_index = np.logical_and(positive_arg, ~indicator)
         neg_index = np.logical_and(~positive_arg, ~indicator)
+
+        log_cube_prob_approx = np.zeros(self.q)
+        log_cube_prob_approx[indicator] = -np.log(cube_prob[indicator])
+
+        log_cube_prob_approx[pos_index] = ((((arg[pos_index]**2.)/2.) + ((self.lagrange[pos_index]**2./2.))
+                                        -(arg[pos_index]*self.lagrange[pos_index]))/(self.randomization_scale**2))-\
+                                      np.log(-prod_arg[pos_index]/np.abs(arg_u[pos_index]) + 1./np.abs(arg_l[pos_index]))
+
+        log_cube_prob_approx[neg_index] = ((((arg[neg_index] ** 2.) / 2.) + ((self.lagrange[neg_index] ** 2. / 2.))
+                                        + (arg[neg_index] * self.lagrange[neg_index])) / (self.randomization_scale ** 2)) - \
+                                          np.log(-1./np.abs(arg_u[neg_index]) + neg_prod_arg[neg_index]/np.abs(arg_l[neg_index]))
+
+        log_cube_prob = log_cube_prob_approx.sum()
+
         log_cube_grad = np.zeros(self.q)
         log_cube_grad[indicator] = (np.true_divide(-norm.pdf(arg_u[indicator]) + norm.pdf(arg_l[indicator]),
                                         cube_prob[indicator]))/self.randomization_scale
@@ -63,6 +77,7 @@ class neg_log_cube_probability(rr.smooth_atom):
             return self.scale(log_cube_prob), self.scale(log_cube_grad)
         else:
             raise ValueError("mode incorrectly specified")
+
 
 class approximate_conditional_prob(rr.smooth_atom):
 

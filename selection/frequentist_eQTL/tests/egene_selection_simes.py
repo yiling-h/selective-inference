@@ -37,7 +37,7 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
     cube = subgradient[~active]/lam
     return lam, epsilon, active, betaE, cube, initial_soln
 
-def estimate_sigma(X, y, nstep=30, tol=1.e-4):
+def estimate_sigma(X, y, nstep=30, tol=1.e-3):
 
     old_sigma = 0.5
     old_old_sigma = old_sigma
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     outdir = sys.argv[2]
     result = sys.argv[3]
 
-    outfile = os.path.join(outdir, "simes_output_sigma_estimated_"+ str(result) + ".txt")
+    outfile = os.path.join(outdir, "part1_simes_output_sigma_estimated_"+ str(result) + ".txt")
 
     gene_file = path + "Genes.txt"
 
@@ -135,9 +135,10 @@ if __name__ == "__main__":
     content = [x.strip() for x in content]
     sys.stderr.write("length" + str(len(content)) + "\n")
 
-    output = np.zeros((len(content), 8))
+    iter = int(len(content)/2.)
+    output = np.zeros((iter, 8))
 
-    for j in range(len(content)):
+    for j in range(iter):
 
         X = np.load(os.path.join(path + "X_" + str(content[j])) + ".npy")
         n, p = X.shape
@@ -162,3 +163,47 @@ if __name__ == "__main__":
 
     np.savetxt(outfile, output)
 
+# if __name__ == "__main__":
+#
+#     path = sys.argv[1]
+#     outdir = sys.argv[2]
+#     result = sys.argv[3]
+#
+#     outfile = os.path.join(outdir, "part2_simes_output_sigma_estimated_"+ str(result) + ".txt")
+#
+#     gene_file = path + "Genes.txt"
+#
+#     with open(gene_file) as g:
+#         content = g.readlines()
+#
+#     content = [x.strip() for x in content]
+#     sys.stderr.write("length" + str(len(content)) + "\n")
+#
+#     iter = int(len(content)/2.)
+#     output = np.zeros((iter, 8))
+#
+#     for j in range(iter):
+#
+#         k = j+ iter
+#         X = np.load(os.path.join(path + "X_" + str(content[k])) + ".npy")
+#         n, p = X.shape
+#         X -= X.mean(0)[None, :]
+#         X /= (X.std(0)[None, :] * np.sqrt(n))
+#
+#         y = np.load(os.path.join(path + "y_" + str(content[k])) + ".npy")
+#         y = y.reshape((y.shape[0],))
+#
+#         sigma = estimate_sigma(X, y, nstep=30, tol=1.e-3)
+#         y /= sigma
+#         sys.stderr.write("interation completed" + str(j) + "\n")
+#         sys.stderr.write("est sigma" + str(sigma) + "\n")
+#         # run Simes
+#         simes = simes_selection_egene(X, y, randomizer='gaussian')
+#
+#         output[j, 0] = p
+#         output[j, 1] = sigma
+#         output[j, 2:] = simes
+#
+#         #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
+#
+#     np.savetxt(outfile, output)
