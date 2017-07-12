@@ -44,18 +44,19 @@ class neg_log_cube_probability(rr.smooth_atom):
         pos_index = np.logical_and(positive_arg, ~indicator)
         neg_index = np.logical_and(~positive_arg, ~indicator)
 
-        log_cube_prob_approx = np.zeros(self.q)
-        log_cube_prob_approx[indicator] = -np.log(cube_prob[indicator])
-
-        log_cube_prob_approx[pos_index] = ((((arg[pos_index]**2.)/2.) + ((self.lagrange[pos_index]**2./2.))
-                                        -(arg[pos_index]*self.lagrange[pos_index]))/(self.randomization_scale**2))-\
-                                      np.log(-prod_arg[pos_index]/np.abs(arg_u[pos_index]) + 1./np.abs(arg_l[pos_index]))
-
-        log_cube_prob_approx[neg_index] = ((((arg[neg_index] ** 2.) / 2.) + ((self.lagrange[neg_index] ** 2. / 2.))
-                                        + (arg[neg_index] * self.lagrange[neg_index])) / (self.randomization_scale ** 2)) - \
-                                          np.log(-1./np.abs(arg_u[neg_index]) + neg_prod_arg[neg_index]/np.abs(arg_l[neg_index]))
-
-        log_cube_prob = log_cube_prob_approx.sum()
+        # log_cube_prob = np.zeros(self.q)
+        # log_cube_prob[indicator] = -np.log(cube_prob[indicator])
+        #
+        # log_cube_prob[pos_index] = ((((arg[pos_index]**2.)/2.) + ((self.lagrange[pos_index]**2./2.))
+        #                                 -(arg[pos_index]*self.lagrange[pos_index]))/(self.randomization_scale**2))-\
+        #                               np.log(-prod_arg[pos_index]/np.abs(arg_u[pos_index]) + 1./np.abs(arg_l[pos_index]))
+        #
+        # log_cube_prob[neg_index] = ((((arg[neg_index] ** 2.) / 2.) + ((self.lagrange[neg_index] ** 2. / 2.))
+        #                                 + (arg[neg_index] * self.lagrange[neg_index])) / (self.randomization_scale ** 2)) - \
+        #                                   np.log(1./np.abs(arg_u[neg_index]) - neg_prod_arg[neg_index]/np.abs(arg_l[neg_index]))
+        #
+        # neg_log_cube_prob = log_cube_prob.sum()
+        neg_log_cube_prob = -np.log(cube_prob).sum()
 
         log_cube_grad = np.zeros(self.q)
         log_cube_grad[indicator] = (np.true_divide(-norm.pdf(arg_u[indicator]) + norm.pdf(arg_l[indicator]),
@@ -70,11 +71,11 @@ class neg_log_cube_probability(rr.smooth_atom):
 
 
         if mode == 'func':
-            return self.scale(log_cube_prob)
+            return self.scale(neg_log_cube_prob)
         elif mode == 'grad':
             return self.scale(log_cube_grad)
         elif mode == 'both':
-            return self.scale(log_cube_prob), self.scale(log_cube_grad)
+            return self.scale(neg_log_cube_prob), self.scale(log_cube_grad)
         else:
             raise ValueError("mode incorrectly specified")
 
@@ -146,16 +147,17 @@ class approximate_conditional_prob(rr.smooth_atom):
         else:
             raise ValueError("mode incorrectly specified")
 
-    def minimize2(self, step=1, nstep=30, tol=1.e-6):
+    def minimize2(self, step=1., nstep=30, tol=1.e-6):
 
         current = self.coefs
         current_value = np.inf
 
         objective = lambda u: self.sel_prob_smooth_objective(u, 'func')
         grad = lambda u: self.sel_prob_smooth_objective(u, 'grad')
+        inv_hessian = np.identity(self.coefs.shape[0])
 
         for itercount in xrange(nstep):
-            newton_step = grad(current)
+            newton_step = inv_hessian.dot(grad(current))
 
             # make sure proposal is feasible
 
@@ -163,6 +165,7 @@ class approximate_conditional_prob(rr.smooth_atom):
             while True:
                 count += 1
                 proposal = current - step * newton_step
+                #print("proposal, current", proposal-current, step * newton_step)
                 #print("current proposal and grad", proposal, newton_step)
                 if np.all(proposal > 0):
                     break
@@ -170,6 +173,7 @@ class approximate_conditional_prob(rr.smooth_atom):
                 if count >= 40:
                     #print(proposal)
                     raise ValueError('not finding a feasible point')
+
 
             # make sure proposal is a descent
 
@@ -182,12 +186,24 @@ class approximate_conditional_prob(rr.smooth_atom):
                     break
                 step *= 0.5
 
+                #print("proposal, current", proposal, current)
             # stop if relative decrease is small
 
             if np.fabs(current_value - proposed_value) < tol * np.fabs(current_value):
                 current = proposal
                 current_value = proposed_value
                 break
+
+            diff_gradient = grad(proposal) - grad(current)
+            diff_step = proposal-current
+            diff_mat_step = diff_step.dot(diff_gradient.T)
+            diff_mat_grad = diff_gradient.dot(diff_step.T)
+            diff_scalar = diff_gradient.T.dot(diff_step)
+            #print("proposal, current", proposal, current)
+            #print("diff_scalar", diff_scalar, diff_gradient, diff_step)
+            inv_hessian = (np.identity(self.coefs.shape[0])- (1./diff_scalar)*diff_mat_step).dot(inv_hessian)\
+                .dot(np.identity(self.coefs.shape[0])- (1./diff_scalar)*diff_mat_grad) \
+                          + (1./diff_scalar)*(diff_step.dot(diff_step.T))
 
             current = proposal
             current_value = proposed_value
@@ -257,8 +273,10 @@ class approximate_conditional_density(rr.smooth_atom):
         for i in xrange(self.grid[j,:].shape[0]):
 
             approx = approximate_conditional_prob((self.grid[j,:])[i], self.sel_alg)
-            h_hat.append(-(approx.minimize2(j, nstep=100)[::-1])[0])
-
+            val = -(approx.minimize2(step=1., nstep=100)[::-1])[0]
+            h_hat.append(val)
+            sys.stderr.write("point on grid: " + str(i) + "\n")
+            sys.stderr.write("value on grid: " + str(val) + "\n")
         return np.array(h_hat)
 
     def area_normalized_density(self, j, mean):
@@ -277,7 +295,7 @@ class approximate_conditional_density(rr.smooth_atom):
     def approximate_ci(self, j):
 
         grid_length = 401
-        param_grid = np.linspace(-8,12, num=grid_length)
+        param_grid = np.linspace(-20,20, num=grid_length)
         area = np.zeros(param_grid.shape[0])
 
         for k in xrange(param_grid.shape[0]):

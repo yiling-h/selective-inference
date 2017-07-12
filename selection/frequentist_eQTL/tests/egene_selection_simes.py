@@ -42,6 +42,8 @@ def estimate_sigma(X, y, nstep=30, tol=1.e-3):
     old_sigma = 0.5
     old_old_sigma = old_sigma
     n, p = X.shape
+    indicator = 1
+    counter = 0
 
     for itercount in range(nstep):
 
@@ -54,22 +56,30 @@ def estimate_sigma(X, y, nstep=30, tol=1.e-3):
                 ols_fit = sm.OLS(y, X[:, active]).fit()
                 new_sigma = np.linalg.norm(ols_fit.resid) / np.sqrt(n - active.sum() - 1)
             else:
-                new_sigma = 0.75
+                counter += 1
+                new_sigma = 0.375
         else:
             new_sigma = old_sigma/2.
 
         sys.stderr.write("est_sigma" + str(new_sigma) + str(old_sigma)+ "\n")
+
+        if counter >=1:
+            tol = 0.19
+            indicator = 0
+
         if np.fabs(new_sigma - old_sigma) < tol :
             sigma = new_sigma
             break
-        if np.fabs(new_sigma - old_old_sigma) < 0.001*tol :
+
+        if np.fabs(new_sigma - old_old_sigma) < 0.01*tol :
             sigma = new_sigma
             break
+
         old_old_sigma = old_sigma
         old_sigma = new_sigma
         sigma = new_sigma
 
-    return sigma
+    return sigma, indicator
 
 def simes_selection_egene(X,
                           y,
@@ -119,57 +129,13 @@ def simes_selection_egene(X,
     return simes_p_randomized, i_0, t_0, np.sign(T_stats_active), u_1, u_2
 
 
-# if __name__ == "__main__":
-#
-#     path = sys.argv[1]
-#     outdir = sys.argv[2]
-#     result = sys.argv[3]
-#
-#     outfile = os.path.join(outdir, "part1_simes_output_sigma_estimated_"+ str(result) + ".txt")
-#
-#     gene_file = path + "Genes.txt"
-#
-#     with open(gene_file) as g:
-#         content = g.readlines()
-#
-#     content = [x.strip() for x in content]
-#     sys.stderr.write("length" + str(len(content)) + "\n")
-#
-#     iter = int(len(content)/2.)
-#     output = np.zeros((iter, 8))
-#
-#     for j in range(iter):
-#
-#         X = np.load(os.path.join(path + "X_" + str(content[j])) + ".npy")
-#         n, p = X.shape
-#         X -= X.mean(0)[None, :]
-#         X /= (X.std(0)[None, :] * np.sqrt(n))
-#
-#         y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
-#         y = y.reshape((y.shape[0],))
-#
-#         sigma = estimate_sigma(X, y, nstep=30, tol=1.e-3)
-#         y /= sigma
-#         sys.stderr.write("iteration completed" + str(j) + "\n")
-#         sys.stderr.write("est sigma" + str(sigma) + "\n")
-#         # run Simes
-#         simes = simes_selection_egene(X, y, randomizer='gaussian')
-#
-#         output[j, 0] = p
-#         output[j, 1] = sigma
-#         output[j, 2:] = simes
-#
-#         #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
-#
-#     np.savetxt(outfile, output)
-
 if __name__ == "__main__":
 
     path = sys.argv[1]
     outdir = sys.argv[2]
     result = sys.argv[3]
 
-    outfile = os.path.join(outdir, "part2_simes_output_sigma_estimated_"+ str(result) + ".txt")
+    outfile = os.path.join(outdir, "part1_simes_output_sigma_estimated_"+ str(result) + ".txt")
 
     gene_file = path + "Genes.txt"
 
@@ -179,26 +145,22 @@ if __name__ == "__main__":
     content = [x.strip() for x in content]
     sys.stderr.write("length" + str(len(content)) + "\n")
 
-    iter_0 = int(len(content)/2.)
+    iter = int(len(content)/2.)
+    output = np.zeros((iter, 9))
 
-    if len(content) % 2 == 0:
-       iter = iter_0
-    else:
-       iter = iter_0 + 1
-
-    output = np.zeros((iter, 8))
     for j in range(iter):
 
-        k = j+ iter_0
-        X = np.load(os.path.join(path + "X_" + str(content[k])) + ".npy")
+        X = np.load(os.path.join(path + "X_" + str(content[j])) + ".npy")
         n, p = X.shape
         X -= X.mean(0)[None, :]
         X /= (X.std(0)[None, :] * np.sqrt(n))
 
-        y = np.load(os.path.join(path + "y_" + str(content[k])) + ".npy")
+        y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
         y = y.reshape((y.shape[0],))
 
-        sigma = estimate_sigma(X, y, nstep=30, tol=1.e-3)
+        est = estimate_sigma(X, y, nstep=20, tol=1.e-3)
+        sigma = est[0]
+        indicator = est[1]
         y /= sigma
         sys.stderr.write("iteration completed" + str(j) + "\n")
         sys.stderr.write("est sigma" + str(sigma) + "\n")
@@ -207,8 +169,62 @@ if __name__ == "__main__":
 
         output[j, 0] = p
         output[j, 1] = sigma
-        output[j, 2:] = simes
+        output[j, 2] = indicator
+        output[j, 3:] = simes
 
         #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
 
     np.savetxt(outfile, output)
+
+# if __name__ == "__main__":
+#
+#     path = sys.argv[1]
+#     outdir = sys.argv[2]
+#     result = sys.argv[3]
+#
+#     outfile = os.path.join(outdir, "part2_simes_output_sigma_estimated_"+ str(result) + ".txt")
+#
+#     gene_file = path + "Genes.txt"
+#
+#     with open(gene_file) as g:
+#         content = g.readlines()
+#
+#     content = [x.strip() for x in content]
+#     sys.stderr.write("length" + str(len(content)) + "\n")
+#
+#     iter_0 = int(len(content)/2.)
+#
+#     if len(content) % 2 == 0:
+#        iter = iter_0
+#     else:
+#        iter = iter_0 + 1
+#
+#     output = np.zeros((iter, 9))
+#     for j in range(iter):
+#
+#         k = j+ iter_0
+#         X = np.load(os.path.join(path + "X_" + str(content[k])) + ".npy")
+#         n, p = X.shape
+#         X -= X.mean(0)[None, :]
+#         X /= (X.std(0)[None, :] * np.sqrt(n))
+#
+#         y = np.load(os.path.join(path + "y_" + str(content[k])) + ".npy")
+#         y = y.reshape((y.shape[0],))
+#
+#         est = estimate_sigma(X, y, nstep=20, tol=1.e-3)
+#         sigma = est[0]
+#         indicator = est[1]
+#         y /= sigma
+#         sys.stderr.write("iteration completed" + str(j) + "\n")
+#         sys.stderr.write("est sigma" + str(sigma) + "\n")
+#         # run Simes
+#         simes = simes_selection_egene(X, y, randomizer='gaussian')
+#
+#         output[j, 0] = p
+#         output[j, 1] = sigma
+#         output[j, 2] = indicator
+#         output[j, 3:] = simes
+#
+#         #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
+#
+#     np.savetxt(outfile, output)

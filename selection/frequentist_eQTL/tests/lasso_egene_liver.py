@@ -12,7 +12,9 @@ from selection.randomized.query import naive_pvalues
 from selection.tests.instance import gaussian_instance
 from selection.api import randomization
 from selection.bayesian.initial_soln import selection
-from selection.frequentist_eQTL.approx_ci_randomized_lasso import approximate_conditional_density
+
+from selection.frequentist_eQTL.approx_confidence_intervals import approximate_conditional_density
+#from selection.frequentist_eQTL.approx_ci_randomized_lasso import approximate_conditional_density
 
 def BH_q(p_value, level):
 

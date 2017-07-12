@@ -197,7 +197,7 @@ class approximate_conditional_prob(rr.smooth_atom):
         else:
             raise ValueError("mode incorrectly specified")
 
-    def minimize2(self, step=1, nstep=30, tol=1.e-6):
+    def minimize2(self, step=1, nstep=30, tol=1.e-4):
 
         current = self.coefs
         current_value = np.inf
@@ -274,7 +274,7 @@ class approximate_conditional_density(rr.smooth_atom):
     def solve_approx(self):
 
         #defining the grid on which marginal conditional densities will be evaluated
-        grid_length = 401
+        grid_length = 301
 
         #print("observed values", self.target_observed)
         self.ind_obs = np.zeros(self.nactive, int)
@@ -285,7 +285,7 @@ class approximate_conditional_density(rr.smooth_atom):
         for j in xrange(self.nactive):
             obs = self.target_observed[j]
 
-            self.grid[j,:] = np.linspace(self.target_observed[j]-20., self.target_observed[j]+20.,num=401)
+            self.grid[j,:] = np.linspace(self.target_observed[j]-15., self.target_observed[j]+15.,num=grid_length)
             grid_j = self.grid[j,:]
 
             self.norm[j] = self.target_cov[j,j]
@@ -307,8 +307,11 @@ class approximate_conditional_density(rr.smooth_atom):
 
         for i in xrange(self.grid[j,:].shape[0]):
 
-            approx = approximate_conditional_prob((self.grid[j,:])[i], self.sel_alg)
-            h_hat.append(-(approx.minimize2(j, nstep=100)[::-1])[0])
+            approx = approximate_conditional_prob((self.grid[j, :])[i], self.sel_alg)
+            val = -(approx.minimize2(step=1, nstep=50)[::-1])[0]
+            h_hat.append(val)
+            sys.stderr.write("point on grid: " + str(i) + "\n")
+            sys.stderr.write("value on grid: " + str(val) + "\n")
 
         return np.array(h_hat)
 
@@ -328,7 +331,7 @@ class approximate_conditional_density(rr.smooth_atom):
     def approximate_ci(self, j):
 
         grid_length = 401
-        param_grid = np.linspace(-8,12, num=grid_length)
+        param_grid = np.linspace(-20,20, num=grid_length)
         area = np.zeros(param_grid.shape[0])
 
         for k in xrange(param_grid.shape[0]):
