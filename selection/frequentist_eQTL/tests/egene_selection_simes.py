@@ -129,60 +129,13 @@ def simes_selection_egene(X,
     return simes_p_randomized, i_0, t_0, np.sign(T_stats_active), u_1, u_2
 
 
-if __name__ == "__main__":
-
-    path = sys.argv[1]
-    outdir = sys.argv[2]
-    result = sys.argv[3]
-
-    outfile = os.path.join(outdir, "part1_simes_output_sigma_estimated_"+ str(result) + ".txt")
-
-    gene_file = path + "Genes.txt"
-
-    with open(gene_file) as g:
-        content = g.readlines()
-
-    content = [x.strip() for x in content]
-    sys.stderr.write("length" + str(len(content)) + "\n")
-
-    iter = int(len(content)/2.)
-    output = np.zeros((iter, 9))
-
-    for j in range(iter):
-
-        X = np.load(os.path.join(path + "X_" + str(content[j])) + ".npy")
-        n, p = X.shape
-        X -= X.mean(0)[None, :]
-        X /= (X.std(0)[None, :] * np.sqrt(n))
-
-        y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
-        y = y.reshape((y.shape[0],))
-
-        est = estimate_sigma(X, y, nstep=20, tol=1.e-3)
-        sigma = est[0]
-        indicator = est[1]
-        y /= sigma
-        sys.stderr.write("iteration completed" + str(j) + "\n")
-        sys.stderr.write("est sigma" + str(sigma) + "\n")
-        # run Simes
-        simes = simes_selection_egene(X, y, randomizer='gaussian')
-
-        output[j, 0] = p
-        output[j, 1] = sigma
-        output[j, 2] = indicator
-        output[j, 3:] = simes
-
-        #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
-
-    np.savetxt(outfile, output)
-
 # if __name__ == "__main__":
 #
 #     path = sys.argv[1]
 #     outdir = sys.argv[2]
 #     result = sys.argv[3]
 #
-#     outfile = os.path.join(outdir, "part2_simes_output_sigma_estimated_"+ str(result) + ".txt")
+#     outfile = os.path.join(outdir, "part1_simes_output_sigma_estimated_"+ str(result) + ".txt")
 #
 #     gene_file = path + "Genes.txt"
 #
@@ -192,23 +145,17 @@ if __name__ == "__main__":
 #     content = [x.strip() for x in content]
 #     sys.stderr.write("length" + str(len(content)) + "\n")
 #
-#     iter_0 = int(len(content)/2.)
-#
-#     if len(content) % 2 == 0:
-#        iter = iter_0
-#     else:
-#        iter = iter_0 + 1
-#
+#     iter = int(len(content)/2.)
 #     output = np.zeros((iter, 9))
+#
 #     for j in range(iter):
 #
-#         k = j+ iter_0
-#         X = np.load(os.path.join(path + "X_" + str(content[k])) + ".npy")
+#         X = np.load(os.path.join(path + "X_" + str(content[j])) + ".npy")
 #         n, p = X.shape
 #         X -= X.mean(0)[None, :]
 #         X /= (X.std(0)[None, :] * np.sqrt(n))
 #
-#         y = np.load(os.path.join(path + "y_" + str(content[k])) + ".npy")
+#         y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
 #         y = y.reshape((y.shape[0],))
 #
 #         est = estimate_sigma(X, y, nstep=20, tol=1.e-3)
@@ -228,3 +175,56 @@ if __name__ == "__main__":
 #         #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
 #
 #     np.savetxt(outfile, output)
+
+if __name__ == "__main__":
+
+    path = sys.argv[1]
+    outdir = sys.argv[2]
+    result = sys.argv[3]
+
+    outfile = os.path.join(outdir, "2_simes_output_sigma_estimated_"+ str(result) + ".txt")
+
+    gene_file = path + "Genes.txt"
+
+    with open(gene_file) as g:
+        content = g.readlines()
+
+    content = [x.strip() for x in content]
+    sys.stderr.write("length" + str(len(content)) + "\n")
+
+    iter_0 = int(len(content)/2.)
+
+    if len(content) % 2 == 0:
+       iter = iter_0
+    else:
+       iter = iter_0 + 1
+
+    output = np.zeros((iter, 9))
+    for j in range(iter):
+
+        k = j+ iter_0
+        X = np.load(os.path.join(path + "X_" + str(content[k])) + ".npy")
+        n, p = X.shape
+        X -= X.mean(0)[None, :]
+        X /= (X.std(0)[None, :] * np.sqrt(n))
+
+        y = np.load(os.path.join(path + "y_" + str(content[k])) + ".npy")
+        y = y.reshape((y.shape[0],))
+
+        est = estimate_sigma(X, y, nstep=20, tol=1.e-3)
+        sigma = est[0]
+        indicator = est[1]
+        y /= sigma
+        sys.stderr.write("iteration completed" + str(j) + "\n")
+        sys.stderr.write("est sigma" + str(sigma) + "\n")
+        # run Simes
+        simes = simes_selection_egene(X, y, randomizer='gaussian')
+
+        output[j, 0] = p
+        output[j, 1] = sigma
+        output[j, 2] = indicator
+        output[j, 3:] = simes
+
+        #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
+
+    np.savetxt(outfile, output)
