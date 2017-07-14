@@ -186,18 +186,85 @@ def unique_rows(a):
     unique_a = np.unique(a.view([('', a.dtype)]*a.shape[1]))
     return unique_a.view(a.dtype).reshape((unique_a.shape[0], a.shape[1]))
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
+#
+#     path = '/Users/snigdhapanigrahi/Results_bayesian/Egene_data/'
+#
+#     X_unpruned = np.load(os.path.join(path + "X_" + "ENSG00000131697.13") + ".npy")
+#     n, p = X_unpruned.shape
+#
+#     prototypes = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/prototypes.txt", delimiter='\t')
+#     prototypes = prototypes.astype(int)
+#     print("prototypes", prototypes.shape[0])
+#
+#     X = X_unpruned[:, prototypes]
+#     X -= X.mean(0)[None, :]
+#     X /= (X.std(0)[None, :] * np.sqrt(n))
+#
+#     X_transposed = unique_rows(X.T)
+#     X = X_transposed.T
+#
+#     n, p = X.shape
+#     print("dims", n, p)
+#
+#     niter = 1
+#
+#     ad_cov = 0.
+#     unad_cov = 0.
+#     ad_len = 0.
+#     unad_len = 0.
+#     ad_risk = 0.
+#     unad_risk = 0.
+#
+#     for i in range(niter):
+#
+#         np.random.seed(i+1)  # ensures different y
+#
+#         sample = generate_data(X_unpruned, sigma=1., signals= None, model="Frequentist")
+#
+#         true_mean, y, beta, sigma = sample.generate_response()
+#
+#         ### RUN LASSO AND TEST
+#
+#         lasso = randomized_lasso_trial(X,
+#                                        y,
+#                                        beta,
+#                                        sigma,
+#                                        true_mean)
+#
+#         if lasso is not None:
+#             ad_cov += lasso[0,0]
+#             unad_cov += lasso[1,0]
+#             ad_len += lasso[2, 0]
+#             unad_len += lasso[3, 0]
+#             ad_risk += lasso[4, 0]
+#             unad_risk += lasso[5, 0]
+#             print("\n")
+#             print("iteration completed", i)
+#             print("\n")
+#             print("adjusted and unadjusted coverage", ad_cov, unad_cov)
+#             print("adjusted and unadjusted lengths", ad_len, unad_len)
+#             print("adjusted and unadjusted risks", ad_risk, unad_risk)
 
-    path = '/Users/snigdhapanigrahi/Results_bayesian/Egene_data/'
+
+if __name__ == "__main__":
+# read from command line
+
+    path = sys.argv[1]
+    outdir = sys.argv[2]
+    seedn = sys.argv[3]
+
+    outfile = os.path.join(outdir, "list_result_" + str(seedn) + ".txt")
+
+### read X
 
     X_unpruned = np.load(os.path.join(path + "X_" + "ENSG00000131697.13") + ".npy")
-    n, p = X_unpruned.shape
 
-    prototypes = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/prototypes.txt", delimiter='\t')
+    prototypes = np.loadtxt("/home/snigdha/src/selective-inference/selection/reduced_optimization/tests/prototypes.txt", delimiter='\t')
     prototypes = prototypes.astype(int)
-    print("prototypes", prototypes.shape[0])
 
     X = X_unpruned[:, prototypes]
+    n, p = X.shape
     X -= X.mean(0)[None, :]
     X /= (X.std(0)[None, :] * np.sqrt(n))
 
@@ -207,41 +274,17 @@ if __name__ == "__main__":
     n, p = X.shape
     print("dims", n, p)
 
-    niter = 1
+### GENERATE Y BASED ON SEED
+    np.random.seed(int(seedn)) # ensures different y
 
-    ad_cov = 0.
-    unad_cov = 0.
-    ad_len = 0.
-    unad_len = 0.
-    ad_risk = 0.
-    unad_risk = 0.
+    sample = generate_data(X_unpruned, sigma=1., signals= None, model="Frequentist")
 
-    for i in range(niter):
+    true_mean, y, beta, sigma = sample.generate_response()
 
-        np.random.seed(i+1)  # ensures different y
+    lasso = randomized_lasso_trial(X,
+                                   y,
+                                   beta,
+                                   sigma,
+                                   true_mean)
 
-        sample = generate_data(X_unpruned, sigma=1., signals= None, model="Frequentist")
-
-        true_mean, y, beta, sigma = sample.generate_response()
-
-        ### RUN LASSO AND TEST
-
-        lasso = randomized_lasso_trial(X,
-                                       y,
-                                       beta,
-                                       sigma,
-                                       true_mean)
-
-        if lasso is not None:
-            ad_cov += lasso[0,0]
-            unad_cov += lasso[1,0]
-            ad_len += lasso[2, 0]
-            unad_len += lasso[3, 0]
-            ad_risk += lasso[4, 0]
-            unad_risk += lasso[5, 0]
-            print("\n")
-            print("iteration completed", i)
-            print("\n")
-            print("adjusted and unadjusted coverage", ad_cov, unad_cov)
-            print("adjusted and unadjusted lengths", ad_len, unad_len)
-            print("adjusted and unadjusted risks", ad_risk, unad_risk)
+    np.savetxt(outfile, lasso)
