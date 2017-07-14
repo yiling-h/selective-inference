@@ -147,6 +147,9 @@ class neg_log_cube_probability(rr.smooth_atom):
         positive_arg[(arg > 0)] = 1
         pos_index = np.logical_and(positive_arg, ~indicator)
         neg_index = np.logical_and(~positive_arg, ~indicator)
+
+        #log_cube_grad = (np.true_divide(-norm.pdf(arg_u) + norm.pdf(arg_l),
+        #                                           cube_prob)) / self.randomization_scale
         log_cube_grad = np.zeros(self.q)
         log_cube_grad[indicator] = (np.true_divide(-norm.pdf(arg_u[indicator]) + norm.pdf(arg_l[indicator]),
                                                    cube_prob[indicator])) / self.randomization_scale
@@ -457,9 +460,10 @@ class selective_inf_lasso(rr.smooth_atom):
 
         self.set_prior(prior_variance)
 
-        #self.initial_state = np.multiply(grad_map.feasible_point, grad_map.active_sign)
-        self.initial_state = initial
+        self.initial_state = np.multiply(grad_map.feasible_point, grad_map.active_sign)
+        #self.initial_state = initial
         #self.initial_state = initial_sampler
+        #self.initial_state = -2 * np.ones(self.E)
 
         self.total_loss_0 = rr.smooth_sum([self.likelihood_loss,
                                            self.log_prior_loss,
@@ -489,7 +493,7 @@ class selective_inf_lasso(rr.smooth_atom):
         else:
             raise ValueError("mode incorrectly specified")
 
-    def map_solve(self, step=1, nstep=100, tol=1.e-8):
+    def map_solve(self, step=0.2, nstep=100, tol=1.e-8):
 
         current = self.initial_state
         current_value = np.inf
@@ -540,13 +544,14 @@ class selective_inf_lasso(rr.smooth_atom):
         #     stepsize = 1./(0.1*self.E)
         #stepsize = 1. / (0.05 * self.E)
 
-        if self.E > 5:
-            stepsize = 1. / (0.1 * self.E)
+        #if self.E > 5:
+        #    stepsize = 1. / (0.1 * self.E)
         #elif self.E == 5 or self.E == 4:
         #    stepsize = 1. / (0.5 * self.E)
-        else:
-            stepsize = 1. / (1. * self.E)
+        #else:
+        #    stepsize = 1. / (1. * self.E)
 
+        stepsize = 1. / (0.1 * self.E)
         sampler = projected_langevin(state, gradient_map, projection_map, stepsize)
 
         samples = []

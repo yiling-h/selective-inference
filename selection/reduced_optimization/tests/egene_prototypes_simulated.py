@@ -14,7 +14,7 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
     n, p = X.shape
     loss = rr.glm.gaussian(X,y)
     epsilon = 1. / np.sqrt(n)
-    lam_frac = 1.8
+    lam_frac = 1.
     if sigma is None:
         sigma = 1.
     if method == "theoretical":
@@ -44,7 +44,8 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
 def randomized_lasso_trial(X,
                            y,
                            beta,
-                           sigma):
+                           sigma,
+                           true_mean):
 
     from selection.api import randomization
 
@@ -64,8 +65,8 @@ def randomized_lasso_trial(X,
         print("active set", active_set)
 
         projection_active = X[:, active].dot(
-            np.linalg.inv(X[:, active].T.dot(X[:, active]) + 0.01*epsilon * np.identity(nactive)))
-        true_val = projection_active.T.dot(X.dot(beta))
+            np.linalg.inv(X[:, active].T.dot(X[:, active]) + 0.*epsilon * np.identity(nactive)))
+        true_val = projection_active.T.dot(true_mean)
         print("true value", true_val)
 
         feasible_point = np.fabs(betaE)
@@ -75,7 +76,7 @@ def randomized_lasso_trial(X,
         randomizer = randomization.isotropic_gaussian((p,), 1.)
 
         generative_X = X[:, active].dot(np.linalg.inv(X[:, active].T.dot(X[:, active]))).dot\
-            (X[:, active].T.dot(X[:, active]) + 0.01*epsilon * np.identity(nactive))
+            (X[:, active].T.dot(X[:, active]) + 0.*epsilon * np.identity(nactive))
         prior_variance = 1000.
 
         M_1 = prior_variance * (X[:, active].dot(X[:, active].T)) + noise_variance * np.identity(n)
@@ -144,10 +145,14 @@ def randomized_lasso_trial(X,
 
 class generate_data():
 
-    def __init__(self, X, sigma=1., s=5, model = "Bayesian"):
-         (self.X, self.sigma) = (X, sigma)
+    def __init__(self, X, sigma=1., signals= "None", model = "Bayesian"):
+         (self.sigma, self.signals) = (sigma, signals)
 
-         self.n, self.p = self.X.shape
+         self.n, self.p = X.shape
+         X -= X.mean(0)[None, :]
+         X /= (X.std(0)[None, :] * np.sqrt(n))
+
+         self.X = X
          beta_true = np.zeros(self.p)
 
          #print("correlation of positions", (abs(np.corrcoef(X.T))[3283,]))
@@ -155,26 +160,26 @@ class generate_data():
          if model is "Bayesian":
              s = 0
              u = np.random.uniform(0.,1.,self.p)
-             for i in range(self.p):
+             for i in range(p):
                  if u[i]<= 0.95:
                      beta_true[i] = np.random.laplace(loc=0., scale= 0.1)
                  else:
                      beta_true[i] = np.random.laplace(loc=0., scale= 1.)
          else:
-             u = np.array([0,1153,4395])
-             beta_true[0] = 10.
-             #beta_true[1153] = -10.
-             beta_true[3283] = 10.
-             beta_true[4395] = 10.
+             if self.signals is None:
+                 beta_true = np.zeros(self.p)
+             else:
+                 beta_true[self.signals] = 10.
 
          self.beta = beta_true
-         #print("correlation of positions", np.corrcoef(X[:, u].T))
+
+         print("true beta",self.beta[self.signals])
 
     def generate_response(self):
 
         Y = (self.X.dot(self.beta) + np.random.standard_normal(self.n)) * self.sigma
 
-        return self.X, Y, self.beta * self.sigma, self.sigma
+        return self.X.dot(self.beta), Y, self.beta * self.sigma, self.sigma
 
 def unique_rows(a):
     a = np.ascontiguousarray(a)
@@ -183,11 +188,16 @@ def unique_rows(a):
 
 if __name__ == "__main__":
 
-    #np.random.seed(2)
     path = '/Users/snigdhapanigrahi/Results_bayesian/Egene_data/'
 
-    X = np.load(os.path.join(path + "X_" + "ENSG00000131697.13") + ".npy")
-    n, p = X.shape
+    X_unpruned = np.load(os.path.join(path + "X_" + "ENSG00000131697.13") + ".npy")
+    n, p = X_unpruned.shape
+
+    prototypes = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/prototypes.txt", delimiter='\t')
+    prototypes = prototypes.astype(int)
+    print("prototypes", prototypes.shape[0])
+
+    X = X_unpruned[:, prototypes]
     X -= X.mean(0)[None, :]
     X /= (X.std(0)[None, :] * np.sqrt(n))
 
@@ -196,8 +206,6 @@ if __name__ == "__main__":
 
     n, p = X.shape
     print("dims", n, p)
-
-    sample = generate_data(X, sigma=1., s=5, model = "Frequentist")
 
     niter = 1
 
@@ -210,62 +218,30 @@ if __name__ == "__main__":
 
     for i in range(niter):
 
-         ### GENERATE Y BASED ON SEED
-         np.random.seed(i+2)  # ensures different y
-         X, y, beta, sigma = sample.generate_response()
+        np.random.seed(i+1)  # ensures different y
 
-         print("true mean", X.dot(beta))
-         ### RUN LASSO AND TEST
-         lasso = randomized_lasso_trial(X,
-                                        y,
-                                        beta,
-                                        sigma)
+        sample = generate_data(X_unpruned, sigma=1., signals= None, model="Frequentist")
 
-         if lasso is not None:
-             ad_cov += lasso[0,0]
-             unad_cov += lasso[1,0]
-             ad_len += lasso[2, 0]
-             unad_len += lasso[3, 0]
-             ad_risk += lasso[4, 0]
-             unad_risk += lasso[5, 0]
-             print("\n")
-             print("iteration completed", i)
-             print("\n")
-             print("adjusted and unadjusted coverage", ad_cov, unad_cov)
-             print("adjusted and unadjusted lengths", ad_len, unad_len)
-             print("adjusted and unadjusted risks", ad_risk, unad_risk)
+        true_mean, y, beta, sigma = sample.generate_response()
 
-# if __name__ == "__main__":
-# # read from command line
-#
-#     path = sys.argv[1]
-#     outdir = sys.argv[2]
-#     seedn = sys.argv[3]
-#
-#     outfile = os.path.join(outdir, "list_result_" + str(seedn) + ".txt")
-#
-# ### read X
-#
-#     X = np.load(os.path.join(path + "X_" + "ENSG00000131697.13") + ".npy")
-#     n, p = X.shape
-#     X -= X.mean(0)[None, :]
-#     X /= (X.std(0)[None, :] * np.sqrt(n))
-#
-#     X_transposed = unique_rows(X.T)
-#     X = X_transposed.T
-#
-#     n, p = X.shape
-#     print("dims", n, p)
-#
-#     sample = generate_data(X, sigma=1., s=5, model = "Frequentist")
-#
-# ### GENERATE Y BASED ON SEED
-#     np.random.seed(int(seedn)) # ensures different y
-#     X, y, beta, sigma = sample.generate_response()
-#
-#     lasso = randomized_lasso_trial(X,
-#                                    y,
-#                                    beta,
-#                                    sigma)
-#
-#     np.savetxt(outfile, lasso)
+        ### RUN LASSO AND TEST
+
+        lasso = randomized_lasso_trial(X,
+                                       y,
+                                       beta,
+                                       sigma,
+                                       true_mean)
+
+        if lasso is not None:
+            ad_cov += lasso[0,0]
+            unad_cov += lasso[1,0]
+            ad_len += lasso[2, 0]
+            unad_len += lasso[3, 0]
+            ad_risk += lasso[4, 0]
+            unad_risk += lasso[5, 0]
+            print("\n")
+            print("iteration completed", i)
+            print("\n")
+            print("adjusted and unadjusted coverage", ad_cov, unad_cov)
+            print("adjusted and unadjusted lengths", ad_len, unad_len)
+            print("adjusted and unadjusted risks", ad_risk, unad_risk)
