@@ -272,7 +272,6 @@ if __name__ == "__main__":
     X = X_transposed.T
 
     n, p = X.shape
-    print("dims", n, p)
 
 ### GENERATE Y BASED ON SEED
     np.random.seed(int(seedn)) # ensures different y
