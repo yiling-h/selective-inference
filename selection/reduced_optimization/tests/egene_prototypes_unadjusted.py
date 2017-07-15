@@ -165,6 +165,7 @@ if __name__ == "__main__":
 
     prototypes = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/prototypes.txt", delimiter='\t')
     prototypes = prototypes.astype(int)
+    prototypes = prototypes -1
     print("prototypes", prototypes.shape[0])
 
     X = X_unpruned[:, prototypes]
@@ -177,8 +178,10 @@ if __name__ == "__main__":
     n, p = X.shape
     print("dims", n, p)
 
-    signals = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/signal_1.txt", delimiter='\t')
+    signals = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/signal_3.txt", delimiter='\t')
     signals = signals.astype(int)
+
+    print("shape of signals", signals.shape)
 
     niter = 50
 
@@ -187,33 +190,34 @@ if __name__ == "__main__":
     unad_risk = 0.
 
     for i in range(niter):
+        ### GENERATE Y BASED ON SEED
+        np.random.seed(i)  # ensures different y
 
-         ### GENERATE Y BASED ON SEED
+        #sample = generate_data(X_unpruned, sigma=1., signals=signals[i,:] - 1, model="Frequentist")
+        sample = generate_data(X_unpruned, sigma=1., signals=None, model="Frequentist")
 
-         np.random.seed(i)  # ensures different y
+        true_mean, y, beta, sigma = sample.generate_response()
 
-         sample = generate_data(X_unpruned, sigma=1., signals=signals[i], model="Frequentist")
+        ### RUN LASSO AND TEST
+        lasso = randomized_lasso_trial(X,
+                                       y,
+                                       beta,
+                                       sigma,
+                                       true_mean)
 
-         true_mean, y, beta, sigma = sample.generate_response()
+        if lasso is not None:
+            unad_cov += lasso[0, 0]
+            unad_len += lasso[1, 0]
+            unad_risk += lasso[2, 0]
+            print("\n")
+            print("iteration completed", i)
+            print("\n")
+            print("unadjusted coverage", unad_cov)
+            print("unadjusted lengths", unad_len)
+            print("unadjusted risks", unad_risk)
 
-         ### RUN LASSO AND TEST
-         lasso = randomized_lasso_trial(X,
-                                        y,
-                                        beta,
-                                        sigma,
-                                        true_mean)
 
-         if lasso is not None:
-             unad_cov += lasso[0,0]
-             unad_len += lasso[1, 0]
-             unad_risk += lasso[2, 0]
-             print("\n")
-             print("iteration completed", i)
-             print("\n")
-             print("unadjusted coverage", unad_cov)
-             print("unadjusted lengths", unad_len)
-             print("unadjusted risks", unad_risk)
-
-    print("unadjusted coverage", unad_cov/niter)
-    print("unadjusted lengths", unad_len/niter)
-    print("unadjusted risks", unad_risk/niter)
+    niter = niter
+    print("unadjusted coverage", unad_cov / niter)
+    print("unadjusted lengths", unad_len / niter)
+    print("unadjusted risks", unad_risk / niter)
