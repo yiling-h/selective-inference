@@ -16,7 +16,7 @@ def BH_selection_egenes(p_simes, level):
     return order_sig+1, E_sel
 
 
-path='/Users/snigdhapanigrahi/simes_output_Liver/sigma_est_output/'
+path='/Users/snigdhapanigrahi/simes_output_Liver/simes_output_norand/'
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
 shapes = []
@@ -29,6 +29,7 @@ length = len(list_)
 print("length", length)
 
 shapes = np.asarray(shapes)
+print("shapes", shapes)
 v = np.cumsum(shapes)
 print("vector", v)
 #print("shape", shapes.shape, shapes)
