@@ -4,7 +4,7 @@ import os, numpy as np, pandas, statsmodels.api as sm
 #path =r'/Users/snigdhapanigrahi/Results_freq_EQTL/sparsity_5/dim_1/dim_1'
 #path =r'/Users/snigdhapanigrahi/Results_bayesian/fixed_lasso/fixed_lasso'
 
-path =r'/Users/snigdhapanigrahi/Results_bayesian/Egene_expt/egene_3'
+path =r'/Users/snigdhapanigrahi/Results_bayesian/Egene_pruned/egene_1'
 #path =r'/Users/snigdhapanigrahi/Results_bayesian/bayesian_dual'
 allFiles = glob.glob(path + "/*.txt")
 
@@ -26,7 +26,7 @@ def summary_files(list_):
     print("number of simulations", length)
 
     for i in range(length):
-        #i = i+75
+
         print("iteration", i)
         lasso = list_[i].reshape((6, 1))
         coverage_ad += lasso[0,0]
