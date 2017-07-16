@@ -138,7 +138,7 @@ class generate_data():
              if self.signals is None:
                  beta_true = np.zeros(self.p)
              else:
-                 beta_true[self.signals] = 10.
+                 beta_true[self.signals] = 2.5
 
          self.beta = beta_true
 
@@ -178,7 +178,7 @@ if __name__ == "__main__":
     n, p = X.shape
     print("dims", n, p)
 
-    signals = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/signal_3.txt", delimiter='\t')
+    signals = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/signal_2.txt", delimiter='\t')
     signals = signals.astype(int)
 
     print("shape of signals", signals.shape)
@@ -193,8 +193,8 @@ if __name__ == "__main__":
         ### GENERATE Y BASED ON SEED
         np.random.seed(i)  # ensures different y
 
-        #sample = generate_data(X_unpruned, sigma=1., signals=signals[i,:] - 1, model="Frequentist")
-        sample = generate_data(X_unpruned, sigma=1., signals=None, model="Frequentist")
+        sample = generate_data(X_unpruned, sigma=1., signals=signals[i,:] - 1, model="Frequentist")
+        #sample = generate_data(X_unpruned, sigma=1., signals=signals[i]-1, model="Frequentist")
 
         true_mean, y, beta, sigma = sample.generate_response()
 

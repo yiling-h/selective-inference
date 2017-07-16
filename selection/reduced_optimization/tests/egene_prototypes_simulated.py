@@ -10,7 +10,7 @@ from selection.randomized.api import randomization
 from selection.reduced_optimization.ridge_target import nonnegative_softmax_scaled, neg_log_cube_probability, selection_probability_lasso, \
     sel_prob_gradient_map_lasso, selective_inf_lasso
 
-def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoretical"):
+def selection(X, y, random_Z, randomization_scale=1., sigma=None, method="theoretical"):
     n, p = X.shape
     loss = rr.glm.gaussian(X,y)
     epsilon = 1. / np.sqrt(n)
@@ -138,6 +138,7 @@ def randomized_lasso_trial(X,
         bayes_risk_unad = np.power(post_mean - true_val, 2.).sum() / nactive
 
         print("results", sel_cov, naive_cov, ad_len, unad_len, bayes_risk_ad, bayes_risk_unad)
+        print("true value", true_val)
         return np.vstack([sel_cov, naive_cov, ad_len, unad_len, bayes_risk_ad, bayes_risk_unad])
 
     else:
@@ -169,7 +170,7 @@ class generate_data():
              if self.signals is None:
                  beta_true = np.zeros(self.p)
              else:
-                 beta_true[self.signals] = 10.
+                 beta_true[self.signals] = 2.5
 
          self.beta = beta_true
 
@@ -194,10 +195,10 @@ if __name__ == "__main__":
     n, p = X_unpruned.shape
 
     prototypes = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/prototypes.txt", delimiter='\t')
-    prototypes = prototypes.astype(int)
+    prototypes = prototypes.astype(int)-1
     print("prototypes", prototypes.shape[0])
 
-    signals = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/signal_1.txt", delimiter='\t')
+    signals = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/signal_3.txt", delimiter='\t')
     signals = signals.astype(int)
 
     X = X_unpruned[:, prototypes]
@@ -221,9 +222,9 @@ if __name__ == "__main__":
 
     for i in range(niter):
 
-        np.random.seed(i+1)  # ensures different y
+        np.random.seed(i+4)  # ensures different y
 
-        sample = generate_data(X_unpruned, sigma=1., signals= signals[i] - 1, model="Frequentist")
+        sample = generate_data(X_unpruned, sigma=1., signals=signals[i] - 1, model="Frequentist")
 
         true_mean, y, beta, sigma = sample.generate_response()
 
@@ -250,46 +251,46 @@ if __name__ == "__main__":
             print("adjusted and unadjusted risks", ad_risk, unad_risk)
 
 
-if __name__ == "__main__":
-# read from command line
-
-    path = sys.argv[1]
-    outdir = sys.argv[2]
-    seedn = sys.argv[3]
-
-    outfile = os.path.join(outdir, "list_result_" + str(seedn) + ".txt")
-
-### read X
-
-    X_unpruned = np.load(os.path.join(path + "X_" + "ENSG00000131697.13") + ".npy")
-
-    prototypes = np.loadtxt("/home/snigdha/src/selective-inference/selection/reduced_optimization/tests/prototypes.txt", delimiter='\t')
-    prototypes = prototypes.astype(int)-1
-
-    signals = np.loadtxt("/home/snigdha/src/selective-inference/selection/reduced_optimization/tests/signal_1.txt", delimiter='\t')
-    signals = signals.astype(int)
-
-    X = X_unpruned[:, prototypes]
-    n, p = X.shape
-    X -= X.mean(0)[None, :]
-    X /= (X.std(0)[None, :] * np.sqrt(n))
-
-    X_transposed = unique_rows(X.T)
-    X = X_transposed.T
-
-    n, p = X.shape
-
-### GENERATE Y BASED ON SEED
-    np.random.seed(int(seedn)) # ensures different y
-
-    sample = generate_data(X_unpruned, sigma=1., signals= signals[i] - 1, model="Frequentist")
-
-    true_mean, y, beta, sigma = sample.generate_response()
-
-    lasso = randomized_lasso_trial(X,
-                                   y,
-                                   beta,
-                                   sigma,
-                                   true_mean)
-
-    np.savetxt(outfile, lasso)
+# if __name__ == "__main__":
+# # read from command line
+#
+#     path = sys.argv[1]
+#     outdir = sys.argv[2]
+#     seedn = sys.argv[3]
+#
+#     outfile = os.path.join(outdir, "list_result_" + str(seedn) + ".txt")
+#
+# ### read X
+#
+#     X_unpruned = np.load(os.path.join(path + "X_" + "ENSG00000131697.13") + ".npy")
+#
+#     prototypes = np.loadtxt("/home/snigdha/src/selective-inference/selection/reduced_optimization/tests/prototypes.txt", delimiter='\t')
+#     prototypes = prototypes.astype(int)-1
+#
+#     signals = np.loadtxt("/home/snigdha/src/selective-inference/selection/reduced_optimization/tests/signal_1.txt", delimiter='\t')
+#     signals = signals.astype(int)
+#
+#     X = X_unpruned[:, prototypes]
+#     n, p = X.shape
+#     X -= X.mean(0)[None, :]
+#     X /= (X.std(0)[None, :] * np.sqrt(n))
+#
+#     X_transposed = unique_rows(X.T)
+#     X = X_transposed.T
+#
+#     n, p = X.shape
+#
+# ### GENERATE Y BASED ON SEED
+#     np.random.seed(int(seedn)) # ensures different y
+#
+#     sample = generate_data(X_unpruned, sigma=1., signals= signals[i] - 1, model="Frequentist")
+#
+#     true_mean, y, beta, sigma = sample.generate_response()
+#
+#     lasso = randomized_lasso_trial(X,
+#                                    y,
+#                                    beta,
+#                                    sigma,
+#                                    true_mean)
+#
+#     np.savetxt(outfile, lasso)

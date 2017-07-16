@@ -460,8 +460,8 @@ class selective_inf_lasso(rr.smooth_atom):
 
         self.set_prior(prior_variance)
 
-        self.initial_state = np.multiply(grad_map.feasible_point, grad_map.active_sign)
-        #self.initial_state = initial
+        #self.initial_state = np.multiply(grad_map.feasible_point, grad_map.active_sign)
+        self.initial_state = initial
         #self.initial_state = initial_sampler
         #self.initial_state = -2 * np.ones(self.E)
 
@@ -551,7 +551,7 @@ class selective_inf_lasso(rr.smooth_atom):
         #else:
         #    stepsize = 1. / (1. * self.E)
 
-        stepsize = 1. / (0.1 * self.E)
+        stepsize = 1. / (0.05 * self.E)
         sampler = projected_langevin(state, gradient_map, projection_map, stepsize)
 
         samples = []
