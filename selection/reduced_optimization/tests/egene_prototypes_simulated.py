@@ -170,7 +170,7 @@ class generate_data():
              if self.signals is None:
                  beta_true = np.zeros(self.p)
              else:
-                 beta_true[self.signals] = 2.5
+                 beta_true[self.signals] = 5.
 
          self.beta = beta_true
 
@@ -222,7 +222,7 @@ if __name__ == "__main__":
 
     for i in range(niter):
 
-        np.random.seed(i+4)  # ensures different y
+        np.random.seed(i+3)  # ensures different y
 
         sample = generate_data(X_unpruned, sigma=1., signals=signals[i] - 1, model="Frequentist")
 
