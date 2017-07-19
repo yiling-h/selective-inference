@@ -18,7 +18,7 @@ def simes_selection_egene(X,
     for k in range(p):
 
         ols_fit = sm.OLS(y, X[:,k]).fit()
-        sigma_hat[k] = np.linalg.norm(ols_fit.resid) / np.sqrt(n - 2)
+        sigma_hat[k] = np.linalg.norm(ols_fit.resid) / np.sqrt(n - 2.)
 
     T_stats = np.true_divide(X.T.dot(y),sigma_hat)
 

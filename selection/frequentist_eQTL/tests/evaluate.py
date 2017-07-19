@@ -18,4 +18,14 @@ import os, numpy as np, pandas, statsmodels.api as sm
 #     outfile = os.path.join(outdir, "simes_output_sigma_estimated_" + str(format(i, '03')) + ".txt")
 #     np.savetxt(outfile, file)
 
-path = '/Users/snigdhapanigrahi/simes_output_Liver/sigma_est_output/combined'
+path = '/Users/snigdhapanigrahi/Test_simes'
+
+allFiles = glob.glob(path + "/*.txt")
+list_ = []
+for file_ in allFiles:
+    df = np.loadtxt(file_)
+    list_.append(df)
+
+simes_output = np.vstack(list_)
+print("p", simes_output[:,0])
+print("simes output", simes_output[:,1])
