@@ -157,7 +157,7 @@ if __name__ == "__main__":
     n, p = X.shape
 
     prototypes = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/prototypes.txt", delimiter='\t')
-    prototypes = prototypes.astype(int)
+    prototypes = prototypes.astype(int)-1
     print("prototypes", prototypes.shape[0])
 
     X = X[:, prototypes]
@@ -174,6 +174,7 @@ if __name__ == "__main__":
     y = y.reshape((y.shape[0],))
 
     sigma = estimate_sigma(X, y, nstep=20, tol=1.e-5)
+    print("estimated sigma", sigma)
     y /= sigma
 
     np.random.seed(0)
