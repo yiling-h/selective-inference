@@ -23,6 +23,7 @@ def simes_selection_egene(X,
     T_stats = np.true_divide(X.T.dot(y),sigma_hat)
 
     if randomizer == 'gaussian':
+
         perturb = np.random.standard_normal(p)
         randomized_T_stats = T_stats + randomization_scale * perturb
 
@@ -65,7 +66,7 @@ if __name__ == "__main__":
     outdir = sys.argv[2]
     result = sys.argv[3]
 
-    outfile = os.path.join(outdir, "part1_simes_output_sigma_estimated_"+ str(result) + ".txt")
+    outfile = os.path.join(outdir, "test_norand_simes_output"+ str(result) + ".txt")
 
     gene_file = path + "Genes.txt"
 
@@ -93,7 +94,5 @@ if __name__ == "__main__":
 
         output[j, 0] = p
         output[j, 1:] = simes
-
-        #beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
 
     np.savetxt(outfile, output)
