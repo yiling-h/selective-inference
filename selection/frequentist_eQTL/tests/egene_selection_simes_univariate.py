@@ -5,6 +5,7 @@ import os
 import sys
 import regreg.api as rr
 import statsmodels.api as sm
+from scipy.stats import f
 
 def simes_selection_egene(X,
                           y,
@@ -35,11 +36,17 @@ def simes_selection_egene(X,
 
     elif randomizer == 'none':
 
-        randomized_T_stats = T_stats
+        randomized_T_stats = T_stats**2.
 
-        p_val_randomized = np.sort(2. * (1. - normal.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(1.)))))
+        p_val_randomized = np.sort(1. - f.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(1.)),1, n-2))
 
-        indices_order = np.argsort(2. * (1. - normal.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(1.)))))
+        indices_order = np.argsort(1. - f.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(1.)),1, n-2))
+
+        #randomized_T_stats = T_stats
+
+        #p_val_randomized = np.sort(2. * (1. - normal.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(1.)))))
+
+        #indices_order = np.argsort(2. * (1. - normal.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(1.)))))
 
     simes_p_randomized = np.min((p / (np.arange(p) + 1.)) * p_val_randomized)
 

@@ -16,7 +16,7 @@ def BH_selection_egenes(p_simes, level):
     return order_sig+1, E_sel
 
 
-path='/Users/snigdhapanigrahi/simes_output_Liver/simes_output_norand/'
+path='/Users/snigdhapanigrahi/simes_univariate/'
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
 shapes = []
@@ -36,10 +36,9 @@ print("vector", v)
 simes_output = np.vstack(list_)
 print("dimensions", simes_output.shape)
 
-p_simes = simes_output[:,3]
-indicator = p_simes[simes_output[:,2]==1]
-print("number of genes", p_simes[simes_output[:,2]==1].shape[0])
-sig = BH_selection_egenes(p_simes[simes_output[:,2]==1], 0.10)
+p_simes = simes_output[:,1]
+print("number of genes", p_simes.shape[0])
+sig = BH_selection_egenes(p_simes, 0.10)
 
 print("no of egenes selected", sig[0])
 

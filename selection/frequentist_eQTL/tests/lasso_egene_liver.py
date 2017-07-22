@@ -76,7 +76,7 @@ def randomized_lasso_egene_trial(X,
                                  sigma,
                                  bh_level,
                                  seedn,
-                                 lam_frac = 1.4,
+                                 lam_frac = 1.,
                                  loss='gaussian'):
 
     from selection.api import randomization
@@ -133,6 +133,14 @@ def randomized_lasso_egene_trial(X,
         naive_length[j] = ci_naive[j, 1] - ci_naive[j, 0]
         pivots[j] = ci.approximate_pvalue(j, 0.)
 
+    print("selective intervals", ci_sel[:,0], ci_sel[:,1])
+
+    mle = np.zeros(nactive)
+    for j in range(nactive):
+        mle[j] = ci.approx_MLE_solver(j)[0]
+
+    print("selective MLE", mle)
+
     p_BH = BH_q(pivots, bh_level)
     discoveries_active = np.zeros(nactive)
     if p_BH is not None:
@@ -153,23 +161,33 @@ def randomized_lasso_egene_trial(X,
 if __name__ == "__main__":
 
     path = '/Users/snigdhapanigrahi/Results_bayesian/Egene_data/'
+
     X = np.load(os.path.join(path + "X_" + "ENSG00000131697.13") + ".npy")
-    X_transposed = unique_rows(X.T)
-    X = X_transposed.T
     n, p = X.shape
+
+    prototypes = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/prototypes.txt", delimiter='\t')
+    prototypes = prototypes.astype(int) - 1
+    print("prototypes", prototypes.shape[0])
+
+    X = X[:, prototypes]
     X -= X.mean(0)[None, :]
     X /= (X.std(0)[None, :] * np.sqrt(n))
-    print("dims", n,p)
+
+    X_transposed = unique_rows(X.T)
+    X = X_transposed.T
+
+    n, p = X.shape
+    print("dims", n, p)
 
     y = np.load(os.path.join(path + "y_" + "ENSG00000131697.13") + ".npy")
     y = y.reshape((y.shape[0],))
 
-    sigma = estimate_sigma(X, y, nstep=30, tol=1.e-3)
+    sigma = estimate_sigma(X, y, nstep=20, tol=1.e-5)
     print("estimated sigma", sigma)
     y /= sigma
 
-    seedn = 0
     bh_level = 0.10
+    seedn = 0
 
     random_lasso = randomized_lasso_egene_trial(X,
                                                 y,

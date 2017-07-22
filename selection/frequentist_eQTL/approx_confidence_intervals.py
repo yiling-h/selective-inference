@@ -3,7 +3,7 @@ import sys
 import regreg.api as rr
 from selection.bayesian.selection_probability_rr import nonnegative_softmax_scaled
 from scipy.stats import norm
-
+from math import log
 
 class neg_log_cube_probability(rr.smooth_atom):
     def __init__(self,
@@ -310,8 +310,8 @@ class approximate_conditional_density(rr.smooth_atom):
             approx = approximate_conditional_prob((self.grid[j, :])[i], self.sel_alg)
             val = -(approx.minimize2(step=1, nstep=50)[::-1])[0]
             h_hat.append(val)
-            sys.stderr.write("point on grid: " + str(i) + "\n")
-            sys.stderr.write("value on grid: " + str(val) + "\n")
+            #sys.stderr.write("point on grid: " + str(i) + "\n")
+            #sys.stderr.write("value on grid: " + str(val) + "\n")
 
         return np.array(h_hat)
 
@@ -320,13 +320,90 @@ class approximate_conditional_density(rr.smooth_atom):
         normalizer = 0.
         approx_nonnormalized = []
 
-        for i in xrange(self.grid[j:,].shape[1]):
+        #print("shape", self.grid.shape[j,:])
+
+        for i in xrange(301):
             approx_density = np.exp(-np.true_divide(((self.grid[j,:])[i] - mean) ** 2, 2 * self.norm[j])
                                     + (self.h_approx[j,:])[i])
             normalizer += approx_density
             approx_nonnormalized.append(approx_density)
 
         return np.cumsum(np.array(approx_nonnormalized / normalizer))
+
+    def area_normalized_density_mle(self, j, mean):
+
+        normalizer = 0.
+        grad_normalizer = 0.
+        approx_nonnormalized = []
+
+        for i in xrange(301):
+            approx_density = np.exp(-np.true_divide(((self.grid[j, :])[i] - mean) ** 2, 2 * self.norm[j])
+                                    + (self.h_approx[j, :])[i])
+
+            normalizer += approx_density
+            grad_normalizer += (-mean / self.norm[j] + (self.grid[j, :])[i] / self.norm[j]) * approx_density
+            approx_nonnormalized.append(approx_density)
+
+        return np.cumsum(np.array(approx_nonnormalized / normalizer)), normalizer, grad_normalizer
+
+    def smooth_objective_MLE(self, param, j, mode='both', check_feasibility=False):
+
+        param = self.apply_offset(param)
+
+        approx_normalizer = self.area_normalized_density_mle(j, param)
+
+        f = (param ** 2) / (2 * self.norm[j]) - (self.target_observed[j] * param) / self.norm[j] + \
+            log(approx_normalizer[1])
+
+        g = param / self.norm[j] - self.target_observed[j] / self.norm[j] + \
+            approx_normalizer[2] / approx_normalizer[1]
+
+        if mode == 'func':
+            return self.scale(f)
+        elif mode == 'grad':
+            return self.scale(g)
+        elif mode == 'both':
+            return self.scale(f), self.scale(g)
+        else:
+            raise ValueError("mode incorrectly specified")
+
+    def approx_MLE_solver(self, j, step=1, nstep=100, tol=1.e-5):
+
+        current = self.target_observed[j]
+        current_value = np.inf
+
+        objective = lambda u: self.smooth_objective_MLE(u, j, 'func')
+        grad = lambda u: self.smooth_objective_MLE(u, j, 'grad')
+
+        for itercount in range(nstep):
+
+            newton_step = grad(current) * self.norm[j]
+
+            # make sure proposal is a descent
+            count = 0
+            while True:
+                proposal = current - step * newton_step
+                proposed_value = objective(proposal)
+
+                if proposed_value <= current_value:
+                    break
+                step *= 0.5
+
+            # stop if relative decrease is small
+
+            if np.fabs(current_value - proposed_value) < tol * np.fabs(current_value):
+                current = proposal
+                current_value = proposed_value
+                break
+
+            current = proposal
+            current_value = proposed_value
+
+            if itercount % 4 == 0:
+                step *= 2
+
+        value = objective(current)
+        return current, value
 
     def approximate_ci(self, j):
 
