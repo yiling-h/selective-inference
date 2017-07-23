@@ -15,6 +15,7 @@ def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoret
     n, p = X.shape
     loss = rr.glm.gaussian(X,y)
     epsilon = 1. / np.sqrt(n)
+    #epsilon = 0.
     lam_frac = 1.
     if sigma is None:
         sigma = 1.
@@ -45,18 +46,24 @@ def randomized_lasso_trial(X,
                            y,
                            beta,
                            sigma,
-                           true_mean):
+                           true_mean,
+                           X_unpruned,
+                           signals):
 
     from selection.api import randomization
 
     n, p = X.shape
 
+    X_unpruned -= X_unpruned.mean(0)[None, :]
+    X_unpruned /= (X_unpruned.std(0)[None, :] * np.sqrt(n))
+
     random_Z = np.random.standard_normal(p)
-    sel = selection(X, y, random_Z)
-    lam, epsilon, active, betaE, cube, initial_soln = sel
+    sel = selection(X, y, random_Z, randomization_scale=1.)
+
 
     if sel is not None:
 
+        lam, epsilon, active, betaE, cube, initial_soln = sel
         lagrange = lam * np.ones(p)
         active_sign = np.sign(betaE)
         nactive = active.sum()
@@ -109,7 +116,20 @@ def randomized_lasso_trial(X,
 
         unad_len = unad_length.sum()/nactive
 
-        return np.vstack([naive_cov, unad_len , bayes_risk_unad])
+
+        #corr = np.zeros((nactive,1))
+        corr = np.zeros(nactive)
+        print("unpruned",signals)
+        for l in range(nactive):
+            #for j in range():
+                corr[l] = np.abs(np.correlate(X_unpruned[:,signals], X[:, active_set[l]]))
+
+        #return np.vstack([naive_cov, unad_len , bayes_risk_unad, np.max(corr[:,0]), np.max(corr[:,1]), np.max(corr[:,2])])
+        return np.vstack([naive_cov, unad_len, bayes_risk_unad, np.max(corr)])
+
+    else:
+        return np.vstack([0., 0., 0., 0.])
+        #return np.vstack([0.,0.,0.,0.,0., 0.])
 
 
 class generate_data():
@@ -138,7 +158,7 @@ class generate_data():
              if self.signals is None:
                  beta_true = np.zeros(self.p)
              else:
-                 beta_true[self.signals] = 2.5
+                 beta_true[self.signals] = 10.
 
          self.beta = beta_true
 
@@ -178,7 +198,7 @@ if __name__ == "__main__":
     n, p = X.shape
     print("dims", n, p)
 
-    signals = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/signal_2.txt", delimiter='\t')
+    signals = np.loadtxt("/Users/snigdhapanigrahi/Results_bayesian/Egene_data/signal_1.txt", delimiter='\t')
     signals = signals.astype(int)
 
     print("shape of signals", signals.shape)
@@ -188,12 +208,15 @@ if __name__ == "__main__":
     unad_cov = 0.
     unad_len = 0.
     unad_risk = 0.
+    corr_1 = 0.
+    corr_2 = 0.
+    corr_3 = 0.
 
     for i in range(niter):
         ### GENERATE Y BASED ON SEED
         np.random.seed(i)  # ensures different y
 
-        sample = generate_data(X_unpruned, sigma=1., signals=signals[i,:] - 1, model="Frequentist")
+        sample = generate_data(X_unpruned, sigma=1., signals=signals[i] - 1, model="Frequentist")
         #sample = generate_data(X_unpruned, sigma=1., signals=signals[i]-1, model="Frequentist")
 
         true_mean, y, beta, sigma = sample.generate_response()
@@ -203,21 +226,31 @@ if __name__ == "__main__":
                                        y,
                                        beta,
                                        sigma,
-                                       true_mean)
+                                       true_mean,
+                                       X_unpruned,
+                                       signals[i] - 1)
 
         if lasso is not None:
             unad_cov += lasso[0, 0]
             unad_len += lasso[1, 0]
             unad_risk += lasso[2, 0]
+            corr_1 += lasso[3, 0]
+            #corr_1 += lasso[3,0]
+            #corr_2 += lasso[4, 0]
+            #corr_3 += lasso[5, 0]
             print("\n")
             print("iteration completed", i)
             print("\n")
             print("unadjusted coverage", unad_cov)
             print("unadjusted lengths", unad_len)
             print("unadjusted risks", unad_risk)
+            print("correlation", corr_1, corr_2)
 
 
     niter = niter
     print("unadjusted coverage", unad_cov / niter)
     print("unadjusted lengths", unad_len / niter)
     print("unadjusted risks", unad_risk / niter)
+    print("corr", corr_1 / niter)
+    #print("corr", corr_2 / niter)
+    #print("corr", corr_3 / niter)
