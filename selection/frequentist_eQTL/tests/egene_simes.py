@@ -8,6 +8,11 @@ import statsmodels.api as sm
 from scipy.stats import f
 from scipy.stats.stats import pearsonr
 
+def unique_rows(a):
+    a = np.ascontiguousarray(a)
+    unique_a = np.unique(a.view([('', a.dtype)]*a.shape[1]))
+    return unique_a.view(a.dtype).reshape((unique_a.shape[0], a.shape[1]))
+
 def simes_selection_egene(X,
                           y,
                           randomizer= 'gaussian',
@@ -27,6 +32,8 @@ def simes_selection_egene(X,
     for k in range(p):
         T_stats[k] = pearsonr(X[:,k], y)[0]
 
+    #print("corr", T_stats[5205])
+
     if randomizer == 'gaussian':
 
         perturb = np.random.standard_normal(p)
@@ -40,19 +47,23 @@ def simes_selection_egene(X,
 
     elif randomizer == 'none':
 
-        randomized_T_stats = (n-2.)* np.true_divide(T_stats**2., 1.-T_stats**2.)
+        randomized_T_stats = (n-2.)* np.true_divide(T_stats**2., np.ones(p)-T_stats**2.)
 
-        p_val_randomized = np.sort(1. - f.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(1.)),1, n-2))
+        p_val_randomized = np.sort(1. - f.cdf(randomized_T_stats,1, n-2))
 
-        indices_order = np.argsort(1. - f.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(1.)),1, n-2))
+        indices_order = np.argsort(1. - f.cdf(randomized_T_stats,1, n-2))
 
         #randomized_T_stats = T_stats
 
         #p_val_randomized = np.sort(2. * (1. - normal.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(1.)))))
 
         #indices_order = np.argsort(2. * (1. - normal.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(1.)))))
+    print("p randomized", p_val_randomized[:20])
+    print("indices", indices_order[:20])
 
     simes_p_randomized = np.min((p / (np.arange(p) + 1.)) * p_val_randomized)
+
+    print("simes p randomized", ((p / (np.arange(p) + 1.)) * p_val_randomized)[:20])
 
     i_0 = np.argmin((p / (np.arange(p) + 1.)) * p_val_randomized)
 
@@ -70,40 +81,23 @@ def simes_selection_egene(X,
 
     return simes_p_randomized, i_0, t_0, np.sign(T_stats_active), u_1, u_2
 
-
 if __name__ == "__main__":
 
-    path = sys.argv[1]
-    outdir = sys.argv[2]
-    result = sys.argv[3]
+    #np.random.seed(2)
+    path = '/Users/snigdhapanigrahi/Results_bayesian/Egene_data/'
 
-    outfile = os.path.join(outdir, "test_norand_simes_output"+ str(result) + ".txt")
+    X = np.load(os.path.join(path + "X_" + "ENSG00000131697.13") + ".npy")
+    #X = np.load(os.path.join(path + "X_" + "ENSG00000218510.3") + ".npy")
 
-    gene_file = path + "Genes.txt"
+    #X_transposed = unique_rows(X.T)
+    #X = X_transposed.T
+    n, p = X.shape
+    print("dims", n,p)
 
-    with open(gene_file) as g:
-        content = g.readlines()
+    y = np.load(os.path.join(path + "y_" + "ENSG00000131697.13") + ".npy")
+    #y = np.load(os.path.join(path + "y_" + "ENSG00000218510.3") + ".npy")
+    y = y.reshape((y.shape[0],))
 
-    content = [x.strip() for x in content]
-    sys.stderr.write("length" + str(len(content)) + "\n")
+    simes = simes_selection_egene(X, y, randomizer='none')
 
-    iter = int(len(content))
-    output = np.zeros((iter, 7))
-
-    for j in range(iter):
-
-        X = np.load(os.path.join(path + "X_" + str(content[j])) + ".npy")
-        #n, p = X.shape
-        #X -= X.mean(0)[None, :]
-        #X /= (X.std(0)[None, :] * np.sqrt(n))
-
-        y = np.load(os.path.join(path + "y_" + str(content[j])) + ".npy")
-        y = y.reshape((y.shape[0],))
-
-        sys.stderr.write("iteration completed" + str(j) + "\n")
-        simes = simes_selection_egene(X, y, randomizer='none')
-
-        output[j, 0] = p
-        output[j, 1:] = simes
-
-    np.savetxt(outfile, output)
+    print("simes output", simes)

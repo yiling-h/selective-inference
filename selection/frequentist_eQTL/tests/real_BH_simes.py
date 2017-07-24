@@ -38,7 +38,7 @@ print("dimensions", simes_output.shape)
 
 p_simes = simes_output[:,1]
 print("number of genes", p_simes.shape[0])
-sig = BH_selection_egenes(p_simes, 0.10)
+sig = BH_selection_egenes(p_simes, 0.05)
 
 print("no of egenes selected", sig[0])
 
