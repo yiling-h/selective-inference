@@ -33,7 +33,7 @@ def estimate_sigma(X, y, nstep=20, tol=1.e-4):
     return sigma
 
 
-def selection(X, y, random_Z, randomization_scale=1, sigma=None, method="theoretical"):
+def selection(X, y, random_Z, randomization_scale=1., sigma=None, method="theoretical"):
     n, p = X.shape
     loss = rr.glm.gaussian(X,y)
     epsilon = 1. / np.sqrt(n)
