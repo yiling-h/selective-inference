@@ -15,7 +15,7 @@ def selection(X, y, random_Z, randomization_scale=1., sigma=None, method="theore
     n, p = X.shape
     loss = rr.glm.gaussian(X,y)
     epsilon = 1. / np.sqrt(n)
-    lam_frac = 0.8
+    lam_frac = 1.
     if sigma is None:
         sigma = 1.
     if method == "theoretical":
