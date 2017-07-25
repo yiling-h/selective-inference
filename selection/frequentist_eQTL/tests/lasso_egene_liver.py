@@ -13,7 +13,9 @@ from selection.tests.instance import gaussian_instance
 from selection.api import randomization
 from selection.bayesian.initial_soln import selection
 
-from selection.frequentist_eQTL.approx_confidence_intervals import approximate_conditional_density
+from selection.frequentist_eQTL.approx_confidence_intervals_scaled import neg_log_cube_probability,\
+    approximate_conditional_prob, \
+    approximate_conditional_density
 #from selection.frequentist_eQTL.approx_ci_randomized_lasso import approximate_conditional_density
 
 def BH_q(p_value, level):
@@ -31,11 +33,6 @@ def BH_q(p_value, level):
 
     else:
         return None
-
-def unique_rows(a):
-    a = np.ascontiguousarray(a)
-    unique_a = np.unique(a.view([('', a.dtype)]*a.shape[1]))
-    return unique_a.view(a.dtype).reshape((unique_a.shape[0], a.shape[1]))
 
 def estimate_sigma(X, y, nstep=30, tol=1.e-4):
 
@@ -95,7 +92,7 @@ def randomized_lasso_egene_trial(X,
                              weights=dict(zip(np.arange(p), W)), lagrange=1.)
 
 
-    randomization = randomization.isotropic_gaussian((p,), scale=1.)
+    randomization = randomization.isotropic_gaussian((p,), scale=0.7)
 
     M_est = M_estimator_exact(loss, epsilon, penalty, randomization)
     M_est.solve_approx()
@@ -158,6 +155,7 @@ def randomized_lasso_egene_trial(X,
     print("list of results", list_results)
     return list_results
 
+
 if __name__ == "__main__":
 
     path = '/Users/snigdhapanigrahi/Results_bayesian/Egene_data/'
@@ -173,17 +171,15 @@ if __name__ == "__main__":
     X -= X.mean(0)[None, :]
     X /= (X.std(0)[None, :] * np.sqrt(n))
 
-    X_transposed = unique_rows(X.T)
-    X = X_transposed.T
-
     n, p = X.shape
     print("dims", n, p)
 
     y = np.load(os.path.join(path + "y_" + "ENSG00000131697.13") + ".npy")
     y = y.reshape((y.shape[0],))
 
-    sigma = estimate_sigma(X, y, nstep=20, tol=1.e-5)
-    print("estimated sigma", sigma)
+    sigma = 0.40355257294593277
+    #sigma = estimate_sigma(X, y, nstep=20, tol=1.e-5)
+    #print("estimated sigma", sigma)
     y /= sigma
 
     bh_level = 0.10
