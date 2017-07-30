@@ -2,7 +2,7 @@ import glob
 import os, numpy as np, pandas, statsmodels.api as sm
 from collections import Counter
 
-f=open('/Users/snigdhapanigrahi/Jason-results/Liver_97_genes_simes_BH.txt',"r")
+f=open('/Users/snigdhapanigrahi/Jason-results/Muscle_Skeletal_361_genes_simes_BH.txt',"r")
 lines=f.readlines()
 result=[]
 for x in lines:

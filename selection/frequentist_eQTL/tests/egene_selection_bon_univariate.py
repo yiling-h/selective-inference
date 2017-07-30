@@ -10,10 +10,10 @@ from scipy.stats import f
 from scipy.stats.stats import pearsonr
 
 
-def simes_selection_egene(X,
-                          y,
-                          randomizer='gaussian',
-                          randomization_scale=1.):
+def bon_selection_egene(X,
+                        y,
+                        randomizer='gaussian',
+                        randomization_scale=1.):
     n, p = X.shape
 
     T_stats = np.zeros(p)
@@ -41,31 +41,17 @@ def simes_selection_egene(X,
 
         indices_order = np.argsort(1. - f.cdf(np.true_divide(np.abs(randomized_T_stats), np.sqrt(1.)), 1, n - 2))
 
-    simes_p_randomized = np.min((p / (np.arange(p) + 1.)) * p_val_randomized)
+    bon_p_randomized = p_val_randomized[0]
 
-    i_0 = np.argmin((p / (np.arange(p) + 1.)) * p_val_randomized)
-
-    t_0 = indices_order[i_0]
+    t_0 = indices_order[0]
 
     sigma_hat = np.sqrt((1. - (T_stats[t_0] ** 2)) * np.var(y)) / np.sqrt(n - 22.)
 
     T_stats_active = T_stats[t_0]
 
-    u_1 = ((i_0 + 1.) / p) * np.min(
-        np.delete((p / (np.arange(p) + 1.)) * p_val_randomized, i_0))
+    u = p_val_randomized[1]
 
-    if i_0 > p - 2:
-        u_2 = -1
-    else:
-        u_2 = p_val_randomized[i_0 + 1]
-
-    if i_0 == 0:
-        u_3 = -1
-    else:
-        u_3 = p_val_randomized[i_0 - 1]
-
-    return simes_p_randomized, i_0, t_0, u_1, u_2, u_3, np.sign(randomized_T_stats[t_0]), sigma_hat, np.sign(
-        T_stats_active)
+    return bon_p_randomized, t_0, u, np.sign(randomized_T_stats[t_0]), sigma_hat, np.sign(T_stats_active)
 
 
 if __name__ == "__main__":
@@ -74,7 +60,7 @@ if __name__ == "__main__":
     outdir = sys.argv[2]
     result = sys.argv[3]
 
-    outfile = os.path.join(outdir, "randomized_Z_simes_" + str(result) + ".txt")
+    outfile = os.path.join(outdir, "randomized_Z_bon_" + str(result) + ".txt")
 
     gene_file = path + "Genes.txt"
 
@@ -85,7 +71,7 @@ if __name__ == "__main__":
     sys.stderr.write("length" + str(len(content)) + "\n")
 
     iter = int(len(content))
-    output = np.zeros((iter, 10))
+    output = np.zeros((iter, 7))
 
     for j in range(iter):
         X = np.load(os.path.join(path + "X_" + str(content[j])) + ".npy")
@@ -99,10 +85,10 @@ if __name__ == "__main__":
 
         sys.stderr.write("iteration completed" + str(j) + "\n")
         # simes = simes_selection_egene(X, y, randomizer= 'none')
-        simes = simes_selection_egene(X, y, randomizer='gaussian', randomization_scale=0.7)
+        bon = bon_selection_egene(X, y, randomizer='gaussian', randomization_scale=0.7)
 
         output[j, 0] = p
-        output[j, 1:] = simes
+        output[j, 1:] = bon
 
         # beta = np.load(os.path.join(path + "b_" + str(content[j])) + ".npy")
 

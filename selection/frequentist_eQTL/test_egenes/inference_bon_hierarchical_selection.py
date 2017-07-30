@@ -147,33 +147,31 @@ class approximate_conditional_prob_2stage(rr.smooth_atom):
 
         self.randomization_simes = self.map.simes_randomization
 
-        if self.lagrange_1!= 10**10:
-            # set randomization cscale to the one used for Simes
-            arg_u = (offset_simes + self.lagrange_2) / self.randomization_simes
-            arg_l = (offset_simes + self.lagrange_1) / self.randomization_simes
+        arg_u = (offset_simes + self.lagrange_2) / self.randomization_simes
+        arg_l = (offset_simes + self.lagrange_1) / self.randomization_simes
 
-            cube_prob = normal.cdf(arg_u) - normal.cdf(arg_l)
+        cube_prob = normal.cdf(arg_u) - normal.cdf(arg_l)
 
-            if cube_prob > 10**-5:
-                log_cube_prob = -np.log(cube_prob).sum()
-            elif cube_prob <= 10**-5 and offset_simes<0:
-                rand_var = self.randomization_simes**2
-                log_cube_prob = (offset_simes**2./(2.*rand_var)) + (offset_simes*self.lagrange_2/rand_var)\
-                                - np.log(np.exp(-(self.lagrange_2**2)/(2.*rand_var))/np.abs((offset_simes + self.lagrange_2)/self.randomization_simes)
-                                         -np.exp(-(self.lagrange_1**2+ (2.*offset_simes*(self.lagrange_1-self.lagrange_2)))/(2.*rand_var))
-                                         /np.abs((offset_simes + self.lagrange_1)/self.randomization_simes))
-            elif cube_prob <= 10**-5 and offset_simes>0:
-                rand_var = self.randomization_simes ** 2
-                log_cube_prob = (offset_simes ** 2. / (2. * rand_var)) + (offset_simes * self.lagrange_1 / rand_var) \
-                                - np.log(-np.exp(-(self.lagrange_2 ** 2 + (2. * offset_simes * (self.lagrange_2 - self.lagrange_1)))
-                                                   / (2. * rand_var)) / np.abs((offset_simes + self.lagrange_2) / self.randomization_simes)
-                                                 + np.exp(-(self.lagrange_1 ** 2) / (2. * rand_var))/
-                                         np.abs((offset_simes + self.lagrange_1) / self.randomization_simes))
+        if cube_prob > 10 ** -5:
+            log_cube_prob = -np.log(cube_prob).sum()
 
-            #print("log cube prob", self.lagrange_2, self.lagrange_1, arg_u, arg_l, cube_prob, log_cube_prob)
+        elif cube_prob <= 10 ** -5 and offset_simes < 0:
+            rand_var = self.randomization_simes ** 2
+            log_cube_prob = (offset_simes ** 2. / (2. * rand_var)) + (offset_simes * self.lagrange_2 / rand_var) \
+                            - np.log(np.exp(-(self.lagrange_2 ** 2) / (2. * rand_var)) / np.abs(
+                (offset_simes + self.lagrange_2) / self.randomization_simes)
+                                     - np.exp(
+                -(self.lagrange_1 ** 2 + (2. * offset_simes * (self.lagrange_1 - self.lagrange_2))) / (2. * rand_var))
+                                     / np.abs((offset_simes + self.lagrange_1) / self.randomization_simes))
 
-        else:
-            log_cube_prob = 0.
+        elif cube_prob <= 10 ** -5 and offset_simes > 0:
+            rand_var = self.randomization_simes ** 2
+            log_cube_prob = (offset_simes ** 2. / (2. * rand_var)) + (offset_simes * self.lagrange_1 / rand_var) \
+                            - np.log(
+                -np.exp(-(self.lagrange_2 ** 2 + (2. * offset_simes * (self.lagrange_2 - self.lagrange_1)))
+                        / (2. * rand_var)) / np.abs((offset_simes + self.lagrange_2) / self.randomization_simes)
+                + np.exp(-(self.lagrange_1 ** 2) / (2. * rand_var)) /
+                np.abs((offset_simes + self.lagrange_1) / self.randomization_simes))
 
         total_loss = rr.smooth_sum([active_conj_loss_lasso,
                                     cube_loss_lasso,
@@ -359,5 +357,3 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
         area = area_vec[self.ind_obs[j]]
 
         return 2*min(area, 1.-area)
-
-

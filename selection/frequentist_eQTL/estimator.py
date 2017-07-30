@@ -8,7 +8,7 @@ class M_estimator_exact(M_estimator):
         self.randomizer = randomizer
 
     def solve_approx(self):
-        np.random.seed(0)
+        #np.random.seed(0)
         self.solve()
         (_opt_linear_term, _opt_affine_term) = self.opt_transform
         self._opt_linear_term = np.concatenate(
