@@ -442,7 +442,8 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
         approx_nonnormalized = []
         grad_normalizer = 0.
 
-        for i in xrange(self.grid[j:,].shape[1]):
+        print("shape", self.grid[j:,].shape[1] )
+        for i in range(self.grid[j:,].shape[1]):
             approx_density = np.exp(-np.true_divide(((self.grid[j,:])[i] - mean) ** 2, 2 * self.norm[j])
                                     + (self.h_approx[j,:])[i])
             normalizer += approx_density
