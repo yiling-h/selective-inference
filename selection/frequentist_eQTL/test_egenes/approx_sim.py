@@ -8,6 +8,7 @@ import regreg.api as rr
 
 from selection.randomized.query import naive_confidence_intervals
 from selection.randomized.query import naive_pvalues
+from scipy.stats.stats import pearsonr
 
 from selection.frequentist_eQTL.test_egenes.inference_bon_hierarchical_selection import M_estimator_2step, approximate_conditional_density_2stage
 
@@ -29,6 +30,7 @@ def BH_q(p_value, level):
 
 def hierarchical_lasso_trial(X,
                              y,
+                             true_mean,
                              sigma,
                              simes_level,
                              index,
@@ -38,6 +40,8 @@ def hierarchical_lasso_trial(X,
                              data_simes,
                              X_unpruned,
                              sigma_ratio,
+                             indices_TS,
+                             seed_n = 0,
                              bh_level = 0.10,
                              lam_frac = 1.,
                              loss='gaussian'):
@@ -45,7 +49,7 @@ def hierarchical_lasso_trial(X,
     from selection.api import randomization
 
     n, p = X.shape
-    np.random.seed(0)
+    np.random.seed(seed_n)
     if loss == "gaussian":
         lam = lam_frac * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * sigma
         loss = rr.glm.gaussian(X, y)
@@ -53,6 +57,7 @@ def hierarchical_lasso_trial(X,
     epsilon = 1. / np.sqrt(n)
 
     W = np.ones(p) * lam
+    print("lagrange in lasso", lam)
     penalty = rr.group_lasso(np.arange(p),
                              weights=dict(zip(np.arange(p), W)), lagrange=1.)
 
@@ -72,96 +77,52 @@ def hierarchical_lasso_trial(X,
         return None
 
     else:
+        true_vec = np.linalg.inv(X[:, active].T.dot(X[:, active])).dot(X[:, active].T).dot(true_mean)
+        sys.stderr.write("True target to be covered" + str(true_vec) + "\n")
 
         ci = approximate_conditional_density_2stage(M_est)
+
+        #computing approx prob for variable 0:
         ci.solve_approx()
-
-        ci_sel = np.zeros((nactive, 2))
-        pivots = np.zeros(nactive)
-
-        for j in xrange(nactive):
-            ci_sel[j, :] = np.array(ci.approximate_ci(j))
-            pivots[j] = ci.approximate_pvalue(j, 0.)
-
-        sel_length = (ci_sel[:, 1] - ci_sel[:, 0]).sum() / nactive
-
-        class target_class(object):
-            def __init__(self, target_cov):
-                self.target_cov = target_cov
-                self.shape = target_cov.shape
-
-        target = target_class(M_est.target_cov)
-
-        ci_naive = naive_confidence_intervals(target, M_est.target_observed)
-        naive_covered = np.zeros(nactive, np.bool)
-        sel_MLE = np.zeros(nactive)
-        naive_length = (ci_naive[:,1]- ci_naive[:,0]).sum()/nactive
-
-        for j in xrange(nactive):
-            sel_MLE[j] = ci.approx_MLE_solver(j, step=1, nstep=150)[0]
-
-        p_BH = BH_q(pivots, bh_level)
-
-        discoveries_active = np.zeros(nactive)
-        if p_BH is not None:
-            for indx in p_BH[1]:
-                discoveries_active[indx] = 1
-
-        print("lengths", sel_length, naive_length)
-        print("selective intervals", ci_sel.T)
-        print("selective MLE", sel_MLE)
-        print("uandjusted MLE", M_est.target_observed)
-        print("naive intervals", ci_naive.T)
-
-        list_results = np.transpose(np.vstack((ci_sel[:, 0],
-                                               ci_sel[:, 1],
-                                               ci_naive[:, 0],
-                                               ci_naive[:, 1],
-                                               pivots,
-                                               active_set,
-                                               discoveries_active)))
-
-        sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
-        return list_results
-
 
 if __name__ == "__main__":
 
     ###read input files
-    path = '/Users/snigdhapanigrahi/Test_bon_egenes/Egene_data/'
+    path = '/Users/snigdhapanigrahi/sim_Test_egenes/Egene_data/'
 
-    gene = str("ENSG00000215915.5")
+    gene = str("ENSG00000163486.8")
     X = np.load(os.path.join(path + "X_" + gene) + ".npy")
     n, p = X.shape
     X -= X.mean(0)[None, :]
     X /= (X.std(0)[None, :] * np.sqrt(n))
-    X_unpruned = X
+    #X_unpruned = X
 
 
-    prototypes = np.loadtxt(os.path.join("/Users/snigdhapanigrahi/Test_bon_egenes/Egene_data/protoclust_" + gene) + ".txt",
+    prototypes = np.loadtxt(os.path.join("/Users/snigdhapanigrahi/sim_Test_egenes/Egene_data/protoclust_" + gene) + ".txt",
                             delimiter='\t')
     prototypes = np.unique(prototypes).astype(int)
     print("prototypes", prototypes.shape[0])
 
     X = X[:, prototypes]
+    X_unpruned = X
+    print("shape of X", X.shape)
 
-    y = np.load(os.path.join(path + "y_" + gene) + ".npy")
-    y = y.reshape((y.shape[0],))
-    #sigma_est =  0.3234533
-    #sigma_est = 0.5526097
-    sigma_est = 0.4303074
-    y /= sigma_est
+    simulated = np.loadtxt(os.path.join(path + "y_pruned_simulated_" + gene) + ".txt")
+    y = simulated[0,:]
+    true_mean = simulated[1,:]
+    indices_TS = simulated[2,:][simulated[2,:]>-0.5].astype(int)
+    print("indices of true signals", indices_TS[0])
 
+    simes_output = np.loadtxt(os.path.join("/Users/snigdhapanigrahi/sim_Test_egenes/Egene_data/simes_" + gene) + ".txt")
 
-    simes_output = np.loadtxt(os.path.join("/Users/snigdhapanigrahi/Test_bon_egenes/Egene_data/simes_" + gene) + ".txt")
-
-    simes_level = (0.10 * 2226)/21819.
-    index = int(simes_output[2])
-    T_sign = simes_output[4]
+    simes_level = (0.10 * 1107)/19555.
+    index = int(simes_output[3])
+    print("index", index)
+    T_sign = simes_output[5]
 
     V = simes_output[0]
-    u = simes_output[3]
-    sigma_hat = simes_output[5]
+    u = simes_output[4]
+    sigma_hat = simes_output[6]
 
     l_threshold = np.sqrt(1+ (0.7**2)) * normal.ppf(1. - min(u, simes_level * (1./ V)) / 2.)
     u_threshold = 10 ** 10
@@ -169,18 +130,19 @@ if __name__ == "__main__":
     print("u", u)
     print("l threshold", l_threshold)
 
-    print("ratio", sigma_est/sigma_hat)
+    print("ratio", 1./sigma_hat)
 
-    data_simes = (sigma_est/sigma_hat)*(X_unpruned[:, index].T.dot(y))
+    data_simes = (1./sigma_hat)*(X_unpruned[:, index].T.dot(y))
 
     print("data simes", data_simes)
 
     sigma = 1.
 
-    ratio = sigma_est/sigma_hat
+    ratio = 1./sigma_hat
 
     results = hierarchical_lasso_trial(X,
                                        y,
+                                       true_mean,
                                        sigma,
                                        simes_level,
                                        index,
@@ -189,6 +151,8 @@ if __name__ == "__main__":
                                        u_threshold,
                                        data_simes,
                                        X_unpruned,
-                                       ratio)
+                                       ratio,
+                                       indices_TS,
+                                       seed_n=0)
 
     print(results)

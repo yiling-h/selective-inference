@@ -1,16 +1,14 @@
 from __future__ import print_function
 import sys
 import os
-from scipy.stats import norm as normal
-
+from scipy.stats import norm
 import numpy as np
 import regreg.api as rr
 
 from selection.randomized.query import naive_confidence_intervals
-from selection.randomized.query import naive_pvalues
 from scipy.stats.stats import pearsonr
 
-from selection.frequentist_eQTL.test_egenes.inference_bon_hierarchical_selection import M_estimator_2step, approximate_conditional_density_2stage
+from selection.frequentist_eQTL.tests.inference_bon_hierarchical_selection import M_estimator_2step, approximate_conditional_density_2stage
 
 def BH_q(p_value, level):
 
@@ -41,7 +39,6 @@ def hierarchical_lasso_trial(X,
                              X_unpruned,
                              sigma_ratio,
                              indices_TS,
-                             seed_n = 0,
                              bh_level = 0.10,
                              lam_frac = 1.,
                              loss='gaussian'):
@@ -49,7 +46,7 @@ def hierarchical_lasso_trial(X,
     from selection.api import randomization
 
     n, p = X.shape
-    np.random.seed(seed_n)
+    np.random.seed(0)
     if loss == "gaussian":
         lam = lam_frac * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * sigma
         loss = rr.glm.gaussian(X, y)
@@ -60,7 +57,7 @@ def hierarchical_lasso_trial(X,
     penalty = rr.group_lasso(np.arange(p),
                              weights=dict(zip(np.arange(p), W)), lagrange=1.)
 
-    randomization = randomization.isotropic_gaussian((p,), scale=.7)
+    randomization = randomization.isotropic_gaussian((p,), scale=1.)
 
     M_est = M_estimator_2step(loss, epsilon, penalty, randomization, simes_level, index, T_sign,
                               l_threshold, u_threshold, data_simes, X_unpruned, sigma_ratio)
@@ -71,11 +68,6 @@ def hierarchical_lasso_trial(X,
     sys.stderr.write("number of active selected by lasso" + str(nactive) + "\n")
     sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
     sys.stderr.write("Observed target" + str(M_est.target_observed)+ "\n")
-
-    #print("corr of selected X's", np.corrcoef(X[:,active].T))
-    #for k in range(nactive):
-    #    corr = pearsonr(X[:, index], X[:, active_set[k]])
-    #    print("correlation of simes index", corr)
 
     if nactive == 0:
         return None
@@ -105,7 +97,6 @@ def hierarchical_lasso_trial(X,
         naive_covered = np.zeros(nactive, np.bool)
         naive_length = np.zeros(nactive)
         naive_risk = np.zeros(nactive)
-
 
         for j in xrange(nactive):
             ci_sel[j, :] = np.array(ci.approximate_ci(j))
@@ -150,12 +141,6 @@ def hierarchical_lasso_trial(X,
                     else:
                         false_discoveries += 1.
 
-        print("lengths", select_length, naiveci_length)
-        print("selective p-values", pivots)
-        print("selective intervals", ci_sel.T)
-        print("naive intervals", ci_naive.T)
-        print("risks", sel_risk.sum()/nactive, naive_risk.sum()/nactive)
-
         pf[0] = power / float(indices_TS.shape[0])
         if discoveries_active.sum()>0.:
             pf[1] = false_discoveries / float(discoveries_active.sum())
@@ -186,19 +171,22 @@ def hierarchical_lasso_trial(X,
 
 if __name__ == "__main__":
 
-    ###read input files
-    path = '/Users/snigdhapanigrahi/sim_Test_egenes/Egene_data/'
+    inpath = sys.argv[1]
+    egene = int(sys.argsv[3])
+    outdir = sys.argv[2]
 
-    gene = str("ENSG00000163486.8")
-    X = np.load(os.path.join(path + "X_" + gene) + ".npy")
+    eGenes = os.path.join(inpath, "eGenes.txt")
+    with open(eGenes) as g:
+        content = g.readlines()
+    content = [x.strip() for x in content]
+
+    gene =  str(content[egene])
+    X = np.load(os.path.join(inpath + "X_" + gene) + ".npy")
     n, p = X.shape
     X -= X.mean(0)[None, :]
     X /= (X.std(0)[None, :] * np.sqrt(n))
-    #X_unpruned = X
 
-
-    prototypes = np.loadtxt(os.path.join("/Users/snigdhapanigrahi/sim_Test_egenes/Egene_data/protoclust_" + gene) + ".txt",
-                            delimiter='\t')
+    prototypes = np.loadtxt(os.path.join(inpath + "protoclust_" + gene) + ".txt", delimiter='\t')
     prototypes = np.unique(prototypes).astype(int)
     print("prototypes", prototypes.shape[0])
 
@@ -206,15 +194,14 @@ if __name__ == "__main__":
     X_unpruned = X
     print("shape of X", X.shape)
 
-    simulated = np.loadtxt(os.path.join(path + "y_pruned_simulated_" + gene) + ".txt")
-    y = simulated[0,:]
-    true_mean = simulated[1,:]
-    indices_TS = simulated[2,:][simulated[2,:]>-0.5].astype(int)
-    print("indices of true signals", indices_TS[0])
+    simulated = np.loadtxt(os.path.join(inpath + "y_pruned_simulated_" + gene) + ".txt")
+    y = simulated[0, :]
+    true_mean = simulated[1, :]
+    indices_TS = simulated[2, :][simulated[2, :] > -0.5].astype(int)
 
-    simes_output = np.loadtxt(os.path.join("/Users/snigdhapanigrahi/sim_Test_egenes/Egene_data/simes_" + gene) + ".txt")
+    simes_output = np.loadtxt(os.path.join(inpath + "simes_" + gene) + ".txt")
 
-    simes_level = (0.10 * 1107)/19555.
+    simes_level = (0.10 * 1107) / 19555.
     index = int(simes_output[3])
     print("index", index)
     T_sign = simes_output[5]
@@ -223,86 +210,30 @@ if __name__ == "__main__":
     u = simes_output[4]
     sigma_hat = simes_output[6]
 
-    l_threshold = np.sqrt(1+ (0.7**2)) * normal.ppf(1. - min(u, simes_level * (1./ V)) / 2.)
+    l_threshold = np.sqrt(1 + (0.7 ** 2)) * norm.ppf(1. - min(u, simes_level * (1. / V)) / 2.)
     u_threshold = 10 ** 10
-
-    print("u", u)
-    print("l threshold", l_threshold)
-
-    print("ratio", 1./sigma_hat)
-
-    data_simes = (1./sigma_hat)*(X_unpruned[:, index].T.dot(y))
-
-    print("data simes", data_simes)
-
+    data_simes = (1. / sigma_hat) * (X_unpruned[:, index].T.dot(y))
     sigma = 1.
 
-    ratio = 1./sigma_hat
+    ratio = 1. / sigma_hat
 
-    try:
-        results = hierarchical_lasso_trial(X,
-                                           y,
-                                           true_mean,
-                                           sigma,
-                                           simes_level,
-                                           index,
-                                           T_sign,
-                                           l_threshold,
-                                           u_threshold,
-                                           data_simes,
-                                           X_unpruned,
-                                           ratio,
-                                           indices_TS,
-                                           seed_n=0)
+    results = hierarchical_lasso_trial(X,
+                                       y,
+                                       true_mean,
+                                       sigma,
+                                       simes_level,
+                                       index,
+                                       T_sign,
+                                       l_threshold,
+                                       u_threshold,
+                                       data_simes,
+                                       X_unpruned,
+                                       ratio,
+                                       indices_TS)
 
-
-    except ValueError:
-        sys.stderr.write("Value error: error try again!" + "\n")
-        results = hierarchical_lasso_trial(X,
-                                           y,
-                                           true_mean,
-                                           sigma,
-                                           simes_level,
-                                           index,
-                                           T_sign,
-                                           l_threshold,
-                                           u_threshold,
-                                           data_simes,
-                                           X_unpruned,
-                                           ratio,
-                                           indices_TS,
-                                           seed_n=1)
-        try:
-            results = hierarchical_lasso_trial(X,
-                                               y,
-                                               true_mean,
-                                               sigma,
-                                               simes_level,
-                                               index,
-                                               T_sign,
-                                               l_threshold,
-                                               u_threshold,
-                                               data_simes,
-                                               X_unpruned,
-                                               ratio,
-                                               indices_TS,
-                                               seed_n=1)
-        except ValueError:
-            results = hierarchical_lasso_trial(X,
-                                               y,
-                                               true_mean,
-                                               sigma,
-                                               simes_level,
-                                               index,
-                                               T_sign,
-                                               l_threshold,
-                                               u_threshold,
-                                               data_simes,
-                                               X_unpruned,
-                                               ratio,
-                                               indices_TS,
-                                               seed_n=2)
+    outfile = os.path.join(outdir + "inference_" + gene + ".txt")
+    np.savetxt(outfile, results)
 
 
 
-    print(results)
+

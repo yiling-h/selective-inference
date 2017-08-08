@@ -4,7 +4,7 @@ from scipy.stats.stats import pearsonr
 
 class generate_data():
 
-    def __init__(self, X, nsignals, candidate, sigma=1.):
+    def __init__(self, X, nsignals, sigma=1.):
 
          self.sigma = sigma
 
@@ -16,14 +16,12 @@ class generate_data():
          beta_true = np.zeros(self.p)
          signal_indices = -1* np.ones(self.n)
 
-         cl_subsample = np.random.choice(len(candidate), nsignals, replace=False)
+         cl_subsample = np.random.choice(self.p, nsignals, replace=False)
 
          if nsignals > 0:
              for j in range(nsignals):
-                 signal_subsample = np.random.choice(candidate[cl_subsample[j]].shape[0], 1 , replace=False)
-                 signal_indx = candidate[cl_subsample[j]][signal_subsample]
-                 beta_true[signal_indx] = 3.
-                 signal_indices[j] = signal_indx
+                 beta_true[cl_subsample] = 3.
+                 signal_indices[j] = cl_subsample
 
          self.beta = beta_true
          self.signal_indices = signal_indices
@@ -61,35 +59,12 @@ if __name__ == "__main__":
         X = np.load(os.path.join(inpath + "X_" + str(content[j])) + ".npy")
         n, p = X.shape
 
-        dist_X = 1. - np.corrcoef(X.T)
-
         prototypes = np.loadtxt(os.path.join(protopath + "protoclust_" + str(content[j])) + ".txt", delimiter='\t')
-        prototypes = prototypes.astype(int)
-        indices_pt = np.arange(prototypes.shape[0])
-
         representatives = np.unique(prototypes).astype(int)
-
-        candidate = []
-
-        for i in range(representatives.shape[0]):
-            cl_indices = indices_pt[prototypes == representatives[i]]
-            corr_indices = np.argsort(dist_X[representatives[i], :][cl_indices])
-
-            if cl_indices.shape[0] == 1:
-                candidate.append(np.array([representatives[i]]))
-            elif cl_indices.shape[0] == 2:
-                candidate.append(cl_indices[corr_indices[:2]])
-            elif cl_indices.shape[0] == 3:
-                candidate.append(cl_indices[corr_indices[:3]])
-            elif cl_indices.shape[0] == 4:
-                candidate.append(cl_indices[corr_indices[:4]])
-            elif cl_indices.shape[0] > 4:
-                candidate.append(cl_indices[corr_indices[:5]])
-
+        X = X[:, representatives]
         nsignals = signals[regime[j]]
 
-        np.random.seed(0)
-        sample = generate_data(X, nsignals, candidate)
+        sample = generate_data(X, nsignals)
         true_mean, y, beta, sigma, signal_indices = sample.generate_response()
 
         output = np.zeros((3, n))
@@ -97,6 +72,6 @@ if __name__ == "__main__":
         output[1,:] = true_mean
         output[2,:] = signal_indices
 
-        outfile = os.path.join(outpath, "y_simulated_" + str(content[j]) + ".txt")
+        outfile = os.path.join(outpath, "y_pruned_simulated_" + str(content[j]) + ".txt")
 
         np.savetxt(outfile, output)
