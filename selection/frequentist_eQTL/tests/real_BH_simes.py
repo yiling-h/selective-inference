@@ -20,7 +20,8 @@ path='/Users/snigdhapanigrahi/randomized_Bon_Z/'
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
 shapes = []
-for file_ in allFiles:
+for file_ in sorted(allFiles):
+    #print "Current File Being Processed is: " + file_
     dataArray = np.loadtxt(file_)
     shapes.append(dataArray.shape[0])
     list_.append(dataArray)
@@ -82,9 +83,6 @@ print("average number of SNPs", egene_p)
 #             E = (-1 * np.ones(1)).reshape((1,))
 #             np.savetxt(outfile, E)
 
-# outdir = '/Users/snigdhapanigrahi/simes_output_Liver/randomized_egenes/egene_index_'
-# indices = np.loadtxt(outdir + str(format(2, '03'))+ ".txt")
-# print("dims", indices.shape[0])
 
 # outdir = '/Users/snigdhapanigrahi/bon_output_Liver/randomized_egene_boninfo/'
 # for i in range(v.shape[0]):

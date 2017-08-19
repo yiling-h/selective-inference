@@ -15,7 +15,7 @@ def BH_selection_egenes(p_simes, level):
 
     return order_sig+1, E_sel
 
-path='/Users/snigdhapanigrahi/non_randomized_Simes_muscle_F/'
+path='/Users/snigdhapanigrahi/non_randomized_Simes_F/'
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
 shapes = []
@@ -46,7 +46,7 @@ E_sel_0 = np.sort(sig[1])
 print("selected indices", E_sel_0, E_sel_0.shape[0])
 
 #####################################################
-path='/Users/snigdhapanigrahi/randomized_Bon_muscle_Z/'
+path='/Users/snigdhapanigrahi/randomized_Bon_Z/'
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
 shapes = []

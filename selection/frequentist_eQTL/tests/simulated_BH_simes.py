@@ -16,7 +16,7 @@ def BH_selection_egenes(p_simes, level):
     return order_sig+1, E_sel
 
 
-path='/Users/snigdhapanigrahi/sim_randomized_Bon_Z/'
+path='/Users/snigdhapanigrahi/sim_hs_randomized_Bon_Z/'
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
 shapes = []
@@ -70,7 +70,7 @@ E_sel_0 = indices_0[E_sel]
 
 print("original indices sel", E_sel_0)
 
-# outdir = '/Users/snigdhapanigrahi/sim_bon_output_liver/randomized_egenes/'
+# outdir = '/Users/snigdhapanigrahi/sim_hs_bon_output_liver/randomized_egenes/'
 # for i in range(v.shape[0]):
 #
 #     if i == 0:
@@ -98,7 +98,7 @@ print("original indices sel", E_sel_0)
 #             E = (-1 * np.ones(1)).reshape((1,))
 #             np.savetxt(outfile, E)
 
-# outdir = '/Users/snigdhapanigrahi/sim_bon_output_Liver/randomized_egene_boninfo/'
+# outdir = '/Users/snigdhapanigrahi/sim_hs_bon_output_Liver/randomized_egene_boninfo/'
 # for i in range(v.shape[0]):
 #
 #     if i == 0:

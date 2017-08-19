@@ -1,14 +1,15 @@
 import glob
 import os, numpy as np, pandas, statsmodels.api as sm
 
-path =r'/Users/snigdhapanigrahi/sim_inference/inference'
+path =r'/Users/snigdhapanigrahi/sim_hs_inference/inference'
 
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
 for file_ in allFiles:
-    if 'inference_lrs_' in file_:
-        df = np.loadtxt(file_)
-        list_.append(df)
+    df = np.loadtxt(file_)
+    list_.append(df)
+    #if 'inference_lrs_' in file_:
+
 
 def summary_files(list_):
 

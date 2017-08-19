@@ -2,7 +2,6 @@ from __future__ import print_function
 import sys
 import os
 from scipy.stats import norm
-from math import log
 
 import numpy as np
 import regreg.api as rr
@@ -11,8 +10,12 @@ from selection.randomized.M_estimator import M_estimator
 from selection.randomized.query import naive_confidence_intervals
 from scipy.stats.stats import pearsonr
 
+from rpy2.robjects.packages import importr
+from rpy2 import robjects
+glmnet = importr('glmnet')
+import rpy2.robjects.numpy2ri
+rpy2.robjects.numpy2ri.activate()
 
-# from selection.frequentist_eQTL.tests.inference_bon_hierarchical_selection import M_estimator_2step, approximate_conditional_density_2stage
 
 class nonnegative_softmax_scaled(rr.smooth_atom):
     """
@@ -34,11 +37,11 @@ class nonnegative_softmax_scaled(rr.smooth_atom):
                  initial=None):
 
         rr.smooth_atom.__init__(self,
-                                shape,
-                                offset=offset,
-                                quadratic=quadratic,
-                                initial=initial,
-                                coef=coef)
+                             shape,
+                             offset=offset,
+                             quadratic=quadratic,
+                             initial=initial,
+                             coef=coef)
 
         # a feasible point
         self.coefs[:] = np.ones(shape)
@@ -113,7 +116,7 @@ class neg_log_cube_probability(rr.smooth_atom):
         prod_arg = np.exp(-(2. * self.lagrange * arg) / (self.randomization_scale ** 2))
         neg_prod_arg = np.exp((2. * self.lagrange * arg) / (self.randomization_scale ** 2))
         cube_prob = norm.cdf(arg_u) - norm.cdf(arg_l)
-        # log_cube_prob = -np.log(cube_prob).sum()
+        #neg_log_cube_prob = -np.log(cube_prob).sum()
 
         threshold = 10 ** -10
         indicator = np.zeros(self.q, bool)
@@ -149,8 +152,6 @@ class neg_log_cube_probability(rr.smooth_atom):
                                     ((prod_arg[pos_index] / np.abs(arg_u[pos_index])) -
                                      (1. / np.abs(arg_l[pos_index])))) / self.randomization_scale
 
-        # log_cube_grad[neg_index] = ((arg_u[neg_index] -(arg_l[neg_index]*neg_prod_arg[neg_index]))
-        #                            /self.randomization_scale)/(1.- neg_prod_arg[neg_index])
         log_cube_grad[neg_index] = ((-1. + neg_prod_arg[neg_index]) /
                                     ((-neg_prod_arg[neg_index] / np.abs(arg_l[neg_index])) +
                                      (1. / np.abs(arg_u[neg_index])))) / self.randomization_scale
@@ -166,9 +167,10 @@ class neg_log_cube_probability(rr.smooth_atom):
 
 
 class M_estimator_2step(M_estimator):
-    def __init__(self, loss, epsilon, penalty, randomization, simes_level, index, T_sign, l_threshold, u_threshold,
-                 data_simes,
+
+    def __init__(self, loss, epsilon, penalty, randomization, simes_level, index, T_sign, l_threshold, u_threshold, data_simes,
                  X_unpruned, sigma_ratio):
+
         M_estimator.__init__(self, loss, epsilon, penalty, randomization)
         self.simes_level = simes_level
         self.index = index
@@ -208,10 +210,10 @@ class M_estimator_2step(M_estimator):
         nactive = self._overall.sum()
 
         score_cov = np.zeros((p, p))
-        X_active_inv = np.linalg.inv(X[:, self._overall].T.dot(X[:, self._overall]))
-        projection_perp = np.identity(n) - X[:, self._overall].dot(X_active_inv).dot(X[:, self._overall].T)
+        X_active_inv = np.linalg.inv(X[:,self._overall].T.dot(X[:,self._overall]))
+        projection_perp = np.identity(n) - X[:,self._overall].dot(X_active_inv).dot( X[:,self._overall].T)
         score_cov[:nactive, :nactive] = X_active_inv
-        score_cov[nactive:, nactive:] = X[:, ~self._overall].T.dot(projection_perp).dot(X[:, ~self._overall])
+        score_cov[nactive:, nactive:] = X[:,~self._overall].T.dot(projection_perp).dot(X[:,~self._overall])
 
         self.score_target_cov = score_cov[:, :nactive]
         self.target_cov = score_cov[:nactive, :nactive]
@@ -221,22 +223,20 @@ class M_estimator_2step(M_estimator):
         self.B_active_lasso = self._opt_linear_term[:nactive, :nactive]
         self.B_inactive_lasso = self._opt_linear_term[nactive:, :nactive]
 
-        self.score_cov_simes = self.sigma_ratio * (
-        X_active_inv.dot(X[:, self._overall].T).dot(self.X_unpruned[:, self.index]))
+        self.score_cov_simes = self.sigma_ratio* (X_active_inv.dot(X[:, self._overall].T).dot(self.X_unpruned[:, self.index]))
 
     def setup_map(self, j):
+
         self.A_lasso = np.dot(self._score_linear_term, self.score_target_cov[:, j]) / self.target_cov[j, j]
-        self.null_statistic_lasso = self._score_linear_term.dot(self.observed_score_state) - self.A_lasso * \
-                                                                                             self.target_observed[j]
+        self.null_statistic_lasso = self._score_linear_term.dot(self.observed_score_state) - self.A_lasso * self.target_observed[j]
 
         self.offset_active_lasso = self._opt_affine_term[:self.nactive] + self.null_statistic_lasso[:self.nactive]
         self.offset_inactive_lasso = self.null_statistic_lasso[self.nactive:]
 
         linear_simes = -self.T_sign
-        self.A_simes = linear_simes * (self.score_cov_simes[j] / self.target_cov[j, j])
-        self.null_statistic_simes = linear_simes * (self.data_simes) - self.A_simes * self.target_observed[j]
+        self.A_simes = linear_simes* (self.score_cov_simes[j] / self.target_cov[j, j])
+        self.null_statistic_simes = linear_simes* (self.data_simes) - self.A_simes * self.target_observed[j]
 
-        # print("null_stats", linear_simes* (self.data_simes), self.A_simes * self.target_observed[j], self.null_statistic_simes)
         self.offset_simes = self.null_statistic_simes
 
 
@@ -467,8 +467,8 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
 
             if count > 150:
                 raise ValueError("Error on grid approx")
-                # sys.stderr.write("point on grid: " + str(i) + "\n")
-                # sys.stderr.write("value on grid: " + str(h_hat[i]) + "\n")
+            sys.stderr.write("point on grid: " + str(i) + "\n")
+            sys.stderr.write("value on grid: " + str(h_hat[i]) + "\n")
 
         return np.array(h_hat)
 
@@ -570,17 +570,41 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
 
         return 2 * min(area, 1. - area)
 
+def glmnet_sigma(X, y):
+
+    robjects.r('''
+                glmnet_cv = function(X,y){
+                y = as.matrix(y)
+                X = as.matrix(X)
+
+                out = cv.glmnet(X, y, standardize=FALSE, intercept=FALSE)
+                lam_minCV = out$lambda.min
+
+                coef = coef(out, s = "lambda.min")
+                linear.fit = lm(y~ X[, which(coef>0.001)-1])
+                sigma_est = summary(linear.fit)$sigma
+                return(sigma_est)
+                }''')
+
+    sigma_cv_R = robjects.globalenv['glmnet_cv']
+    n, p = X.shape
+    r_X = robjects.r.matrix(X, nrow=n, ncol=p)
+    r_y = robjects.r.matrix(y, nrow=n, ncol=1)
+
+    sigma_est = sigma_cv_R(r_X, r_y)
+    return sigma_est
 
 def BH_q(p_value, level):
+
     m = p_value.shape[0]
     p_sorted = np.sort(p_value)
     indices = np.arange(m)
     indices_order = np.argsort(p_value)
 
-    if np.any(p_sorted - np.true_divide(level * (np.arange(m) + 1.), m) <= np.zeros(m)):
-        order_sig = np.max(indices[p_sorted - np.true_divide(level * (np.arange(m) + 1.), m) <= 0])
-        sig_pvalues = indices_order[:(order_sig + 1)]
-        return p_sorted[:(order_sig + 1)], sig_pvalues
+    if np.any(p_sorted - np.true_divide(level*(np.arange(m)+1.),m)<=np.zeros(m)):
+        order_sig = np.max(indices[p_sorted- np.true_divide(level*(np.arange(m)+1.),m)<=0])
+        sig_pvalues = indices_order[:(order_sig+1)]
+        return p_sorted[:(order_sig+1)], sig_pvalues
 
     else:
         return None
@@ -588,7 +612,6 @@ def BH_q(p_value, level):
 
 def hierarchical_lasso_trial(X,
                              y,
-                             true_mean,
                              sigma,
                              simes_level,
                              index,
@@ -598,11 +621,11 @@ def hierarchical_lasso_trial(X,
                              data_simes,
                              X_unpruned,
                              sigma_ratio,
-                             indices_TS,
-                             seed_n=0,
-                             bh_level=0.10,
-                             lam_frac=1.,
+                             seed_n = 0,
+                             bh_level = 0.10,
+                             lam_frac = 1.2,
                              loss='gaussian'):
+
     from selection.api import randomization
 
     n, p = X.shape
@@ -627,24 +650,26 @@ def hierarchical_lasso_trial(X,
     nactive = np.sum(active)
     sys.stderr.write("number of active selected by lasso" + str(nactive) + "\n")
     sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
-    sys.stderr.write("Observed target" + str(M_est.target_observed) + "\n")
+    sys.stderr.write("Observed target" + str(M_est.target_observed)+ "\n")
 
     if nactive == 0:
         return None
 
     else:
-        true_vec = np.linalg.inv(X[:, active].T.dot(X[:, active])).dot(X[:, active].T).dot(true_mean)
-        sys.stderr.write("True target to be covered" + str(true_vec) + "\n")
 
         ci = approximate_conditional_density_2stage(M_est)
         ci.solve_approx()
 
         ci_sel = np.zeros((nactive, 2))
-        sel_covered = np.zeros(nactive, np.bool)
         pivots = np.zeros(nactive)
         sel_MLE = np.zeros(nactive)
-        sel_length = np.zeros(nactive)
-        sel_risk = np.zeros(nactive)
+
+        for j in xrange(nactive):
+            ci_sel[j, :] = np.array(ci.approximate_ci(j))
+            pivots[j] = ci.approximate_pvalue(j, 0.)
+            sel_MLE[j] = ci.approx_MLE_solver(j, step=1, nstep=150)[0]
+
+        sel_length = (ci_sel[:, 1] - ci_sel[:, 0]).sum() / nactive
 
         class target_class(object):
             def __init__(self, target_cov):
@@ -655,66 +680,20 @@ def hierarchical_lasso_trial(X,
 
         ci_naive = naive_confidence_intervals(target, M_est.target_observed)
         naive_covered = np.zeros(nactive, np.bool)
-        naive_length = np.zeros(nactive)
-        naive_risk = np.zeros(nactive)
-
-        for j in xrange(nactive):
-            ci_sel[j, :] = np.array(ci.approximate_ci(j))
-            pivots[j] = ci.approximate_pvalue(j, 0.)
-
-            sel_MLE[j] = ci.approx_MLE_solver(j, step=1, nstep=150)[0]
-            sel_risk[j] = (sel_MLE[j] - true_vec[j]) ** 2.
-            sel_length[j] = ci_sel[j, 1] - ci_sel[j, 0]
-            naive_length[j] = ci_naive[j, 1] - ci_naive[j, 0]
-            naive_risk[j] = (M_est.target_observed[j] - true_vec[j]) ** 2.
-
-            if (ci_sel[j, 0] <= true_vec[j]) and (ci_sel[j, 1] >= true_vec[j]):
-                sel_covered[j] = 1
-            if (ci_naive[j, 0] <= true_vec[j]) and (ci_naive[j, 1] >= true_vec[j]):
-                naive_covered[j] = 1
-
-        select_length = sel_length.sum() / nactive
-
-        naiveci_length = naive_length.sum() / nactive
+        naive_length = (ci_naive[:,1]- ci_naive[:,0]).sum()/nactive
 
         p_BH = BH_q(pivots, bh_level)
-        power = 0.
-        false_discoveries = 0.
-        pf = -1 * np.ones(nactive)
 
         discoveries_active = np.zeros(nactive)
         if p_BH is not None:
             for indx in p_BH[1]:
                 discoveries_active[indx] = 1
-                if indices_TS.shape[0] > 1:
-                    corr = np.zeros(indices_TS.shape[0])
-                    for k in range(indices_TS.shape[0]):
-                        corr[k] = pearsonr(X[:, active_set[indx]], X[:, indices_TS[k]])[0]
-                    if np.any(corr >= 0.49):
-                        power += 1
-                    else:
-                        false_discoveries += 1.
 
-                elif indices_TS.shape[0] == 1:
-
-                    corr = pearsonr(X[:, active_set[indx]], X[:, indices_TS[0]])[0]
-                    if corr >= 0.49:
-                        power += 1
-                    else:
-                        false_discoveries += 1.
-                else:
-                    false_discoveries += 1.
-
-        if indices_TS.shape[0] >= 1:
-            pf[0] = power / float(indices_TS.shape[0])
-        else:
-            pf[0] = 0.
-
-        pf[1] = false_discoveries / max(float(discoveries_active.sum()), 1.)
-
-        sys.stderr.write("True target to be covered" + str(true_vec) + "\n")
-        sys.stderr.write("Total adjusted covered" + str(sel_covered.sum()) + "\n")
-        sys.stderr.write("Total naive covered" + str(naive_covered.sum()) + "\n")
+        print("lengths", sel_length, naive_length)
+        print("selective intervals", ci_sel.T)
+        print("selective MLE", sel_MLE)
+        print("uandjusted MLE", M_est.target_observed)
+        print("naive intervals", ci_naive.T)
 
         list_results = np.transpose(np.vstack((ci_sel[:, 0],
                                                ci_sel[:, 1],
@@ -722,14 +701,7 @@ def hierarchical_lasso_trial(X,
                                                ci_naive[:, 1],
                                                pivots,
                                                active_set,
-                                               sel_covered,
-                                               naive_covered,
-                                               sel_risk,
-                                               naive_risk,
-                                               sel_length,
-                                               naive_length,
-                                               discoveries_active,
-                                               pf)))
+                                               discoveries_active)))
 
         sys.stderr.write("Active set selected by lasso" + str(active_set) + "\n")
         return list_results
@@ -737,6 +709,7 @@ def hierarchical_lasso_trial(X,
 
 if __name__ == "__main__":
 
+    ###read input files
     inpath = sys.argv[1]
     egene = int(sys.argv[3])
     outdir = sys.argv[2]
@@ -752,42 +725,47 @@ if __name__ == "__main__":
     n, p = X.shape
     X -= X.mean(0)[None, :]
     X /= (X.std(0)[None, :] * np.sqrt(n))
+    X_unpruned = X
 
     prototypes = np.loadtxt(os.path.join(inpath + "protoclust_" + gene) + ".txt", delimiter='\t')
     prototypes = np.unique(prototypes).astype(int)
     print("prototypes", prototypes.shape[0])
-
     X = X[:, prototypes]
-    X_unpruned = X
-    print("shape of X", X.shape)
 
-    simulated = np.loadtxt(os.path.join(inpath + "y_pruned_simulated_" + gene) + ".txt")
-    y = simulated[0, :]
-    true_mean = simulated[1, :]
-    indices_TS = simulated[2, :][simulated[2, :] > -0.5].astype(int)
+    y = np.load(os.path.join(inpath + "y_" + gene) + ".npy")
+    y = y.reshape((y.shape[0],))
+
+    sigma_est = glmnet_sigma(X, y)
+    print("sigma est", sigma_est)
+
+    y /= sigma_est
 
     simes_output = np.loadtxt(os.path.join(inpath + "simes_" + gene) + ".txt")
 
-    simes_level = (0.10 * 1107) / 19555.
-    index = int(simes_output[3])
-    print("index", index)
-    T_sign = simes_output[5]
+    simes_level = (0.10 * 2195)/21819.
+    index = int(simes_output[2])
+    T_sign = simes_output[4]
 
     V = simes_output[0]
-    u = simes_output[4]
-    sigma_hat = simes_output[6]
+    u = simes_output[3]
+    sigma_hat = simes_output[5]
 
-    l_threshold = np.sqrt(1 + (0.7 ** 2)) * norm.ppf(1. - min(u, simes_level * (1. / V)) / 2.)
+    if u > 10 ** -12.:
+        l_threshold = np.sqrt(1+ (0.7**2)) * norm.ppf(1. - min(u, simes_level * (1./ V)) / 2.)
+    else:
+        l_threshold = np.sqrt(1 + (0.7 ** 2)) * norm.ppf(1. -(simes_level * (1./ V)/2.))
+
     u_threshold = 10 ** 10
-    data_simes = (1. / sigma_hat) * (X_unpruned[:, index].T.dot(y))
+
+    data_simes = (sigma_est/sigma_hat)*(X_unpruned[:, index].T.dot(y))
+
     sigma = 1.
 
-    ratio = 1. / sigma_hat
+    ratio = sigma_est/sigma_hat
 
     try:
         results = hierarchical_lasso_trial(X,
                                            y,
-                                           true_mean,
                                            sigma,
                                            simes_level,
                                            index,
@@ -797,16 +775,12 @@ if __name__ == "__main__":
                                            data_simes,
                                            X_unpruned,
                                            ratio,
-                                           indices_TS,
                                            seed_n=0)
-
-
 
     except ValueError:
         sys.stderr.write("Value error: error try again!" + "\n")
         results = hierarchical_lasso_trial(X,
                                            y,
-                                           true_mean,
                                            sigma,
                                            simes_level,
                                            index,
@@ -816,11 +790,7 @@ if __name__ == "__main__":
                                            data_simes,
                                            X_unpruned,
                                            ratio,
-                                           indices_TS,
                                            seed_n=1)
 
-    outfile = os.path.join(outdir + "inference_lrs_" + gene + ".txt")
+    outfile = os.path.join(outdir + "inference_" + gene + ".txt")
     np.savetxt(outfile, results)
-
-
-

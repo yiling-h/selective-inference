@@ -9,7 +9,7 @@ import regreg.api as rr
 from selection.randomized.query import naive_confidence_intervals
 from selection.randomized.query import naive_pvalues
 
-from selection.frequentist_eQTL.test_egenes.inference_bon_hierarchical_selection import M_estimator_2step, approximate_conditional_density_2stage
+from selection.frequentist_eQTL.test_egenes.inference_bon_fs_hierarchical_sel import M_estimator_2step, approximate_conditional_density_2stage
 
 from rpy2.robjects.packages import importr
 from rpy2 import robjects
@@ -71,8 +71,6 @@ def hierarchical_lasso_trial(X,
                              simes_level,
                              index,
                              T_sign,
-                             l_threshold,
-                             u_threshold,
                              data_simes,
                              X_unpruned,
                              sigma_ratio,
@@ -97,8 +95,7 @@ def hierarchical_lasso_trial(X,
 
     randomization = randomization.isotropic_gaussian((p,), scale=.7)
 
-    M_est = M_estimator_2step(loss, epsilon, penalty, randomization, simes_level, index, T_sign,
-                              l_threshold, u_threshold, data_simes, X_unpruned, sigma_ratio)
+    M_est = M_estimator_2step(loss, epsilon, penalty, randomization, simes_level, index, T_sign, data_simes, X_unpruned, sigma_ratio)
     M_est.solve_approx()
     active = M_est._overall
     active_set = np.asarray([i for i in range(p) if active[i]])
@@ -122,27 +119,19 @@ def hierarchical_lasso_trial(X,
         ci_naive = naive_confidence_intervals(target, M_est.target_observed)
         naive_length = (ci_naive[:, 1] - ci_naive[:, 0]).sum() / nactive
 
-        try:
-            ci = approximate_conditional_density_2stage(M_est)
-            ci.solve_approx()
+        ci = approximate_conditional_density_2stage(M_est)
+        ci.solve_approx()
 
-            ci_sel = np.zeros((nactive, 2))
-            pivots = np.zeros(nactive)
-            sel_MLE = np.zeros(nactive)
+        ci_sel = np.zeros((nactive, 2))
+        pivots = np.zeros(nactive)
+        sel_MLE = np.zeros(nactive)
 
-            for j in xrange(nactive):
-                ci_sel[j, :] = np.array(ci.approximate_ci(j))
-                pivots[j] = ci.approximate_pvalue(j, 0.)
-                sel_MLE[j] = ci.approx_MLE_solver(j, step=1, nstep=150)[0]
+        for j in xrange(nactive):
+            ci_sel[j, :] = np.array(ci.approximate_ci(j))
+            pivots[j] = ci.approximate_pvalue(j, 0.)
+            sel_MLE[j] = ci.approx_MLE_solver(j, step=1, nstep=150)[0]
 
-            sel_length = (ci_sel[:, 1] - ci_sel[:, 0]).sum() / nactive
-
-        except ValueError:
-            ci_sel = ci_naive
-            pivots = naive_pvalues(target, M_est.target_observed, np.zeros(nactive))
-            sel_MLE = M_est.target_observed
-
-            sel_length = (ci_sel[:, 1] - ci_sel[:, 0]).sum() / nactive
+        sel_length = (ci_sel[:, 1] - ci_sel[:, 0]).sum() / nactive
 
         p_BH = BH_q(pivots, bh_level)
 
@@ -174,7 +163,7 @@ if __name__ == "__main__":
     ###read input files
     path = '/Users/snigdhapanigrahi/Test_egenes/Egene_data/'
 
-    gene = str("ENSG00000227775.3")
+    gene = str("ENSG00000225630.1")
     X = np.load(os.path.join(path + "X_" + gene) + ".npy")
     n, p = X.shape
     X -= X.mean(0)[None, :]
@@ -212,16 +201,14 @@ if __name__ == "__main__":
     else:
         l_threshold = np.sqrt(1 + (0.7 ** 2)) * normal.ppf(1. -(simes_level * (1./ V)/2.))
 
-    u_threshold = 10 ** 10
-
-    print("u", u)
-    print("l threshold", l_threshold)
 
     print("ratio", sigma_est/sigma_hat)
 
-    data_simes = (sigma_est/sigma_hat)*(X_unpruned[:, index].T.dot(y))
+    indicator = np.zeros(X_unpruned.shape[1], dtype= bool)
+    indicator[index] = 1
+    data_simes = (sigma_est/sigma_hat)*(np.hstack([X_unpruned[:, indicator].T.dot(y), X_unpruned[:, ~indicator].T.dot(y)]))
 
-    print("data simes", data_simes)
+    print("data simes", data_simes.shape)
 
     sigma = 1.
 
@@ -233,8 +220,6 @@ if __name__ == "__main__":
                                        simes_level,
                                        index,
                                        T_sign,
-                                       l_threshold,
-                                       u_threshold,
                                        data_simes,
                                        X_unpruned,
                                        ratio,

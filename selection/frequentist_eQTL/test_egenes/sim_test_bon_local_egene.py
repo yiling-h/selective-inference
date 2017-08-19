@@ -189,13 +189,12 @@ if __name__ == "__main__":
     ###read input files
     path = '/Users/snigdhapanigrahi/sim_Test_egenes/Egene_data/'
 
-    gene = str("ENSG00000163486.8")
+    gene = str("ENSG00000225880.4")
     X = np.load(os.path.join(path + "X_" + gene) + ".npy")
     n, p = X.shape
     X -= X.mean(0)[None, :]
     X /= (X.std(0)[None, :] * np.sqrt(n))
     #X_unpruned = X
-
 
     prototypes = np.loadtxt(os.path.join("/Users/snigdhapanigrahi/sim_Test_egenes/Egene_data/protoclust_" + gene) + ".txt",
                             delimiter='\t')
@@ -302,7 +301,5 @@ if __name__ == "__main__":
                                                ratio,
                                                indices_TS,
                                                seed_n=2)
-
-
 
     print(results)
