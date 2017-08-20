@@ -52,33 +52,44 @@ def summary_files(list_):
     for i in range(length):
         print("iteration", i)
         results = list_[i]
-        if results.ndim> 1:
-            nactive = results.shape[0]
-        else:
-            nactive = 1.
-        print("nactive", nactive)
 
-        if nactive>1:
-            ci_sel_l = results[:, 0]
-            ci_sel_u = results[:, 1]
+        if results.size>0:
+            if results.ndim > 1:
+                nactive = results.shape[0]
+            else:
+                nactive = 1.
+            print("nactive", nactive)
 
-            unad_l = results[:, 2]
-            unad_u = results[:, 3]
+            if nactive > 1:
+                ci_sel_l = results[:, 0]
+                ci_sel_u = results[:, 1]
 
-        else:
-            ci_sel_l = results[0]
-            ci_sel_u = results[1]
+                unad_l = results[:, 2]
+                unad_u = results[:, 3]
 
-            unad_l = results[2]
-            unad_u = results[3]
+                length_adj = (ci_sel_u - ci_sel_l).sum() / float(nactive)
+                length_unadj = (unad_u - unad_l).sum() / float(nactive)
+                length_ad += length_adj
+                length_unad += length_unadj
+                print("lengths", length_adj, length_unadj)
+                if length_adj == length_unadj:
+                    count += 1.
 
-        length_adj = (ci_sel_u - ci_sel_l).sum()/float(nactive)
-        length_unadj = (unad_u - unad_l).sum()/float(nactive)
-        length_ad += length_adj
-        length_unad += length_unadj
-        print("lengths", length_adj, length_unadj)
-        if length_adj == length_unadj:
-            count += 1.
+            elif nactive == 1:
+                ci_sel_l = results[0]
+                ci_sel_u = results[1]
+
+                unad_l = results[2]
+                unad_u = results[3]
+
+                length_adj = (ci_sel_u - ci_sel_l).sum() / float(nactive)
+                length_unadj = (unad_u - unad_l).sum() / float(nactive)
+                length_ad += length_adj
+                length_unad += length_unadj
+                print("lengths", length_adj, length_unadj)
+                if length_adj == length_unadj:
+                    count += 1.
+
 
     return length_ad/length, length_unad/length, count
 

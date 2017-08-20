@@ -174,7 +174,7 @@ if __name__ == "__main__":
     ###read input files
     path = '/Users/snigdhapanigrahi/Test_egenes/Egene_data/'
 
-    gene = str("ENSG00000227775.3")
+    gene = str("ENSG00000225630.1")
     X = np.load(os.path.join(path + "X_" + gene) + ".npy")
     n, p = X.shape
     X -= X.mean(0)[None, :]
@@ -199,13 +199,13 @@ if __name__ == "__main__":
 
     simes_output = np.loadtxt(os.path.join("/Users/snigdhapanigrahi/Test_egenes/Egene_data/simes_" + gene) + ".txt")
 
-    simes_level = (0.10 * 2195)/21819.
+    simes_level = (0.10 * 2167)/21819.
     index = int(simes_output[2])
-    T_sign = simes_output[4]
+    T_sign = simes_output[5]
 
     V = simes_output[0]
-    u = simes_output[3]
-    sigma_hat = simes_output[5]
+    u = simes_output[4]
+    sigma_hat = simes_output[6]
 
     if u > 10 ** -12.:
         l_threshold = np.sqrt(1+ (0.7**2)) * normal.ppf(1. - min(u, simes_level * (1./ V)) / 2.)

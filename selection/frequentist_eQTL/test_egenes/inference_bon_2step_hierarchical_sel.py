@@ -158,17 +158,20 @@ class neg_log_cube_probability(rr.smooth_atom):
 
 class M_estimator_2step(M_estimator):
 
-    def __init__(self, loss, epsilon, penalty, randomization, simes_level, index, T_sign, data_simes,
-                 X_unpruned, sigma_ratio):
+    def __init__(self, loss, epsilon, penalty, randomization, simes_level, index_0, index_1, T_sign, data_simes,
+                 X_unpruned, sigma_ratio_0, sigma_ratio_1, l_threshold):
 
         M_estimator.__init__(self, loss, epsilon, penalty, randomization)
         self.simes_level = simes_level
-        self.index = index
+        self.index_0 = index_0
+        self.index_1 = index_1
         self.T_sign = T_sign
         self.data_simes = data_simes
         self.X_unpruned = X_unpruned
-        self.sigma_ratio = sigma_ratio
+        self.sigma_ratio_0 = sigma_ratio_0
+        self.sigma_ratio_1 = sigma_ratio_1
         self.simes_randomization = 0.7
+        self.l_threshold = l_threshold
 
     def solve_approx(self):
         self.solve()
@@ -210,11 +213,9 @@ class M_estimator_2step(M_estimator):
         self.B_active_lasso = self._opt_linear_term[:nactive, :nactive]
         self.B_inactive_lasso = self._opt_linear_term[nactive:, :nactive]
 
-        self.V = self.X_unpruned.shape[1]
-        indicator = np.zeros(self.V, dtype=bool)
-        indicator[self.index] = 1
-        self.perm_X_unpruned = np.hstack([self.X_unpruned[:, indicator], self.X_unpruned[:, ~indicator]])
-        self.score_cov_simes = self.sigma_ratio* (X_active_inv.dot(X[:, self._overall].T).dot(self.perm_X_unpruned)).T
+        self.perm_X_unpruned = np.hstack([self.sigma_ratio_0*self.X_unpruned[:, self.index_0].reshape((n,1)),
+                                          self.sigma_ratio_1*self.X_unpruned[:, self.index_1].reshape((n,1))])
+        self.score_cov_simes =  (X_active_inv.dot(X[:, self._overall].T).dot(self.perm_X_unpruned)).T
 
     def setup_map(self, j):
 
@@ -224,14 +225,13 @@ class M_estimator_2step(M_estimator):
         self.offset_active_lasso = self._opt_affine_term[:self.nactive] + self.null_statistic_lasso[:self.nactive]
         self.offset_inactive_lasso = self.null_statistic_lasso[self.nactive:]
 
-        linear_simes = -np.identity(self.V)
+        linear_simes = -np.identity(2)
         self.A_simes = linear_simes.dot(self.score_cov_simes[:,j] / self.target_cov[j, j])
         self.null_statistic_simes = linear_simes.dot(self.data_simes) - self.target_observed[j]* self.A_simes
         self.offset_simes = self.null_statistic_simes
 
 class neg_log_cube_probability_fs(rr.smooth_atom):
     def __init__(self,
-                 q, #equals p - E in our case
                  mu,
                  randomization_scale = 1., #equals the randomization variance in our case
                  coef=1.,
@@ -239,11 +239,10 @@ class neg_log_cube_probability_fs(rr.smooth_atom):
                  quadratic=None):
 
         self.randomization_scale = randomization_scale
-        self.q = q
         self.mu = mu
 
         rr.smooth_atom.__init__(self,
-                                (self.q,),
+                                (1,),
                                 offset=offset,
                                 quadratic=quadratic,
                                 initial=None,
@@ -253,61 +252,54 @@ class neg_log_cube_probability_fs(rr.smooth_atom):
 
         arg = self.apply_offset(arg)
 
-        arg_u = ((arg *np.ones(self.q)) + self.mu) / self.randomization_scale
-        arg_l = (-(arg *np.ones(self.q)) + self.mu) / self.randomization_scale
-        prod_arg = np.exp(-(2. * self.mu * (arg *np.ones(self.q))) / (self.randomization_scale ** 2))
-        neg_prod_arg = np.exp((2. * self.mu * (arg *np.ones(self.q))) / (self.randomization_scale ** 2))
+        arg_u = (arg + self.mu) / self.randomization_scale
+        arg_l = (-arg + self.mu) / self.randomization_scale
+        prod_arg = np.exp(-(2. * self.mu * arg) / (self.randomization_scale ** 2))
+        neg_prod_arg = np.exp((2. * self.mu * arg) / (self.randomization_scale ** 2))
 
         cube_prob = norm.cdf(arg_u) - norm.cdf(arg_l)
-        log_cube_prob = -np.log(cube_prob).sum()
 
         threshold = 10 ** -10
-        indicator = np.zeros(self.q, bool)
-        indicator[(cube_prob > threshold)] = 1
-        positive_arg = np.zeros(self.q, bool)
-        positive_arg[(self.mu > 0)] = 1
-        pos_index = np.logical_and(positive_arg, ~indicator)
-        neg_index = np.logical_and(~positive_arg, ~indicator)
+        if cube_prob > threshold:
+            log_cube_prob = -np.log(cube_prob)
+            log_cube_grad = -(np.true_divide(norm.pdf(arg_u) + norm.pdf(arg_l), cube_prob)) / self.randomization_scale
+        elif self.mu > 0:
+            log_cube_prob = (arg**2. + self.mu**2. -(2*arg*self.mu))/(2*(self.randomization_scale**2.))-\
+                            np.log(-prod_arg/np.abs(arg_u) + 1./np.abs(arg_l))
+            log_cube_grad = ((1. + prod_arg) /((prod_arg / np.abs(arg_u)) -(1. / np.abs(arg_l)))) / self.randomization_scale
+        elif self.mu < 0:
+            log_cube_prob = (arg ** 2. + self.mu ** 2. + (2 * arg * self.mu)) / (2 * (self.randomization_scale ** 2.)) - \
+                           np.log(-neg_prod_arg / np.abs(arg_l) + 1. / np.abs(arg_u))
+            log_cube_grad = ((1. + neg_prod_arg) /((neg_prod_arg / np.abs(arg_l)) - (1. / np.abs(arg_u)))) / self.randomization_scale
 
-        log_cube_grad_vec = np.zeros(self.q)
-        log_cube_grad_vec[indicator] = -(np.true_divide(norm.pdf(arg_u[indicator]) + norm.pdf(arg_l[indicator]),
-                                                    cube_prob[indicator])) / self.randomization_scale
-
-        log_cube_grad_vec[pos_index] = ((1. + prod_arg[pos_index]) /
-                                    ((prod_arg[pos_index] / arg_u[pos_index]) +
-                                     (1. / arg_l[pos_index]))) / (self.randomization_scale ** 2)
-
-        log_cube_grad_vec[neg_index] = ((arg_u[neg_index] - (arg_l[neg_index] * neg_prod_arg[neg_index]))
-                                    / (self.randomization_scale ** 2)) / (1. + neg_prod_arg[neg_index])
-
-        log_cube_grad = log_cube_grad_vec.sum()
-
+        #print("log cube fs", arg_u, arg_l, log_cube_prob, log_cube_grad)
         if mode == 'func':
-            return self.scale(log_cube_prob).reshape((1,))
+            return self.scale(log_cube_prob)
         elif mode == 'grad':
-            return self.scale(log_cube_grad).reshape((1,))
+            return self.scale(log_cube_grad)
         elif mode == 'both':
-            return self.scale(log_cube_prob).reshape((1,)), self.scale(log_cube_grad).reshape((1,))
+            return self.scale(log_cube_prob), self.scale(log_cube_grad)
         else:
             raise ValueError("mode incorrectly specified")
 
-class log_fs_prob(rr.smooth_atom):
+class neg_log_fs_prob(rr.smooth_atom):
 
-    def __init__(self, data_point, randomization, randomization_scale = 0.7, coef = 1., offset= None, quadratic= None):
+    def __init__(self, data_offset, randomization, l_threshold, simes_randomization_scale = 0.7, coef = 1., offset= None, quadratic= None):
 
-        self.data_point = data_point
-        self.randomization_scale = randomization_scale
+        self.data_offset = data_offset
+        self.simes_randomization_scale = simes_randomization_scale
         self.fs_conjugate = randomization.CGF_conjugate
-        self.q = self.data_point.shape[0]-1
+        self.q = 1
+        self.l_threshold = l_threshold
 
         rr.smooth_atom.__init__(self,
                                 (1,),
                                 offset=offset,
                                 quadratic=quadratic,
-                                initial=np.ones(1),
+                                initial=l_threshold + np.ones(1),
                                 coef=coef)
 
-        self.coefs[:] = np.ones(1)
+        self.coefs[:] = l_threshold + np.ones(1)
 
         self.nonnegative_barrier = nonnegative_softmax_scaled(1)
 
@@ -315,11 +307,11 @@ class log_fs_prob(rr.smooth_atom):
 
         param = self.apply_offset(param)
 
-        offset_active = self.data_point[0]
+        offset_active = self.data_offset[0]
         active_conj_loss = rr.affine_smooth(self.fs_conjugate, rr.affine_transform(np.ones(1), offset_active))
 
-        offset_inactive = self.data_point[1:]
-        cube_loss = neg_log_cube_probability_fs(offset_inactive.shape[0], offset_inactive, randomization_scale=.7)
+        offset_inactive = self.data_offset[1]
+        cube_loss = neg_log_cube_probability_fs(self.q, offset_inactive, self.simes_randomization_scale)
 
         total_loss = rr.smooth_sum([active_conj_loss,
                                     cube_loss,
@@ -327,9 +319,12 @@ class log_fs_prob(rr.smooth_atom):
 
         if mode == 'func':
             f = total_loss.smooth_objective(param, 'func')
+            #print("break-up", active_conj_loss.smooth_objective(param, 'func'),
+            #      cube_loss.smooth_objective(param, 'func'), self.nonnegative_barrier.smooth_objective(param, 'func'))
             return self.scale(f)
         elif mode == 'grad':
-            #print("break-up", active_conj_loss.smooth_objective(param, 'grad'), cube_loss.smooth_objective(param, 'grad'), self.nonnegative_barrier.smooth_objective(param, 'grad'))
+            #print("break-up", active_conj_loss.smooth_objective(param, 'grad'), cube_loss.smooth_objective(param, 'grad'),
+            # self.nonnegative_barrier.smooth_objective(param, 'grad'))
             g = total_loss.smooth_objective(param, 'grad')
             return self.scale(g)
         elif mode == 'both':
@@ -356,7 +351,7 @@ class log_fs_prob(rr.smooth_atom):
                 count += 1
                 proposal = current - step * newton_step
                 # print("current proposal and grad", proposal, newton_step)
-                if np.all(proposal > 0):
+                if np.all(proposal-self.l_threshold > 0):
                     break
                 step *= 0.5
                 if count >= 40:
@@ -447,8 +442,8 @@ class approximate_conditional_prob_2stage(rr.smooth_atom):
         offset_simes = self.map.offset_simes + data_simes
 
         from selection.api import randomization
-        randomizer = randomization.isotropic_gaussian((1,), scale=.7)
-        fs_prob = log_fs_prob(offset_simes, randomizer, randomization_scale = 0.7)
+        simes_randomizer = randomization.isotropic_gaussian((1,), scale=.7)
+        fs_prob = neg_log_fs_prob(offset_simes, simes_randomizer, self.map.l_threshold, simes_randomization_scale = 0.7)
 
         total_loss = rr.smooth_sum([active_conj_loss_lasso,
                                     cube_loss_lasso,
@@ -456,14 +451,14 @@ class approximate_conditional_prob_2stage(rr.smooth_atom):
 
 
         if mode == 'func':
-            print("log fs probability", fs_prob.minimize2(step=1, nstep=30)[1])
-            f = total_loss.smooth_objective(param, 'func') + fs_prob.minimize2(step=1, nstep=30)[1]
+            print("log fs probability", fs_prob.minimize2(step=1, nstep=10)[1])
+            f = total_loss.smooth_objective(param, 'func') + fs_prob.minimize2(step=1, nstep=10)[1]
             return self.scale(f)
         elif mode == 'grad':
             g = total_loss.smooth_objective(param, 'grad')
             return self.scale(g)
         elif mode == 'both':
-            f = total_loss.smooth_objective(param, 'func') + fs_prob.minimize2(step=1, nstep=30)[1]
+            f = total_loss.smooth_objective(param, 'func') + fs_prob.minimize2(step=1, nstep=10)[1]
             g = total_loss.smooth_objective(param, 'grad')
             return self.scale(f), self.scale(g)
         else:

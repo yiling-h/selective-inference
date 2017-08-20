@@ -9,13 +9,14 @@ import regreg.api as rr
 from selection.randomized.query import naive_confidence_intervals
 from selection.randomized.query import naive_pvalues
 
-from selection.frequentist_eQTL.test_egenes.inference_bon_fs_hierarchical_sel import M_estimator_2step, approximate_conditional_density_2stage
+from selection.frequentist_eQTL.test_egenes.inference_bon_2step_hierarchical_sel import M_estimator_2step, approximate_conditional_density_2stage
 
 from rpy2.robjects.packages import importr
 from rpy2 import robjects
 glmnet = importr('glmnet')
 import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
+from scipy.stats.stats import pearsonr
 
 def naive_pvalues(target, observed, parameter):
     pvalues = np.zeros(target.shape[0])
@@ -69,11 +70,14 @@ def hierarchical_lasso_trial(X,
                              y,
                              sigma,
                              simes_level,
-                             index,
+                             index_0,
+                             index_1,
                              T_sign,
                              data_simes,
                              X_unpruned,
-                             sigma_ratio,
+                             sigma_ratio_0,
+                             sigma_ratio_1,
+                             l_threshold,
                              seed_n = 0,
                              bh_level = 0.10,
                              lam_frac = 1.2,
@@ -95,7 +99,9 @@ def hierarchical_lasso_trial(X,
 
     randomization = randomization.isotropic_gaussian((p,), scale=.7)
 
-    M_est = M_estimator_2step(loss, epsilon, penalty, randomization, simes_level, index, T_sign, data_simes, X_unpruned, sigma_ratio)
+    M_est = M_estimator_2step(loss, epsilon, penalty, randomization, simes_level, index_0, index_1,
+                              T_sign, data_simes, X_unpruned, sigma_ratio_0, sigma_ratio_1, l_threshold)
+
     M_est.solve_approx()
     active = M_est._overall
     active_set = np.asarray([i for i in range(p) if active[i]])
@@ -188,41 +194,45 @@ if __name__ == "__main__":
 
     simes_output = np.loadtxt(os.path.join("/Users/snigdhapanigrahi/Test_egenes/Egene_data/simes_" + gene) + ".txt")
 
-    simes_level = (0.10 * 2195)/21819.
-    index = int(simes_output[2])
-    T_sign = simes_output[4]
+    simes_level = (0.10 * 2167)/21819.
+    index_0 = int(simes_output[2])
+    index_1 = int(simes_output[3])
+    T_sign = simes_output[5]
 
     V = simes_output[0]
-    u = simes_output[3]
-    sigma_hat = simes_output[5]
+    u = simes_output[4]
+    sigma_hat_0 = simes_output[6]
 
-    if u > 10 ** -12.:
-        l_threshold = np.sqrt(1+ (0.7**2)) * normal.ppf(1. - min(u, simes_level * (1./ V)) / 2.)
-    else:
-        l_threshold = np.sqrt(1 + (0.7 ** 2)) * normal.ppf(1. -(simes_level * (1./ V)/2.))
+    ran_T_stats = pearsonr(X_unpruned[:, index_1], y)[0]
+    sigma_hat_1 = np.sqrt((1. - (ran_T_stats ** 2)) * np.var(sigma_est* y)) / np.sqrt(n - 22.)
 
+    print("ratios", sigma_est/sigma_hat_0, sigma_est/sigma_hat_1)
 
-    print("ratio", sigma_est/sigma_hat)
+    data_simes = (np.hstack([(sigma_est/sigma_hat_0)*X_unpruned[:, index_0].T.dot(y),
+                             (sigma_est/sigma_hat_1)*X_unpruned[:, index_1].T.dot(y)]))
 
-    indicator = np.zeros(X_unpruned.shape[1], dtype= bool)
-    indicator[index] = 1
-    data_simes = (sigma_est/sigma_hat)*(np.hstack([X_unpruned[:, indicator].T.dot(y), X_unpruned[:, ~indicator].T.dot(y)]))
-
-    print("data simes", data_simes.shape)
+    print("data simes", data_simes)
 
     sigma = 1.
 
-    ratio = sigma_est/sigma_hat
+    ratio_0 = sigma_est/sigma_hat_0
+    ratio_1 = sigma_est/sigma_hat_1
+
+    l_threshold = np.sqrt(1 + (0.7 ** 2)) * normal.ppf(1. - (simes_level * (1. / V))/2.)
+    print("l_threshold", l_threshold)
 
     results = hierarchical_lasso_trial(X,
                                        y,
                                        sigma,
                                        simes_level,
-                                       index,
+                                       index_0,
+                                       index_1,
                                        T_sign,
                                        data_simes,
                                        X_unpruned,
-                                       ratio,
+                                       ratio_0,
+                                       ratio_1,
+                                       l_threshold,
                                        seed_n=0)
 
     print(results)
