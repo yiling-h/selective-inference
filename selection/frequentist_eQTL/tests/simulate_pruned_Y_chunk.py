@@ -20,8 +20,8 @@ class generate_data():
 
          if nsignals > 0:
              for j in range(nsignals):
-                 beta_true[cl_subsample] = 3.
-                 signal_indices[j] = cl_subsample
+                 beta_true[cl_subsample[j]] = 3.
+                 signal_indices[j] = cl_subsample[j]
 
          self.beta = beta_true
          self.signal_indices = signal_indices
