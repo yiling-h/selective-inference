@@ -174,6 +174,7 @@ class M_estimator_2step(M_estimator):
         self.simes_randomization = 0.7
 
     def solve_approx(self):
+        np.random.seed(0)
         self.solve()
         (_opt_linear_term, _opt_affine_term) = self.opt_transform
         self._opt_linear_term = np.concatenate(
@@ -457,8 +458,8 @@ class approximate_conditional_density_2stage(rr.smooth_atom):
                 h_hat.append(h_hat[i - 1])
                 count += 1
 
-            if count > 150:
-                raise ValueError("Error on grid approx")
+            # if count > 150:
+            #     raise ValueError("Error on grid approx")
             sys.stderr.write("point on grid: " + str(i) + "\n")
             sys.stderr.write("value on grid: " + str(h_hat[i]) + "\n")
 

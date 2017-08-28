@@ -174,9 +174,10 @@ if __name__ == "__main__":
     ###read input files
     path = '/Users/snigdhapanigrahi/Test_egenes/Egene_data/'
 
-    gene = str("ENSG00000225630.1")
+    gene = str("ENSG00000228697.1")
     X = np.load(os.path.join(path + "X_" + gene) + ".npy")
     n, p = X.shape
+    print("dimensions", p)
     X -= X.mean(0)[None, :]
     X /= (X.std(0)[None, :] * np.sqrt(n))
     X_unpruned = X
@@ -212,7 +213,7 @@ if __name__ == "__main__":
     else:
         l_threshold = np.sqrt(1 + (0.7 ** 2)) * normal.ppf(1. -(simes_level * (1./ V)/2.))
 
-    u_threshold = 10 ** 10
+    u_threshold = 10 ** 7.
 
     print("u", u)
     print("l threshold", l_threshold)
@@ -227,17 +228,32 @@ if __name__ == "__main__":
 
     ratio = sigma_est/sigma_hat
 
-    results = hierarchical_lasso_trial(X,
-                                       y,
-                                       sigma,
-                                       simes_level,
-                                       index,
-                                       T_sign,
-                                       l_threshold,
-                                       u_threshold,
-                                       data_simes,
-                                       X_unpruned,
-                                       ratio,
-                                       seed_n=0)
+    try:
+        results = hierarchical_lasso_trial(X,
+                                           y,
+                                           sigma,
+                                           simes_level,
+                                           index,
+                                           T_sign,
+                                           l_threshold,
+                                           u_threshold,
+                                           data_simes,
+                                           X_unpruned,
+                                           ratio,
+                                           seed_n=0)
+
+    except ValueError:
+        results = hierarchical_lasso_trial(X,
+                                           y,
+                                           sigma,
+                                           simes_level,
+                                           index,
+                                           T_sign,
+                                           l_threshold,
+                                           u_threshold,
+                                           data_simes,
+                                           X_unpruned,
+                                           ratio,
+                                           seed_n=1)
 
     print(results)
