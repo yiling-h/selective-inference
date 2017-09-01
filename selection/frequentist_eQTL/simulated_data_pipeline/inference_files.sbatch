@@ -37,4 +37,4 @@ cd /home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests
 
 source /home/snigdha/src/selective-inference/.env/bin/activate
 
-python hierarchical_egene.py ${IN} ${OUT} $i
+python sim_hierarchical_egene.py ${IN} ${OUT} $i
