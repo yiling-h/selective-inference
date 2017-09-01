@@ -792,7 +792,7 @@ if __name__ == "__main__":
     X /= (X.std(0)[None, :] * np.sqrt(n))
     X_unpruned = X
 
-    beta = np.load(os.path.join(inpath + "beta_" + gene) + ".npy")
+    beta = np.load(os.path.join(inpath + "b_" + gene) + ".npy")
     true_mean = X_unpruned.dot(beta)
     signal_indices = np.abs(beta) > 0.
 
