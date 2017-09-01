@@ -29,7 +29,7 @@ def egene_selection(inpath):
     simes_output = np.vstack(list_)
     print("check 1: dimensions of concatenated bon outputs", simes_output.shape)
 
-    p_simes = simes_output[:, 1]
+    p_simes = simes_output[:, 2]
     sig = BH_selection_egenes(p_simes, 0.10)
 
     K = sig[0]
