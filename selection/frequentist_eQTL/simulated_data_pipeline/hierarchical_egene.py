@@ -637,7 +637,7 @@ def hierarchical_lasso_trial(X,
                              data_simes,
                              X_unpruned,
                              sigma_ratio,
-                             indices_TS,
+                             signal_indices,
                              seed_n = 0,
                              bh_level = 0.10,
                              lam_frac = 1.2,
@@ -722,18 +722,18 @@ def hierarchical_lasso_trial(X,
         if p_BH is not None:
             for indx in p_BH[1]:
                 discoveries_active[indx] = 1
-                if indices_TS.shape[0] > 1:
-                    corr = np.zeros(indices_TS.shape[0])
-                    for k in range(indices_TS.shape[0]):
-                        corr[k] = pearsonr(X[:, active_set[indx]], X[:, indices_TS[k]])[0]
+                if signal_indices.shape[0] > 1:
+                    corr = np.zeros(signal_indices.shape[0])
+                    for k in range(signal_indices.shape[0]):
+                        corr[k] = pearsonr(X[:, active_set[indx]], X_unpruned[:, signal_indices[k]])[0]
                     if np.any(corr >= 0.49):
                         power += 1
                     else:
                         false_discoveries += 1.
 
-                elif indices_TS.shape[0] == 1:
+                elif signal_indices.shape[0] == 1:
 
-                    corr = pearsonr(X[:, active_set[indx]], X[:, indices_TS[0]])[0]
+                    corr = pearsonr(X[:, active_set[indx]], X_unpruned[:, signal_indices[0]])[0]
                     if corr >= 0.49:
                         power += 1
                     else:
@@ -741,8 +741,8 @@ def hierarchical_lasso_trial(X,
                 else:
                     false_discoveries += 1.
 
-        if indices_TS.shape[0] >= 1:
-            pf[0] = power / float(indices_TS.shape[0])
+        if signal_indices.shape[0] >= 1:
+            pf[0] = power / float(signal_indices.shape[0])
         else:
             pf[0] = 0.
 
@@ -791,6 +791,10 @@ if __name__ == "__main__":
     X -= X.mean(0)[None, :]
     X /= (X.std(0)[None, :] * np.sqrt(n))
     X_unpruned = X
+
+    beta = np.load(os.path.join(inpath + "beta_" + gene) + ".npy")
+    true_mean = X_unpruned.dot(beta)
+    signal_indices = np.abs(beta) > 0.
 
     prototypes = np.loadtxt(os.path.join(inpath + "protoclust_" + gene) + ".txt", delimiter='\t')
     prototypes = np.unique(prototypes).astype(int)
@@ -841,7 +845,7 @@ if __name__ == "__main__":
                                            data_simes,
                                            X_unpruned,
                                            ratio,
-                                           indices_TS,
+                                           signal_indices,
                                            seed_n=0)
 
     except ValueError:
@@ -858,7 +862,7 @@ if __name__ == "__main__":
                                            data_simes,
                                            X_unpruned,
                                            ratio,
-                                           indices_TS,
+                                           signal_indices,
                                            seed_n=1)
 
     outfile = os.path.join(outdir + "inference_" + gene + ".txt")
