@@ -30,6 +30,8 @@ def egene_selection(inpath):
     print("check 1: dimensions of concatenated bon outputs", simes_output.shape)
 
     p_simes = simes_output[:, 2]
+    true_egenes = (simes_output[:, 1]>0.05).sum()
+    print("true egenes", true_egenes)
     sig = BH_selection_egenes(p_simes, 0.10)
 
     K = sig[0]
@@ -37,11 +39,19 @@ def egene_selection(inpath):
     E_sel = np.sort(sig[1])
     print("selected indices", E_sel, E_sel.shape[0])
     egene_p = simes_output[E_sel, 0].sum() / float(K)
+
+    egene_sel = simes_output[E_sel,:]
+    false_rej = egene_sel[:,1]==0
+
+    print("fdr", false_rej.sum()/float(K))
+    print("power", (K-false_rej.sum())/(float(true_egenes)))
+
     print("average number of SNPs in selected egenes", egene_p)
 
     return K, E_sel, v, length, simes_output
 
 BH_output = egene_selection('/Users/snigdhapanigrahi/sim_randomized_Bon_Z/')
+K = BH_output[0]
 E_sel = BH_output[1]
 v = BH_output[2]
 length = BH_output[3]
