@@ -1,5 +1,5 @@
 import glob
-import os, numpy as np, pandas, statsmodels.api as sm
+import numpy as np, os
 
 def BH_selection_egenes(p_simes, level):
 
@@ -22,7 +22,7 @@ def egene_selection(inpath):
         shapes.append(dataArray.shape[0])
         list_.append(dataArray)
     length = len(list_)
-    print("check 0: number of genes", length)
+    print("check 0: number of files", length)
 
     shapes = np.asarray(shapes)
     v = np.cumsum(shapes)
@@ -39,11 +39,13 @@ def egene_selection(inpath):
     egene_p = simes_output[E_sel, 0].sum() / float(K)
     print("average number of SNPs in selected egenes", egene_p)
 
-    return K, E_sel, v
+    return K, E_sel, v, length, simes_output
 
 BH_output = egene_selection('/Users/snigdhapanigrahi/sim_randomized_Bon_Z/')
 E_sel = BH_output[1]
 v = BH_output[2]
+length = BH_output[3]
+simes_output = BH_output[4]
 
 # outdir = '/Users/snigdhapanigrahi/sim_bon_output_liver/randomized_egenes/'
 # for i in range(v.shape[0]):
