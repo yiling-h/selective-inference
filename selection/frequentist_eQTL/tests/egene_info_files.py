@@ -42,7 +42,7 @@ import glob
 
 
 
-path='/Users/snigdhapanigrahi/bon_output_liver/randomized_egene_names/'
+path='/Users/snigdhapanigrahi/sim_bon_output_liver/randomized_egene_names/'
 allFiles = glob.glob(path + "/*.txt")
 list_egenes = []
 for infile in sorted(allFiles):
@@ -52,15 +52,15 @@ for infile in sorted(allFiles):
     content = [x.strip() for x in content]
     for x in content:
         list_egenes.append(x)
-    print("list so far", list_egenes)
+    #print("list so far", list_egenes)
 
-outfile='/Users/snigdhapanigrahi/bon_output_liver/eGenes.txt'
+outfile='/Users/snigdhapanigrahi/sim_bon_output_liver/eGenes.txt'
 with open(outfile, 'w') as fo:
     for x in list_egenes:
         fo.write(str(x) + '\n')
 
 
-path='/Users/snigdhapanigrahi/bon_output_liver/eGenes.txt'
+path='/Users/snigdhapanigrahi/sim_bon_output_liver/eGenes.txt'
 with open(path) as g:
     content = g.readlines()
 content = [x.strip() for x in content]

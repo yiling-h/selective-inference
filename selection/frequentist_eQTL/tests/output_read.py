@@ -2,7 +2,7 @@ import glob
 import os, numpy as np, pandas, statsmodels.api as sm
 from collections import Counter
 
-f=open('/Users/snigdhapanigrahi/Jason-results/Liver_97_genes_simes_BH.txt',"r")
+f=open('/Users/snigdhapanigrahi/Jason-sim-results/Liver_97_genes_simes_BH.txt',"r")
 lines=f.readlines()
 result=[]
 current_indx = 0
@@ -36,7 +36,7 @@ def BH_selection_egenes(p_simes, level):
     return order_sig+1, E_sel
 
 
-path='/Users/snigdhapanigrahi/randomized_Bon_Z/'
+path='/Users/snigdhapanigrahi/sim_randomized_Bon_Z/'
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
 shapes = []
@@ -56,7 +56,7 @@ print("vector", v)
 simes_output = np.vstack(list_)
 print("dimensions", simes_output.shape)
 
-p_simes = simes_output[:,1]
+p_simes = simes_output[:,2]
 print("number of genes", p_simes.shape[0])
 sig = BH_selection_egenes(p_simes, 0.10)
 

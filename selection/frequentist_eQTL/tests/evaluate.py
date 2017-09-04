@@ -1,4 +1,3 @@
-
 import glob
 import os, numpy as np, pandas, statsmodels.api as sm
 

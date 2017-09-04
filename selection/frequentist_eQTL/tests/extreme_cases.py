@@ -1,8 +1,8 @@
 import glob
-import os, numpy as np, pandas, statsmodels.api as sm
+import os
 
-path = r'/Users/snigdhapanigrahi/inference_liver/inference'
-outpath =  r'/Users/snigdhapanigrahi/inference_liver/'
+path = r'/Users/snigdhapanigrahi/sim_inference_liver/inference'
+outpath =  r'/Users/snigdhapanigrahi/sim_inference_liver/'
 outfile = os.path.join(outpath + "egenes_completed.txt")
 
 allFiles = glob.glob(path + "/*.txt")
@@ -19,14 +19,14 @@ with open(outfile, 'w') as fo:
     for gene_name in gene_names:
         fo.write(str(gene_name) + '\n')
 
-path='/Users/snigdhapanigrahi/inference_liver/eGenes.txt'
+path='/Users/snigdhapanigrahi/sim_inference_liver/eGenes.txt'
 with open(path) as g:
     eGenes = g.readlines()
 eGenes = [x.strip() for x in eGenes]
-eGenes = eGenes[:500][400:]
+eGenes = eGenes[:200]
 print("length egenes", len(eGenes))
 
-path='/Users/snigdhapanigrahi/inference_liver/egenes_completed.txt'
+path='/Users/snigdhapanigrahi/sim_inference_liver/egenes_completed.txt'
 with open(path) as g:
     cGenes = g.readlines()
 cGenes = [x.strip() for x in cGenes]
