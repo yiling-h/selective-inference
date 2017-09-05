@@ -3,9 +3,6 @@ from scipy.stats import norm as normal
 import numpy as np
 import os
 import sys
-import regreg.api as rr
-import statsmodels.api as sm
-
 from scipy.stats import f
 from scipy.stats.stats import pearsonr
 
