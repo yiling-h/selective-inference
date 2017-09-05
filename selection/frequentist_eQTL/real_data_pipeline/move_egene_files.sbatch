@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/bin/bash 
 #
 #all commands that start with SBATCH contain commands that are just used by SLURM for scheduling
 #################
-#set a job name
+#set a job name  
 #SBATCH --job-name=job
-#################
+#################  
 #a file for job output, you can check job progress, append the job ID with %j to make it unique
 #SBATCH --output=jobs/%j.out
 #################
@@ -16,7 +16,7 @@
 #SBATCH --time=2:00:00
 #################
 #SBATCH --qos=normal
-#SBATCH -p normal
+#SBATCH -p normal 
 #################
 #number of nodes you are requesting, the more you ask for the longer you wait
 #SBATCH --nodes=1
@@ -24,17 +24,20 @@
 #SBATCH --mem=4000
 
 # You can use srun if your job is parallel
-#srun R CMD BATCH  ./rtest.R
-# otherwise:
+#srun R CMD BATCH  ./rtest.R 
+# otherwise: 
 
 
 IN=$1
-OUT=$2
-i=$3
+XIN=$2
+YIN=$3
+SIN=$4
+i=$5
+OUT=$6
 
 # cd to program directory
 cd /home/snigdha/src/selective-inference/selection/frequentist_eQTL/tests
 
 source /home/snigdha/src/selective-inference/.env/bin/activate
 
-python egene_selection_bon_univariate.py $IN $OUT $i
+python egene_info_files.py ${IN} ${XIN} ${YIN} ${SIN} $i ${OUT} 
