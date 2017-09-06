@@ -9,7 +9,6 @@ import regreg.api as rr
 
 from selection.randomized.M_estimator import M_estimator
 from selection.randomized.query import naive_confidence_intervals
-from scipy.stats.stats import pearsonr
 
 from rpy2.robjects.packages import importr
 from rpy2 import robjects
