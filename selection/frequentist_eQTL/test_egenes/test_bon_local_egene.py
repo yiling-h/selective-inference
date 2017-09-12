@@ -186,7 +186,7 @@ if __name__ == "__main__":
     prototypes = np.loadtxt(os.path.join("/Users/snigdhapanigrahi/Test_egenes/Egene_data/protoclust_" + gene) + ".txt",
                             delimiter='\t')
     prototypes = np.unique(prototypes).astype(int)
-    print("prototypes", prototypes.shape[0])
+    print("prototypes", prototypes.shape[0], prototypes)
 
     X = X[:, prototypes]
 

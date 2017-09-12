@@ -1,5 +1,5 @@
 import glob
-import os, numpy as np, pandas, statsmodels.api as sm
+import numpy as np
 
 path =r'/Users/snigdhapanigrahi/inference_liver/inference0'
 
@@ -20,7 +20,7 @@ def summary_files(list_):
     for i in range(length):
         print("iteration", i)
         results = list_[i]
-
+        count_0 = 0
         if results.size>0:
             if results.ndim > 1:
                 nactive = results.shape[0]
@@ -57,8 +57,9 @@ def summary_files(list_):
                 print("lengths", length_adj, length_unadj)
                 if length_adj == length_unadj:
                     count += 1.
+        else:
+            count_0 += 1
 
-
-    return length_ad/length, length_unad/length, count
+    return length_ad/length, length_unad/length, count_0, count
 
 print("results", summary_files(list_))
