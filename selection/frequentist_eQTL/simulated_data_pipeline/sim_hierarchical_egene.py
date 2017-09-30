@@ -838,7 +838,6 @@ def hierarchical_lasso_trial(X,
                             false_discoveries += 1.
 
                     elif true_indices.shape[0] == 1:
-
                         corr = pearsonr(X[:, active_set[indx]], X_unpruned[:, true_indices[0]])[0]
                         if corr >= 0.30:
                             power += 1

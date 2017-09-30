@@ -193,7 +193,11 @@ if __name__ == "__main__":
     y = np.load(os.path.join(path + "y_" + gene) + ".npy")
     y = y.reshape((y.shape[0],))
 
-    sigma_est = glmnet_sigma(X, y)
+    try:
+        sigma_est = glmnet_sigma(X, y)
+    except:
+        sigma_est = 1.
+
     print("sigma est", sigma_est)
 
     y /= sigma_est
