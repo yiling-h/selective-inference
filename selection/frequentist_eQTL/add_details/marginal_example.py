@@ -535,14 +535,14 @@ if __name__ == "__main__":
 
     for seed_n in range(10):
 
-        np.random.seed(seed_n)
+        np.random.seed(seed_n+ 90)
         y = np.random.standard_normal(n)
         sigma_est = 1.
 
         t_test = (X.T.dot(y) + 0.7 * np.random.standard_normal(p)) / np.sqrt(2.)
         index = np.argmax(np.abs(t_test))
         T_sign = np.sign(t_test[index])
-        T_observed = t_test[index]
+        T_observed = (X.T.dot(y))[index]
         indicator = np.zeros(p, dtype=bool)
         indicator[index] = 1
         data_simes = np.hstack([X_unpruned[:, indicator].T.dot(y), X_unpruned[:, ~indicator].T.dot(y)])

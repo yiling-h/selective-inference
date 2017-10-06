@@ -48,10 +48,28 @@ def egene_selection(inpath):
 
     print("average number of SNPs in selected egenes", egene_p)
 
+    nsig = (egene_sel[:, 1]/0.30).astype(int)
+    tsig = (simes_output[:, 1]/0.30).astype(int)
+    print("nsig", nsig.shape)
+    p1 = (nsig==1).sum()/float((tsig==1).sum())
+    p2 = (nsig==2).sum() /float((tsig==2).sum())
+    p3 = (nsig == 3).sum() / float((tsig == 3).sum())
+    p4 = (nsig == 4).sum() / float((tsig == 4).sum())
+    p5 = (nsig == 5).sum() / float((tsig == 5).sum())
+    p6 = (nsig == 6).sum() / float((tsig == 6).sum())
+    p7 = (nsig == 7).sum() / float((tsig == 7).sum())
+    print("7 signals", (tsig==1).sum(), (tsig==2).sum(), (tsig==3).sum(),
+          (tsig == 4).sum(), (tsig==5).sum(),(tsig==6).sum(),
+          (tsig == 7).sum(), (tsig==8).sum(), (tsig==9).sum())
+    p8 = (nsig == 8).sum() / float((tsig == 8).sum())
+    p9 = (nsig == 9).sum() / float((tsig == 9).sum())
+    print("breakup of power", p1, p2, p3, p4, p5, p6, p7, p8, p9)
+
     return K, E_sel, v, length, simes_output
 
 BH_output = egene_selection('/Users/snigdhapanigrahi/sim_randomized_Bon_Z/')
 K = BH_output[0]
+print("rejections", K)
 E_sel = BH_output[1]
 v = BH_output[2]
 length = BH_output[3]

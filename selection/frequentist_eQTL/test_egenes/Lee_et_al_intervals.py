@@ -108,6 +108,7 @@ if __name__ == "__main__":
 
     if C is not None:
         one_step = L.onestep_estimator
+
         for i in range(one_step.shape[0]):
             eta = np.zeros_like(one_step)
             eta[i] = active_signs[i]
