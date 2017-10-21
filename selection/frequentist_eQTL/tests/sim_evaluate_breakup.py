@@ -1,5 +1,5 @@
 
-import os, numpy as np, pandas, statsmodels.api as sm
+import os, numpy as np
 
 path = '/Users/snigdhapanigrahi/sim_inference_liver/'
 infile = os.path.join(path, "eGenes.txt")

@@ -1,5 +1,5 @@
 import glob
-import os, numpy as np, pandas, statsmodels.api as sm
+import os, numpy as np
 
 def BH_selection_egenes(p_simes, level):
 
@@ -42,7 +42,7 @@ egene_p = simes_output[E_sel, 0].sum()/float(K)
 print("average number of SNPs", egene_p)
 
 
-# outdir = '/Users/snigdhapanigrahi/bon_output_liver/randomized_egenes/'
+# outdir = '/Users/snigdhapanigrahi/nonrandomized_bon_output_liver/nonrandomized_egenes/'
 # for i in range(v.shape[0]):
 #
 #     if i == 0:
@@ -91,3 +91,22 @@ print("average number of SNPs", egene_p)
 #             np.savetxt(outfile, simes_output[E,:])
 
 
+path='/Users/snigdhapanigrahi/nonrandomized_Bon_Z/'
+allFiles = glob.glob(path + "/*.txt")
+list_ = []
+shapes = []
+for file_ in sorted(allFiles):
+    dataArray = np.loadtxt(file_)
+    shapes.append(dataArray.shape[0])
+    list_.append(dataArray)
+length = len(list_)
+
+simes_output_1 = np.vstack(list_)
+print("dimensions", simes_output_1.shape)
+
+p_simes_1 = simes_output_1[:,1]
+sig_1 = BH_selection_egenes(p_simes_1, 0.10)
+
+E_sel_1 = np.sort(sig_1[1])
+
+print(np.intersect1d(E_sel, E_sel_1).shape)

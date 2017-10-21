@@ -29,7 +29,7 @@ for i in range(len(list_)):
     risk_unad[nsignals] += results[5]
     negenes[nsignals] += 1.
 
-print("break-up", np.true_divide(coverage_unad, negenes),
-          np.true_divide(risk_unad, negenes),
-          np.true_divide(length_unad, negenes),
+print("break-up", np.true_divide(coverage_ad, negenes),
+          np.true_divide(risk_ad, negenes),
+          np.true_divide(length_ad, negenes),
           negenes/len(list_))

@@ -1,12 +1,11 @@
 from __future__ import print_function
-from scipy.stats import norm as normal
 import numpy as np
 import os
 import sys
 
-path = '/Users/snigdhapanigrahi/bon_output_liver/names'
-inpath = '/Users/snigdhapanigrahi/bon_output_liver/randomized_egenes/'
-outpath = '/Users/snigdhapanigrahi/bon_output_liver/randomized_egene_names/'
+path = '/Users/snigdhapanigrahi/sim_nonrandomized_bon_output_liver/names'
+inpath = '/Users/snigdhapanigrahi/sim_nonrandomized_bon_output_liver/nonrandomized_egenes/'
+outpath = '/Users/snigdhapanigrahi/sim_nonrandomized_bon_output_liver/nonrandomized_egene_names/'
 
 for i in range(100):
 
