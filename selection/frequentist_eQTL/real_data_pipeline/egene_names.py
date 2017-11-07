@@ -3,9 +3,9 @@ import numpy as np
 import os
 import sys
 
-path = '/Users/snigdhapanigrahi/nonrandomized_bon_output_liver/names'
-inpath = '/Users/snigdhapanigrahi/nonrandomized_bon_output_liver/nonrandomized_egenes/'
-outpath = '/Users/snigdhapanigrahi/nonrandomized_bon_output_liver/nonrandomized_egene_names/'
+path = '/Users/snigdhapanigrahi/bon_output_liver/names'
+inpath = '/Users/snigdhapanigrahi/bon_output_liver/randomized_egenes_05/'
+outpath = '/Users/snigdhapanigrahi/bon_output_liver/randomized_egene_names_05/'
 
 for i in range(100):
 

@@ -40,31 +40,35 @@ import numpy as np, os, sys
 
 
 
-# path='/Users/snigdhapanigrahi/nonrandomized_bon_output_liver/nonrandomized_egene_names/'
-# allFiles = glob.glob(path + "/*.txt")
-# list_egenes = []
-# for infile in sorted(allFiles):
-#     with open(infile) as g:
-#         content = g.readlines()
-#
-#     content = [x.strip() for x in content]
-#     for x in content:
-#         list_egenes.append(x)
-#     #print("list so far", list_egenes)
-#
-# outfile='/Users/snigdhapanigrahi/nonrandomized_bon_output_liver/eGenes.txt'
-# with open(outfile, 'w') as fo:
-#     for x in list_egenes:
-#         fo.write(str(x) + '\n')
-#
-#
-# path='/Users/snigdhapanigrahi/nonrandomized_bon_output_liver/eGenes.txt'
-# with open(path) as g:
-#     content = g.readlines()
-# content = [x.strip() for x in content]
-# print("length egenes", len(content))
+path='/Users/snigdhapanigrahi/bon_output_liver/randomized_egene_names_05/'
+allFiles = glob.glob(path + "/*.txt")
+list_egenes = []
+for infile in sorted(allFiles):
+    with open(infile) as g:
+        content = g.readlines()
+
+    content = [x.strip() for x in content]
+    for x in content:
+        list_egenes.append(x)
+    #print("list so far", list_egenes)
+
+outfile='/Users/snigdhapanigrahi/bon_output_liver/eGenes_05.txt'
+with open(outfile, 'w') as fo:
+    for x in list_egenes:
+        fo.write(str(x) + '\n')
 
 
-E = np.load('/Users/snigdhapanigrahi/fwd_bwd_inference/s_ENSG00000160072.15.npy')
-E = E.reshape((E.shape[0],))
-print(E, E.shape)
+path='/Users/snigdhapanigrahi/bon_output_liver/eGenes_05.txt'
+with open(path) as g:
+    content = g.readlines()
+content = [x.strip() for x in content]
+print("length egenes", len(content))
+
+
+#E = np.load('/Users/snigdhapanigrahi/fwd_bwd_inference/s_ENSG00000160072.15.npy')
+#E = E.reshape((E.shape[0],))
+#print(E, E.shape)
+
+
+
+

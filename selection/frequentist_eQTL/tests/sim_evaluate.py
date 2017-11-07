@@ -41,7 +41,7 @@ def summary_files(list_):
             nactive = 0.
 
        # print("results", results, results.shape)
-        if nactive > 1 and results[:, 8].sum() / float(nactive) < 10.:
+        if nactive > 1 and results[:, 8].sum() / float(nactive) < 20.:
             coverage_ad += results[:, 6].sum() / float(nactive)
             coverage_unad += results[:, 7].sum() / float(nactive)
 
@@ -58,7 +58,7 @@ def summary_files(list_):
                 retry += 1
 
             print("power, fdr", (results[:, 13])[0], (results[:, 14])[0])
-        elif nactive == 1. and results[8].sum() / float(nactive) < 10.:
+        elif nactive == 1. and results[8].sum() / float(nactive) < 20.:
             coverage_ad += results[6]
             coverage_unad += results[7]
 

@@ -24,6 +24,9 @@ if __name__ == "__main__":
         prototypes = np.loadtxt(os.path.join(inpath + "protoclust_" + gene) + ".txt", delimiter='\t')
         prototypes = np.unique(prototypes).astype(int)
         p_pruned += prototypes.shape[0]
+
+        if prototypes.shape[0] >= 600:
+            sys.stderr.write("shape of prototypes" + str(prototypes.shape[0]) + "\n")
         
     sys.stderr.write("avg" + str(p_pruned/float(len(content))) + "\n")
     sys.stderr.write("avg" + str(p_prepruned/float(len(content))) + "\n")

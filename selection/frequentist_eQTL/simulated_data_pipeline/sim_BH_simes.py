@@ -29,10 +29,10 @@ def egene_selection(inpath):
     simes_output = np.vstack(list_)
     print("check 1: dimensions of concatenated bon outputs", simes_output.shape)
 
-    p_simes = simes_output[:, 2]
+    p_simes = simes_output[:, 3]
     true_egenes = (simes_output[:, 1]>0.05).sum()
     print("true egenes", true_egenes)
-    sig = BH_selection_egenes(p_simes, 0.10)
+    sig = BH_selection_egenes(p_simes, 0.05)
 
     K = sig[0]
     print("BH rejections", K)
@@ -75,33 +75,33 @@ v = BH_output[2]
 length = BH_output[3]
 simes_output = BH_output[4]
 
-outdir = '/Users/snigdhapanigrahi/sim_nonrandomized_bon_output_liver/nonrandomized_egenes/'
-for i in range(v.shape[0]):
-
-    if i == 0:
-        outfile = os.path.join(outdir, "egene_index_" + str(format(i+1, '03')) + ".txt")
-        E = E_sel[(E_sel< v[0])]
-        if E.size>0:
-            np.savetxt(outfile, E)
-        else:
-            E = (-1* np.ones(1)).reshape((1,))
-            np.savetxt(outfile, E)
-    elif i>0 and i<length-1:
-        outfile = os.path.join(outdir, "egene_index_" + str(format(i+1, '03')) + ".txt")
-        E = E_sel[(E_sel>= v[i-1]) & (E_sel< v[i])]-v[i-1]
-        if E.size>0:
-            np.savetxt(outfile, E)
-        else:
-            E = (-1* np.ones(1)).reshape((1,))
-            np.savetxt(outfile, E)
-    elif i == length-1:
-        outfile = os.path.join(outdir, "egene_index_" + str(format(i+1, '03')) + ".txt")
-        E = E_sel[(E_sel>= v[i-1])]-v[i-1]
-        if E.size > 0:
-            np.savetxt(outfile, E)
-        else:
-            E = (-1 * np.ones(1)).reshape((1,))
-            np.savetxt(outfile, E)
+# outdir = '/Users/snigdhapanigrahi/sim_nonrandomized_bon_output_liver/nonrandomized_egenes/'
+# for i in range(v.shape[0]):
+#
+#     if i == 0:
+#         outfile = os.path.join(outdir, "egene_index_" + str(format(i+1, '03')) + ".txt")
+#         E = E_sel[(E_sel< v[0])]
+#         if E.size>0:
+#             np.savetxt(outfile, E)
+#         else:
+#             E = (-1* np.ones(1)).reshape((1,))
+#             np.savetxt(outfile, E)
+#     elif i>0 and i<length-1:
+#         outfile = os.path.join(outdir, "egene_index_" + str(format(i+1, '03')) + ".txt")
+#         E = E_sel[(E_sel>= v[i-1]) & (E_sel< v[i])]-v[i-1]
+#         if E.size>0:
+#             np.savetxt(outfile, E)
+#         else:
+#             E = (-1* np.ones(1)).reshape((1,))
+#             np.savetxt(outfile, E)
+#     elif i == length-1:
+#         outfile = os.path.join(outdir, "egene_index_" + str(format(i+1, '03')) + ".txt")
+#         E = E_sel[(E_sel>= v[i-1])]-v[i-1]
+#         if E.size > 0:
+#             np.savetxt(outfile, E)
+#         else:
+#             E = (-1 * np.ones(1)).reshape((1,))
+#             np.savetxt(outfile, E)
 
 
 # outdir = '/Users/snigdhapanigrahi/sim_bon_output_Liver/randomized_egene_boninfo/'

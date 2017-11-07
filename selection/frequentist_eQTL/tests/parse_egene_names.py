@@ -2,7 +2,7 @@
 import os
 
 
-path = '/Users/snigdhapanigrahi/fwd_bwd_inference/names'
+path = '/Users/snigdhapanigrahi/pruned_fwd_bwd_inference/names'
 list_egenes = []
 for i in range(100):
 
@@ -15,12 +15,12 @@ for i in range(100):
     for x in content:
         list_egenes.append(x)
 
-outfile='/Users/snigdhapanigrahi/fwd_bwd_inference/eGenes.txt'
+outfile='/Users/snigdhapanigrahi/pruned_fwd_bwd_inference/eGenes.txt'
 with open(outfile, 'w') as fo:
     for x in list_egenes:
         fo.write(str(x) + '\n')
 
-path='/Users/snigdhapanigrahi/fwd_bwd_inference/eGenes.txt'
+path='/Users/snigdhapanigrahi/pruned_fwd_bwd_inference/eGenes.txt'
 with open(path) as g:
     content = g.readlines()
 content = [x.strip() for x in content]
