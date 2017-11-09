@@ -2,7 +2,7 @@ import numpy as np
 import glob, os
 import pandas as pd
 
-corr_path = r'/Users/snigdhapanigrahi/inference_liver/correlations/'
+corr_path = r'/Users/snigdhapanigrahi/inference_liver/correlations_10/'
 allFiles = glob.glob(corr_path + "/*.txt")
 count_common = 0.
 count_tot = 0.

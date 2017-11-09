@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import glob, os
 
-inf_path =r'/Users/snigdhapanigrahi/sim_fwd_bwd_inference/inference'
+inf_path =r'/Users/snigdhapanigrahi/sim_fwd_bwd_inference_10/inference'
 #inf_path =r'/Users/snigdhapanigrahi/data_split_inference/inference'
 df_master = pd.DataFrame()
 
@@ -60,8 +60,8 @@ for file_ in allFiles:
     df_master = df_master.append(df_naive, ignore_index=True)
 
 print("count of total files", i)
-print("check significant", check_coverage/505., check_risk/505., check_length/505., negenes)
-#df_master.to_csv("/Users/snigdhapanigrahi/sim_inference_liver/pruned_fwd_bwd_inference.csv", index=False)
+print("check significant", check_coverage/1535., check_risk/1535., check_length/1535., negenes)
+df_master.to_csv("/Users/snigdhapanigrahi/sim_inference_liver/fwd_bwd_inference_0.10.csv", index=False)
 print("saved to file!")
 
 

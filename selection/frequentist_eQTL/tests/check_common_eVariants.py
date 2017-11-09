@@ -10,7 +10,7 @@ if __name__ == "__main__":
     inpath = sys.argv[1]
     outdir = sys.argv[2]
 
-    eGenes = os.path.join(inpath, "common_egenes.txt")
+    eGenes = os.path.join(inpath, "common_egenes_05.txt")
     with open(eGenes) as g:
         content = g.readlines()
     content = [x.strip() for x in content]

@@ -97,7 +97,7 @@ import glob, os
 #print("saved to file!")
 #print("power randomized versus nonrandomized", check_prand/1764., check_pnonrand/1764.)
 
-inf_path =r'/Users/snigdhapanigrahi/inference_liver/inference0'
+inf_path =r'/Users/snigdhapanigrahi/inference_liver/inference_05'
 df_master = pd.DataFrame()
 allFiles = glob.glob(inf_path + "/*.txt")
 columns = ["lower_ci", "upper_ci", "point_estimator", "length", "gene_name", "method", "nsignificant", "norm"]
@@ -190,8 +190,8 @@ for file_ in allFiles:
         df_master = df_master.append(df_selinf, ignore_index=True)
 
 print("count of total files", i)
-print("norms", check_norm_unad/2214., check_norm_ad/2214., check_sig_unad/2214., check_sig_ad/2214., check_length/2214.)
-df_master.to_csv("/Users/snigdhapanigrahi/inference_liver/real_adjusted_unadjusted_inference.csv", index=False)
+print("norms", check_norm_unad/1761., check_norm_ad/1761., check_sig_unad/1761., check_sig_ad/1761., check_length/1761.)
+df_master.to_csv("/Users/snigdhapanigrahi/inference_liver/real_adjusted_unadjusted_inference_0.05.csv", index=False)
 print("saved to file!")
 
 

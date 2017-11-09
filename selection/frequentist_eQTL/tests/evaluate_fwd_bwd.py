@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import glob, os
 
-inf_path =r'/Users/snigdhapanigrahi/pruned_fwd_bwd_inference/inference_pruned'
+inf_path =r'/Users/snigdhapanigrahi/fwd_bwd_inference_10/inference'
 
 df_master = pd.DataFrame()
 
@@ -67,6 +67,6 @@ for file_ in allFiles:
 print("check significant", check_sig/1273., check_norm/1273., check_length/1273.)
 
 print("count of total files", i)
-df_master.to_csv("/Users/snigdhapanigrahi/inference_liver/real_pruned_fwd_bwd_inference.csv", index=False)
+df_master.to_csv("/Users/snigdhapanigrahi/inference_liver/real_fwd_bwd_inference_0.10.csv", index=False)
 print("saved to file!")
 
