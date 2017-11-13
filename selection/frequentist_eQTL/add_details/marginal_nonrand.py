@@ -19,6 +19,9 @@ if __name__ == "__main__":
     sel_risk = 0.
     sel_covered = 0.
     sel_length = 0.
+
+    unad_covered = 0.
+    unad_length = 0.
     count = 0.
 
     for seed_n in range(100):
@@ -33,6 +36,13 @@ if __name__ == "__main__":
         T_observed = (X.T.dot(y))[index]
         indicator = np.zeros(p, dtype=bool)
         indicator[index] = 1
+
+        sd = 1.
+        unad_intervals = np.array([T_observed - 1.65 * sd, T_observed + 1.65 * sd])
+        if (unad_intervals[0] <= 0.) and (0. <= unad_intervals[1]):
+            unad_covered += 1
+
+        unad_length += (unad_intervals[1] - unad_intervals[0])
 
         try:
             FS = forward_step(X, y, covariance=np.identity(n))
@@ -55,4 +65,5 @@ if __name__ == "__main__":
         except ValueError:
             count += 1
         print("iteration", seed_n)
-    print("count", count, sel_risk/(100. -count), sel_covered/(100.-count), sel_length/(100.-count))
+    print("count", count, sel_risk/(100. -count), sel_covered/(100.-count), sel_length/(100.-count),
+          unad_covered/(100.-count), unad_length/(100.-count))

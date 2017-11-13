@@ -97,7 +97,7 @@ import glob, os
 #print("saved to file!")
 #print("power randomized versus nonrandomized", check_prand/1764., check_pnonrand/1764.)
 
-inf_path =r'/Users/snigdhapanigrahi/inference_liver/inference_05'
+inf_path =r'/Users/snigdhapanigrahi/inference_liver/inference0'
 df_master = pd.DataFrame()
 allFiles = glob.glob(inf_path + "/*.txt")
 columns = ["lower_ci", "upper_ci", "point_estimator", "length", "gene_name", "method", "nsignificant", "norm"]
@@ -107,6 +107,7 @@ check_norm_unad = 0.
 check_sig_ad = 0.
 check_sig_unad = 0.
 check_length = 0.
+check_active = 0.
 for file_ in allFiles:
     df = np.loadtxt(file_)
     gene = file_.strip().split('/')[-1].split(".txt")[0].split("_")[1]
@@ -157,6 +158,7 @@ for file_ in allFiles:
 
             check_norm_ad += norm_sel
             check_sig_ad += nsig_sel
+            check_active += nactive
 
         elif nactive == 1.:
             data_naive = data[np.array([2,3,5])]
@@ -184,14 +186,16 @@ for file_ in allFiles:
             df_selinf['norm'] = norm
 
             check_length += (data[1] - data[0])
+            check_active += nactive
 
 
         df_master = df_master.append(df_naive, ignore_index=True)
         df_master = df_master.append(df_selinf, ignore_index=True)
 
 print("count of total files", i)
-print("norms", check_norm_unad/1761., check_norm_ad/1761., check_sig_unad/1761., check_sig_ad/1761., check_length/1761.)
-df_master.to_csv("/Users/snigdhapanigrahi/inference_liver/real_adjusted_unadjusted_inference_0.05.csv", index=False)
+print("norms", check_norm_unad/1761., check_norm_ad/1761., check_sig_unad/1761., check_sig_ad/1761., check_length/1761.,
+      check_active/2216.)
+#df_master.to_csv("/Users/snigdhapanigrahi/inference_liver/real_adjusted_unadjusted_inference_0.05.csv", index=False)
 print("saved to file!")
 
 

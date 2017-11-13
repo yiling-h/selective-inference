@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import glob, os
 
-inf_path =r'/Users/snigdhapanigrahi/fwd_bwd_inference_10/inference'
+inf_path =r'/Users/snigdhapanigrahi/fwd_bwd_inference_05/inference'
 
 df_master = pd.DataFrame()
 
@@ -12,7 +12,7 @@ i = 0
 check_sig = 0.
 check_norm = 0.
 check_length = 0.
-
+check_active = 0.
 for file_ in allFiles:
     df = np.loadtxt(file_)
     gene = file_.strip().split('/')[-1].split(".txt")[0].split("_")[3]
@@ -41,6 +41,7 @@ for file_ in allFiles:
                                        norm=norm)
 
             check_sig += nsig / float(nactive)
+            check_active += nactive
 
         i = i + 1
 
@@ -60,13 +61,14 @@ for file_ in allFiles:
             df_naive['nsignificant'] = nsig
             df_naive['norm'] = norm
             check_sig += nsig
+            check_active += nactive
         i = i + 1
 
     df_master = df_master.append(df_naive, ignore_index=True)
 
 print("check significant", check_sig/1273., check_norm/1273., check_length/1273.)
 
-print("count of total files", i)
-df_master.to_csv("/Users/snigdhapanigrahi/inference_liver/real_fwd_bwd_inference_0.10.csv", index=False)
+print("count of total files", i, check_active/float(i))
+#df_master.to_csv("/Users/snigdhapanigrahi/inference_liver/real_fwd_bwd_inference_0.10.csv", index=False)
 print("saved to file!")
 

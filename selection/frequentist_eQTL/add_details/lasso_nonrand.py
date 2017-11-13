@@ -59,10 +59,21 @@ def lasso_Gaussian(X, y, lam, true_mean):
     coverage_ad = np.zeros(nactive)
     ad_length = np.zeros(nactive)
 
+    coverage_unad = np.zeros(nactive)
+
     if C is not None:
         one_step = L.onestep_estimator
         print("one step", one_step)
+
+        point_est = projection_active.T.dot(y)
+        sd = np.sqrt(np.linalg.inv(X[:, active].T.dot(X[:, active])).diagonal())
+        unad_intervals = np.vstack([point_est - 1.65 * sd, point_est + 1.65 * sd]).T
+        unad_length = (unad_intervals[:,1]- unad_intervals[:,0]).sum() / nactive
+        unad_risk = np.power(point_est- true_val, 2.).sum() / nactive
+
         for i in range(one_step.shape[0]):
+            if (unad_intervals[i, 0] <= true_val[i]) and (true_val[i] <= unad_intervals[i, 1]):
+                coverage_unad[i] = 1
             eta = np.zeros_like(one_step)
             eta[i] = active_signs[i]
             alpha = 0.1
@@ -98,11 +109,11 @@ def lasso_Gaussian(X, y, lam, true_mean):
         ad_len = ad_length.sum() /float(nactive)
         ad_risk = np.power(one_step - true_val, 2.).sum() /float(nactive)
 
-        return sel_cov, ad_len, ad_risk
+        return sel_cov, ad_len, ad_risk, coverage_unad.sum() /float(nactive), unad_length, unad_risk
 
     else:
 
-        return 0.,0.,0.
+        return 0.,0.,0., 0.,0.,0.
 
 if __name__ == "__main__":
 
@@ -126,6 +137,10 @@ if __name__ == "__main__":
     sel_risk = 0.
     sel_covered = 0.
     sel_length = 0.
+
+    unad_covered = 0.
+    unad_length = 0.
+
     count = 0
     lam_frac = 0.8
     lam = lam_frac * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
@@ -143,6 +158,8 @@ if __name__ == "__main__":
             sel_covered += results[0]
             sel_risk += results[2]
             sel_length += results[1]
+            unad_covered += results[3]
+            unad_length += results[4]
             print("iteration completed", seed_n)
 
-    print("results", count, sel_covered, sel_risk, sel_length)
+    print("results", count, sel_covered, sel_risk, sel_length, unad_covered, unad_length)

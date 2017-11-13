@@ -14,6 +14,7 @@ i = 0
 check_coverage = 0.
 check_risk = 0.
 check_length = 0.
+check_active = 0.
 negenes = np.zeros(10)
 for file_ in allFiles:
     df = np.loadtxt(file_)
@@ -42,6 +43,7 @@ for file_ in allFiles:
                                    method="fwdbwd")
         i = i + 1
         negenes[nsignals] += 1
+        check_active += nactive
 
     elif nactive == 1. and data[1] > 0.05:
         data_naive = data[np.array([2, 4, 3])]
@@ -56,12 +58,13 @@ for file_ in allFiles:
         i = i + 1
 
         negenes[nsignals] += 1
+        check_active += nactive
 
     df_master = df_master.append(df_naive, ignore_index=True)
 
 print("count of total files", i)
-print("check significant", check_coverage/1535., check_risk/1535., check_length/1535., negenes)
-df_master.to_csv("/Users/snigdhapanigrahi/sim_inference_liver/fwd_bwd_inference_0.10.csv", index=False)
+print("check significant", check_coverage/1535., check_risk/1535., check_length/1535., negenes, check_active/float(i))
+#df_master.to_csv("/Users/snigdhapanigrahi/sim_inference_liver/fwd_bwd_inference_0.10.csv", index=False)
 print("saved to file!")
 
 

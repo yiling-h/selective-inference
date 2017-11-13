@@ -105,20 +105,20 @@ for file_ in allFiles:
 #
 # print("results", summary_files(list_))
 
-nsig = 0.
-norm = 0.
-length_unad = 0.
-count_sel = 0
-for i in range(len(list_)):
-    results = list_[i]
-
-    nactive = int(results[0])
-    if nactive == 0:
-        count_sel += 1
-
-    nsig += results[4]
-    norm += results[3]
-    length_unad += results[2]
-
-print("summary stats",  nsig/len(list_), norm/len(list_), length_unad/len(list_), count_sel)
-
+# nsig = 0.
+# norm = 0.
+# length_unad = 0.
+# count_sel = 0
+# for i in range(len(list_)):
+#     results = list_[i]
+#
+#     nactive = int(results[0])
+#     if nactive == 0:
+#         count_sel += 1
+#
+#     nsig += results[4]
+#     norm += results[3]
+#     length_unad += results[2]
+#
+# print("summary stats",  nsig/len(list_), norm/len(list_), length_unad/len(list_), count_sel)
+#
