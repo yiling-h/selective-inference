@@ -5,12 +5,14 @@ import pandas as pd
 
 fwdbwd_path = r'/Users/snigdhapanigrahi/inference_liver/sel_SNPs_with_MAFs_fwdbwd_10/'
 fwd_path = r'/Users/snigdhapanigrahi/fwd_bwd_inference_10/inference/'
-adjusted_path = r'/Users/snigdhapanigrahi/inference_liver/sel_SNPs_with_MAFs/'
+adjusted_path = r'/Users/snigdhapanigrahi/inference_liver/sel_SNPs_with_MAFs_10/'
 inf_path = r'/Users/snigdhapanigrahi/inference_liver/inference0'
 
 # df_master = pd.DataFrame()
 # allFiles_adjusted = glob.glob(inf_path + "/*.txt")
 # columns = ["SNP_index", "eVariant", "gene_name", "effect_size","method"]
+# count_tot = 0.
+# i = 0.
 #
 # for file_ in allFiles_adjusted:
 #     gene = file_.strip().split('/')[-1].split(".txt")[0].split("_")[1]
@@ -39,6 +41,8 @@ inf_path = r'/Users/snigdhapanigrahi/inference_liver/inference0'
 #             nactive = 0.
 #
 #         if nactive > 1:
+#             i += 1.
+#             count_tot += find.sum()
 #             df_naive = sel_MAF[find_sel.values]
 #             df_naive = df_naive.assign(effect_size=data[:, 4][find],
 #                                        gene_name=gene,
@@ -47,6 +51,8 @@ inf_path = r'/Users/snigdhapanigrahi/inference_liver/inference0'
 #             # print("df naive", df_naive)
 #
 #         elif nactive == 1. and find[0]== True:
+#             i += 1.
+#             count_tot += find
 #             df_naive = sel_MAF
 #             df_naive = df_naive.assign(effect_size=data[4],
 #                                        gene_name=gene,
@@ -56,12 +62,13 @@ inf_path = r'/Users/snigdhapanigrahi/inference_liver/inference0'
 #
 #         df_master = df_master.append(df_naive, ignore_index=True)
 #
+# print("total eVariants", count_tot/i)
 # df_master.to_csv("/Users/snigdhapanigrahi/inference_liver/effect_sizes_adjusted.csv", index=False)
 
 df_master = pd.DataFrame()
 allFiles_adjusted = glob.glob(fwd_path + "/*.txt")
 columns = ["SNP_index", "eVariant", "gene_name", "effect_size","method"]
-
+count_tot = 0.
 for file_ in allFiles_adjusted:
     gene = file_.strip().split('/')[-1].split(".txt")[0].split("_")[3]
 
@@ -81,6 +88,7 @@ for file_ in allFiles_adjusted:
             nactive = 0.
 
         if nactive > 1:
+            count_tot += nactive
             df_naive = sel_MAF
             df_naive = df_naive.assign(effect_size=data[:, 4],
                                        gene_name=gene,
@@ -88,6 +96,7 @@ for file_ in allFiles_adjusted:
             # print("df naive", df_naive)
 
         elif nactive == 1.:
+            count_tot += nactive
             df_naive = sel_MAF
             df_naive = df_naive.assign(effect_size=data[4],
                                        gene_name=gene,
@@ -96,6 +105,7 @@ for file_ in allFiles_adjusted:
 
         df_master = df_master.append(df_naive, ignore_index=True)
 
+print("total eVariants", count_tot)
 df_master.to_csv("/Users/snigdhapanigrahi/inference_liver/effect_sizes_fwd_bwd_0.10.csv", index=False)
 
 
