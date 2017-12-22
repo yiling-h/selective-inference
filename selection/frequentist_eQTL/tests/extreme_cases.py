@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 path = r'/Users/snigdhapanigrahi/sim_inference_liver/eGenes.txt'
-fwdpath = r'/Users/snigdhapanigrahi/fwd_bwd_inference_10/eGenes_10.txt'
+#fwdpath = r'/Users/snigdhapanigrahi/fwd_bwd_inference_10/eGenes_10.txt'
 outpath = r'/Users/snigdhapanigrahi/inference_liver/'
 
 #path = r'/Users/snigdhapanigrahi/nonrandomized_bon_output_liver/eGenes.txt'
@@ -39,19 +39,19 @@ print("length egenes", len(eGenes_selinf))
 outpath =  r'/Users/snigdhapanigrahi/sim_inference_liver/'
 outfile = os.path.join(outpath + "egenes_completed_add.txt")
 addpath = r'/Users/snigdhapanigrahi/sim_inference_liver/additional_info/'
-# allFiles = glob.glob(addpath + "/*.txt")
-# gene_names = []
-# for file_ in allFiles:
-#     file_name = os.path.basename(file_)
-#     file_name =  os.path.splitext(file_name)[0]
-#
-#     index_of_underscore = file_name.index('_')
-#     gene_name = file_name[index_of_underscore+1:]
-#     gene_names.append(gene_name)
-#
-# with open(outfile, 'w') as fo:
-#     for gene_name in gene_names:
-#         fo.write(str(gene_name) + '\n')
+allFiles = glob.glob(addpath + "/*.txt")
+gene_names = []
+for file_ in allFiles:
+    file_name = os.path.basename(file_)
+    file_name =  os.path.splitext(file_name)[0]
+
+    index_of_underscore = file_name.index('_')
+    gene_name = file_name[index_of_underscore+1:]
+    gene_names.append(gene_name)
+
+with open(outfile, 'w') as fo:
+    for gene_name in gene_names:
+        fo.write(str(gene_name) + '\n')
 
 # path='/Users/snigdhapanigrahi/inference_liver/eGenes_05.txt'
 # with open(path) as g:
