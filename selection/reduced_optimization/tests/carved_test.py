@@ -27,7 +27,7 @@ def carved_lasso_trial(X,
     penalty = rr.group_lasso(np.arange(p), weights=dict(zip(np.arange(p), W)), lagrange=1.)
 
     total_size = loss.saturated_loss.shape[0]
-    subsample_size = int(0.8 * total_size)
+    subsample_size = int(0.5 * total_size)
 
     M_est = M_estimator_approx_carved(loss, epsilon, subsample_size, penalty, estimation)
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     snr = 0.
 
 
-    niter = 24
+    niter = 10
     ad_cov = 0.
     unad_cov = 0.
     ad_len = 0.
@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
          ### GENERATE X, Y BASED ON SEED
          #i+17 was good, i+27 was good
-         np.random.seed(37)  # ensures different y
+         np.random.seed(57)  # ensures different y
          X, y, beta, nonzero, sigma = gaussian_instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
          lam = 0.8 * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * sigma
 

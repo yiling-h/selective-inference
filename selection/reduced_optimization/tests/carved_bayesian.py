@@ -110,7 +110,7 @@ def carved_lasso_trial(X,
     penalty = rr.group_lasso(np.arange(p), weights=dict(zip(np.arange(p), W)), lagrange=1.)
 
     total_size = loss.saturated_loss.shape[0]
-    subsample_size = int(0.8 * total_size)
+    subsample_size = int(0.5 * total_size)
 
     M_est = M_estimator_approx_carved(loss, epsilon, subsample_size, penalty, estimation)
 
@@ -180,7 +180,7 @@ if __name__ == "__main__":
     s = 0
     snr = 0.
 
-    niter = 50
+    niter = 10
     ad_cov = 0.
     unad_cov = 0.
     ad_len = 0.
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     unad_risk = 0.
 
     for i in range(niter):
-        np.random.seed(i)
+        np.random.seed(i+21)
         X, y, beta, sigma = generate_data_random(n=n, p=p)
         lam = 0.8 * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * sigma
         lasso = carved_lasso_trial(X,
