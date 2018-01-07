@@ -90,7 +90,6 @@ if __name__ == "__main__":
     s = 0
     snr = 0.
 
-
     niter = 10
     ad_cov = 0.
     unad_cov = 0.
@@ -104,7 +103,7 @@ if __name__ == "__main__":
 
          ### GENERATE X, Y BASED ON SEED
          #i+17 was good, i+27 was good
-         np.random.seed(57)  # ensures different y
+         np.random.seed(87)  # ensures different y
          X, y, beta, nonzero, sigma = gaussian_instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
          lam = 0.8 * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * sigma
 

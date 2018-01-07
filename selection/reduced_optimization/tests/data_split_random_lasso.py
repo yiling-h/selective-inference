@@ -81,7 +81,7 @@ def randomized_lasso_trial(X,
     coverage_unad = np.zeros(nactive)
     unad_length = np.zeros(nactive)
 
-    true_val = np.zeros(nactive)
+    true_val = projection_active.T.dot(X_inf.dot(beta))
 
     for l in range(nactive):
         if (unadjusted_intervals[0, l] <= true_val[l]) and (true_val[l] <= unadjusted_intervals[1, l]):

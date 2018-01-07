@@ -189,7 +189,7 @@ if __name__ == "__main__":
     unad_risk = 0.
 
     for i in range(niter):
-        np.random.seed(i+21)
+        np.random.seed(i+51)
         X, y, beta, sigma = generate_data_random(n=n, p=p)
         lam = 0.8 * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * sigma
         lasso = carved_lasso_trial(X,
