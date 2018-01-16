@@ -1,13 +1,57 @@
 import glob
 import numpy as np
 
-path =r'/Users/snigdhapanigrahi/fwd_bwd_inference/inference'
+path =r'/Users/snigdhapanigrahi/simulation_prototype/inference_simulation/'
 
 allFiles = glob.glob(path + "/*.txt")
 list_ = []
 for file_ in allFiles:
     df = np.loadtxt(file_)
     list_.append(df)
+
+def summary_files(list_):
+    count = 0.
+    count_0  = 0.
+    length_ad = 0.
+    length_unad = 0.
+    cov_ad = 0.
+    cov_unad = 0.
+    risk_ad = 0.
+    risk_unad = 0.
+
+    for i in range(len(list_)):
+        print("iteration", i)
+        results = list_[i]
+        if results.size>0:
+            count += 1.
+            if results.ndim > 1:
+                nactive = results.shape[0]
+            else:
+                nactive = 1
+            print("nactive", nactive)
+
+            if nactive > 1:
+                print("results", results, results.shape)
+                length_ad += results[:,9].sum()/float(nactive)
+                length_unad += results[:,10].sum()/float(nactive)
+                cov_ad += results[:,5].sum()/float(nactive)
+                cov_unad += results[:,6].sum()/float(nactive)
+                risk_ad += results[:,7].sum()/float(nactive)
+                risk_unad += results[:,8].sum()/float(nactive)
+
+            elif nactive == 1:
+                length_ad += results[9] / float(nactive)
+                length_unad += results[10] / float(nactive)
+                cov_ad += results[5] / float(nactive)
+                cov_unad += results[6] / float(nactive)
+                risk_ad += results[7] / float(nactive)
+                risk_unad += results[8] / float(nactive)
+        else:
+            count_0 += 1
+
+    return count, length_ad/count, length_unad/count, cov_ad/count, cov_unad/count, risk_ad/count, risk_unad/count
+
+print("results", summary_files(list_))
 
 # def summary_files(list_):
 #

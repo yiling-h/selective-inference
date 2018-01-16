@@ -104,14 +104,14 @@ if __name__ == "__main__":
 
     outdir = "/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/simulation_prototype/data_directory/"
     negenes = 500
-    regime = np.random.choice(range(6), negenes, replace=True, p=[0.40, 0.30, 0.15, 0.08, 0.05, 0.02])
+    regime = np.random.choice(range(6), negenes, replace=True, p=[0.20, 0.50, 0.15, 0.08, 0.05, 0.02])
     signals = [0, 1, 2, 3, 5, 10]
 
     for j in range(negenes):
 
         nsignals = signals[regime[j]]
         print("iteration completed", j)
-        X, y, beta, active, sigma= gaussian_instance(n=100, p=1000, s=nsignals, sigma=1., rho=0.2, signal=3.,
+        X, y, beta, active, sigma= gaussian_instance(n=100, p=1000, s=nsignals, sigma=1., rho=0.2, signal=4.,
                                                      random_signs=False, df=np.inf,scale=True,
                                                      center=True, equicorrelated=False)
 
