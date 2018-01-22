@@ -3,6 +3,7 @@ import numpy as np
 import glob, os
 
 inf_path =r'/Users/snigdhapanigrahi/sim_inference_liver/additional_info_nonrand'
+fdr_path =r'/Users/snigdhapanigrahi/sim_inference_liver/lasso_fdr_nonrand'
 
 allFiles = glob.glob(inf_path + "/*.txt")
 columns = ["coverage", "risk", "length", "gene_name", "num_true_sigs", "method", "fdr", "power", "full_risk"]
@@ -14,6 +15,7 @@ check_power = 0.
 check_risk_full = 0.
 
 check_power_break = np.zeros(10)
+check_fdr_break = np.zeros(10)
 nsig_break = np.zeros(10)
 
 for file_ in allFiles:
@@ -31,6 +33,9 @@ for file_ in allFiles:
         nactive = 0.
 
     if nactive > 1:
+        fdr_file = np.loadtxt(os.path.join(fdr_path, "fdr_" + str(gene) + ".txt"))
+        fdr_screening = fdr_file[0, 1]
+        print("fdr", fdr_screening)
         nsignals = int(data[0, 9])
         data_selinf = data[:, np.array([0, 4, 2])]
 
@@ -46,10 +51,18 @@ for file_ in allFiles:
         check_risk_full += data[0,6]
 
         check_power_break[nsignals] += data[0,7]
+        check_fdr_break[nsignals] += fdr_screening
         nsig_break[nsignals] += 1.
 
     elif nactive == 1.:
+        fdr_file = np.loadtxt(os.path.join(fdr_path, "fdr_" + str(gene) + ".txt"))
+        print("fdr_file", fdr_file, )
+        if fdr_file.ndim == 2:
+            fdr_screening = fdr_file[0,1]
+        else:
+            fdr_screening = fdr_file[1]
 
+        print("fdr", fdr_screening)
         nsignals = int(data[9])
         data_selinf = data[np.array([0, 4, 2])]
         df_selinf = pd.DataFrame(data=data_selinf.reshape((1, 3)), columns=['coverage', 'risk', 'length'])
@@ -65,12 +78,13 @@ for file_ in allFiles:
         check_risk_full += data[6]
 
         check_power_break[nsignals] += data[7]
+        check_fdr_break[nsignals] += fdr_screening
         nsig_break[nsignals] += 1.
 
     df_master = df_master.append(df_selinf, ignore_index=True)
 
 print("count of total files", i)
-df_master.to_csv("/Users/snigdhapanigrahi/sim_inference_liver/additional_nonrandomized_inference.csv", index=False)
+df_master.to_csv("/Users/snigdhapanigrahi/sim_inference_liver/additional_nonrandomized_inference_new.csv", index=False)
 print("saved to file!")
 print("power randomized versus nonrandomized", i, check_risk_full/float(i), check_power/float(i), check_fdr/float(i))
-print("power break-up", np.true_divide(check_power_break,nsig_break))
+print("power break-up", np.true_divide(check_power_break,nsig_break), np.true_divide(check_fdr_break,nsig_break))
