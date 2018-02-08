@@ -29,9 +29,9 @@ def egene_selection(inpath):
     simes_output = np.vstack(list_)
     print("check 1: dimensions of concatenated bon outputs", simes_output.shape)
 
-    p_simes = simes_output[:, 3]
+    p_simes = simes_output[:, 2]
     true_egenes = (simes_output[:, 1]>0.05).sum()
-    print("true egenes", true_egenes)
+    print("true egenes", float(true_egenes))
     sig = BH_selection_egenes(p_simes, 0.05)
 
     K = sig[0]
@@ -43,8 +43,10 @@ def egene_selection(inpath):
     egene_sel = simes_output[E_sel,:]
     false_rej = egene_sel[:,1]==0
 
+    print("false rejections", false_rej.sum())
+
     print("fdr", false_rej.sum()/float(K))
-    print("power", (K-false_rej.sum())/(float(true_egenes)))
+    print("power", (K-199.)/true_egenes)
 
     print("average number of SNPs in selected egenes", egene_p)
 
@@ -67,7 +69,7 @@ def egene_selection(inpath):
 
     return K, E_sel, v, length, simes_output
 
-BH_output = egene_selection('/Users/snigdhapanigrahi/sim_nonrandomized_Bon_Z/')
+BH_output = egene_selection('/Users/snigdhapanigrahi/sim_inference_liver/randomized_egene_boninfo/')
 K = BH_output[0]
 print("rejections", K)
 E_sel = BH_output[1]

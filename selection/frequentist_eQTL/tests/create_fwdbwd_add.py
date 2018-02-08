@@ -6,7 +6,8 @@ inf_path =r'/Users/snigdhapanigrahi/sim_inference_liver/additional_info_fwdbwd'
 df_master = pd.DataFrame()
 
 allFiles = glob.glob(inf_path + "/*.txt")
-columns = ["coverage", "risk", "length", "gene_name", "num_true_sigs", "method", "fdr", "power", "full_risk"]
+columns = ["coverage", "risk", "length", "gene_name", "num_true_sigs", "method", "fdr_screening",
+           "fdr", "power", "full_risk"]
 i = 0
 
 check_coverage = 0.
@@ -41,10 +42,12 @@ for file_ in allFiles:
         check_coverage += data[:,2].sum()/float(nactive)
         check_risk += data[:,4].sum()/float(nactive)
         check_length += data[:,3].sum()/float(nactive)
+        fdr_screening = data[0, 6]
         df_naive = pd.DataFrame(data=data_naive, columns=['coverage', 'risk', 'length'])
         df_naive = df_naive.assign(gene_name=gene,
                                    num_true_sigs=nsignals,
                                    method="fwdbwd",
+                                   fdr_screening=fdr_screening,
                                    fdr=data[0, 6],
                                    inferential_power=data[0, 7],
                                    full_risk=data[0, 5])
@@ -70,6 +73,7 @@ for file_ in allFiles:
         df_naive['num_true_sigs'] = nsignals
         df_naive['method'] = "fwdbwd"
         df_naive['fdr'] = data[6]
+        df_naive['fdr_screening'] = data[6]
         df_naive['inferential_power'] = data[7]
         df_naive['full_risk'] = data[5]
         i = i + 1
@@ -88,7 +92,7 @@ for file_ in allFiles:
 
 print("count of total files", i)
 print("check significant", check_coverage/1535., check_risk/1535., check_length/1535., negenes, check_active/float(i))
-#df_master.to_csv("/Users/snigdhapanigrahi/sim_inference_liver/additional_fwd_bwd_inference.csv", index=False)
+df_master.to_csv("/Users/snigdhapanigrahi/sim_inference_liver/additional_fwd_bwd_inference_new.csv", index=False)
 print("saved to file!")
 print("power randomized versus nonrandomized", i, check_risk_full/float(i), check_power/float(i), check_fdr/float(i))
 print("power break-up", np.true_divide(check_power_break,negenes))
