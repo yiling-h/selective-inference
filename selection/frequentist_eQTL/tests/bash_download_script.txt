@@ -1,0 +1,77 @@
+for i in $(seq -f %03g 1 100)
+do
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/nonrand_Liver_snig/Liver_97_chunk${i}_mtx/nonrandomized_Z_bon${i}.txt /Users/snigdhapanigrahi/nonrandomized_Bon_Z/
+done
+
+
+for i in $(seq -f %03g 1 100)
+do
+OUT=/Users/snigdhapanigrahi/bon_output_liver/names${i}/
+mkdir -p ${OUT}
+scp -r snigdha@sherlock:/scratch/PI/sabatti/controlled_access_data/fastqtl_tmp/Liver/Liver_97_chunk${i}_mtx/Genes.txt /Users/snigdhapanigrahi/bon_output_liver/names${i}/
+#scp -r snigdha@sherlock:/scratch/PI/sabatti/controlled_access_data/fastqtl_sim/Liver_mixture7amp0.30/Liver_97_chunk${i}_mtx/datasplit_result_fwdbwd/eGenes.txt /Users/snigdhapanigrahi/data_split_inference/names${i}/
+done
+
+
+for i in $(seq -f %03g 1 100)
+do
+#scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/Liver_snig/Liver_97_chunk${i}_mtx/randomized_Z_bon_${i}.txt /Users/snigdhapanigrahi/randomized_Bon_Z
+#scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/Liver_simulated/Liver_97_chunk${i}_mtx/sim_randomized_Z_bon${i}.txt /Users/snigdhapanigrahi/sim_randomized_Bon_Z
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/Liver_simulated/Liver_97_chunk${i}_mtx/randomized_Z_bon${i}.txt /Users/snigdhapanigrahi/sim_randomized_Bon_Z
+done
+
+for i in $(seq -f %03g 1 100)
+do
+OUT=/Users/snigdhapanigrahi/sim_fwd_bwd_inference_10/names${i}/
+#mkdir -p ${OUT}
+rm -r ${OUT}
+done
+
+for i in $(seq -f %03g 2 100)
+do
+#OUT=/scratch/PI/jtaylo/snigdha_data/gtex/Liver_snig/Liver_97_chunk${i}_mtx/randomized_Z_bon${i}.txt
+#rm /scratch/PI/jtaylo/snigdha_data/gtex/Liver_snig/Liver_97_chunk${i}_mtx/randomized_Z_bon${i}.txt
+#rm -r ${OUT}
+done
+
+for i in $(seq -f %03g 2 100)
+do
+cp -r /scratch/PI/jtaylo/snigdha_data/gtex/Liver_snig/Liver_97_chunk${i}_mtx /scratch/PI/jtaylo/snigdha_data/gtex/Liver_simulated/
+done
+
+for i in $(seq -f %03g 1 100)
+do
+OUT=/Users/snigdhapanigrahi/sim_fwd_bwd_inference_10/names${i}/
+mkdir -p ${OUT}
+scp -r snigdha@sherlock:/scratch/PI/sabatti/controlled_access_data/fastqtl_sim/Liver_mixture7amp0.30/Liver_97_chunk${i}_mtx/result_fwdbwd_fdr0.10/eGenes.txt /Users/snigdhapanigrahi/sim_fwd_bwd_inference_10/names${i}/
+done
+
+mv ~/src/selective-inference/selection/frequentist_eQTL/tests/randomized_egene_boninfo /scratch/PI/jtaylo/snigdha_data/gtex/Liver_snig
+mv ~/src/selective-inference/selection/frequentist_eQTL/tests/randomized_egene_names /scratch/PI/jtaylo/snigdha_data/gtex/Liver_snig
+mv ~/src/selective-inference/selection/frequentist_eQTL/tests/eGenes.txt /scratch/PI/jtaylo/snigdha_data/gtex/egene_Liver_snig
+mv ~/src/selective-inference/selection/frequentist_eQTL/tests/extreme_egenes.txt /scratch/PI/jtaylo/snigdha_data/gtex/egene_Liver_snig
+
+mv ~/src/selective-inference/selection/frequentist_eQTL/tests/Liver
+for i in $(seq -f %03g 1 100)
+do
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/real_Liver/Liver_97_chunk001_mtx/prototypes /Users/snigdhapanigrahi/simes_output_Liver/
+done
+
+#####move some important files for testing########
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/real_Liver/Liver_97_chunk001_mtx/prototypes/protoclust_ENSG00000131697.13.txt /Users/snigdhapanigrahi/Test_egenes/Egene_data
+
+
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/egene_Liver_snig/X_ENSG00000228697.1.npy /Users/snigdhapanigrahi/Test_egenes/Egene_data                                                                                                         
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/egene_Liver_snig/y_ENSG00000228697.1.npy /Users/snigdhapanigrahi/Test_egenes/Egene_data                                                                                                        
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/egene_Liver_snig/protoclust_ENSG00000228697.1.txt /Users/snigdhapanigrahi/Test_egenes/Egene_data                                                                                                
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/egene_Liver_snig/simes_ENSG00000228697.1.txt /Users/snigdhapanigrahi/Test_egenes/Egene_data
+
+#####move important files for testing simulated set-up#####
+scp -r snigdha@sherlock:/scratch/PI/sabatti/controlled_access_data/fastqtl_tmp/Liver/Liver_97_chunk007_mtx/X_ENSG00000163486.8.npy /Users/snigdhapanigrahi/sim_Test_egenes/Egene_data                                                                                                         
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/Liver_simulated/Liver_97_chunk007_mtx/y_pruned_simulated_ENSG00000163486.8.txt /Users/snigdhapanigrahi/sim_Test_egenes/Egene_data                                                                                                        
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/Liver_simulated/Liver_97_chunk007_mtx/protoclust_ENSG00000163486.8.txt /Users/snigdhapanigrahi/sim_Test_egenes/Egene_data                                                                                                
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/Liver_simulated/Liver_97_chunk007_mtx/bon_output/simes_ENSG00000163486.8.txt /Users/snigdhapanigrahi/sim_Test_egenes/Egene_data
+
+
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/egene_Liver_simulated/X_ENSG00000177757.1.npy /Users/snigdhapanigrahi/Test_egenes/sim_Egene_data
+scp -r snigdha@sherlock:/scratch/PI/jtaylo/snigdha_data/gtex/egene_Liver_simulated/simes_ENSG00000177757.1.txt /Users/snigdhapanigrahi/Test_egene/sim_Egene_data

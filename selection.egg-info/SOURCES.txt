@@ -48,6 +48,7 @@ selection/distributions/chain.py
 selection/distributions/chisq.py
 selection/distributions/discrete_family.py
 selection/distributions/discrete_multiparameter.py
+selection/distributions/intervals.py
 selection/distributions/pvalue.py
 selection/distributions/tests/__init__.py
 selection/distributions/tests/test_chains.py
@@ -62,7 +63,9 @@ selection/randomized/glm.py
 selection/randomized/greedy_step.py
 selection/randomized/intervals.py
 selection/randomized/multiple_views.py
+selection/randomized/query.py
 selection/randomized/randomization.py
+selection/randomized/threshold_score.py
 selection/randomized/umvu.py
 selection/randomized/tests/__init__.py
 selection/randomized/tests/test_Mest.py
