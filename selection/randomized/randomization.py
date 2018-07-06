@@ -203,6 +203,11 @@ class split(randomization):
         self.subsample_size = subsample_size
         self.total_size = total_size
 
+        idx = np.zeros(self.total_size, np.bool)
+        idx[:self.subsample_size] = 1
+        np.random.shuffle(idx)
+        self.idx = idx.copy()
+
         rr.smooth_atom.__init__(self,
                                 shape)
 
@@ -258,12 +263,8 @@ class split(randomization):
         n, m = self.total_size, self.subsample_size
         inv_frac = n / m
         quadratic = rr.identity_quadratic(epsilon, 0, 0, 0)
-        m, n = self.subsample_size, self.total_size # shorthand
-        idx = np.zeros(n, np.bool)
-        idx[:m] = 1
-        np.random.shuffle(idx)
 
-        randomized_loss = loss.subsample(idx)
+        randomized_loss = loss.subsample(self.idx)
         randomized_loss.coef *= inv_frac
 
         randomized_loss.quadratic = quadratic

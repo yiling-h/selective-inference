@@ -349,6 +349,7 @@ class M_estimator_split(M_estimator):
     def __init__(self, loss, epsilon, subsample_size, penalty, solve_args={'min_its':50, 'tol':1.e-10}):
         total_size = loss.saturated_loss.shape[0]
         self.randomization = split(loss.shape, subsample_size, total_size)
+        self.sel_indx = self.randomization.idx
         M_estimator.__init__(self,loss, epsilon, penalty, self.randomization, solve_args=solve_args)
 
         total_size = loss.saturated_loss.shape[0]

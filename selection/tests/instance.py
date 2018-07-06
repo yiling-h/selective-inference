@@ -1,7 +1,7 @@
 import numpy as np
 
 def gaussian_instance(n=100, p=200, s=7, sigma=5, rho=0.3, snr=7,
-                      random_signs=False, df=np.inf,
+                      random_signs=True, df=np.inf,
                       scale=True, center=True):
     """
     A testing instance for the LASSO.
@@ -70,8 +70,10 @@ def gaussian_instance(n=100, p=200, s=7, sigma=5, rho=0.3, snr=7,
     beta[:s] = snr 
     if random_signs:
         beta[:s] *= (2 * np.random.binomial(1, 0.5, size=(s,)) - 1.)
+    np.random.shuffle(beta)
+
     active = np.zeros(p, np.bool)
-    active[:s] = True
+    active[beta != 0] = True
 
     # noise model
 

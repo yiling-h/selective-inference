@@ -184,9 +184,6 @@ class M_estimator_approx_carved(M_estimator_split):
         self.score_cov = score_cov
         self.score_cov_inv = np.linalg.inv(self.score_cov)
 
-
-
-
 class M_estimator_approx_logistic(M_estimator):
 
     def __init__(self, loss, epsilon, penalty, randomization, randomizer, estimation):

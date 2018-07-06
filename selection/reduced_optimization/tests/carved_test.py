@@ -15,6 +15,7 @@ import os
 def carved_lasso_trial(X,
                        y,
                        beta,
+                       true_mean,
                        sigma,
                        lam,
                        estimation='parametric'):
@@ -27,10 +28,10 @@ def carved_lasso_trial(X,
     penalty = rr.group_lasso(np.arange(p), weights=dict(zip(np.arange(p), W)), lagrange=1.)
 
     total_size = loss.saturated_loss.shape[0]
-    subsample_size = int(0.5 * total_size)
+    subsample_size = int(0.75 * total_size)
 
     M_est = M_estimator_approx_carved(loss, epsilon, subsample_size, penalty, estimation)
-
+    #print("selected indices", M_est.sel_indx)
     M_est.solve_approx()
     active = M_est._overall
     nactive = M_est.nactive
@@ -61,7 +62,8 @@ def carved_lasso_trial(X,
         ad_length = np.zeros(nactive)
         unad_length = np.zeros(nactive)
 
-        true_val = np.zeros(nactive)
+        #true_val = np.zeros(nactive)
+        true_val = projection_active.T.dot(true_mean)
         for l in range(nactive):
             if (adjusted_intervals[0, l] <= true_val[l]) and (true_val[l] <= adjusted_intervals[1, l]):
                 coverage_ad[l] += 1
@@ -80,15 +82,16 @@ def carved_lasso_trial(X,
         return np.vstack([sel_cov, naive_cov, ad_len, unad_len, bayes_risk_ad, bayes_risk_unad])
 
     else:
-        return np.vstack([0.,0.,0.,0., 0., 0.])
+        return np.vstack([0.,0.,0.,0.,0.,0.])
 
 
 if __name__ == "__main__":
     ### set parameters
     n = 1000
     p = 100
-    s = 0
-    snr = 0.
+    s = 5
+    snr = 5.
+    rho = 0.2
 
     niter = 10
     ad_cov = 0.
@@ -104,13 +107,20 @@ if __name__ == "__main__":
          ### GENERATE X, Y BASED ON SEED
          #i+17 was good, i+27 was good
          np.random.seed(87)  # ensures different y
-         X, y, beta, nonzero, sigma = gaussian_instance(n=n, p=p, s=s, sigma=1., rho=0, snr=snr)
+         X, y, beta, nonzero, sigma = gaussian_instance(n=n, p=p, s=s, sigma=1., rho=rho, snr=snr)
+         true_mean = X.dot(beta)
+
+         idx = np.arange(p)
+         sigmaX = rho ** np.abs(np.subtract.outer(idx, idx))
+         print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
+
          lam = 0.8 * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * sigma
 
          ### RUN LASSO AND TEST
          lasso = carved_lasso_trial(X,
                                     y,
                                     beta,
+                                    true_mean,
                                     sigma,
                                     lam)
 
