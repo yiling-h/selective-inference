@@ -29,7 +29,7 @@ def generate_data_random(n, p, sigma=1., rho=0., scale =True, center=True):
         if u[i] <= 0.9:
             beta_true[i] = np.random.laplace(loc=0., scale=0.1)
         else:
-            beta_true[i] = np.random.laplace(loc=0., scale=1.)
+            beta_true[i] = np.random.laplace(loc=0., scale=3.)
 
     beta = beta_true
 

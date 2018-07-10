@@ -358,7 +358,7 @@ class M_estimator_split(M_estimator):
 
         self.total_size, self.subsample_size = total_size, subsample_size
 
-    def setup_sampler(self, scaling=1., solve_args={'min_its': 50, 'tol': 1.e-10}, B=2000):
+    def setup_sampler(self, scaling=1., solve_args={'min_its': 50, 'tol': 1.e-10}, B=5000):
 
         M_estimator.setup_sampler(self,
                                   scaling=scaling,
