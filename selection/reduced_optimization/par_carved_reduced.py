@@ -180,8 +180,8 @@ class sel_inf_carved(rr.smooth_atom):
         self.param_shape = self.solver._overall.sum()
         self.prior_variance = prior_variance
 
-        initial = self.solver.initial_soln[self.solver._overall]
-        #initial = self.solver.target_observed
+        #initial = self.solver.initial_soln[self.solver._overall]
+        initial = self.solver.target_observed
         print("initial_state", initial)
 
         rr.smooth_atom.__init__(self,

@@ -108,7 +108,7 @@ if __name__ == "__main__":
     ### set parameters
     n = 1000
     p = 100
-    s = 0
+    s = 5
     snr = 5.
     rho = 0.
 
@@ -127,8 +127,7 @@ if __name__ == "__main__":
     for i in range(niter):
 
          ### GENERATE X, Y BASED ON SEED
-         #i+17 was good, i+27 was good
-         np.random.seed(i+40)  # ensures different y
+         np.random.seed(i+30)  # ensures different y
          X, y, beta, nonzero, sigma = gaussian_instance(n=n, p=p, s=s, sigma=1., rho=rho, snr=snr)
          true_mean = X.dot(beta)
 
