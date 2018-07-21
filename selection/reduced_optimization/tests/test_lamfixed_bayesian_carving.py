@@ -326,136 +326,6 @@ def carved_lasso_trial(X,
         return np.vstack([sel_cov, naive_cov, split_cov, ad_len, unad_len, split_len, risk_ad, risk_unad, risk_split,
                           power_ad/ts, power_unad/ts, power_split/ts])
 
-# if __name__ == "__main__":
-#
-#     ### set parameters
-#     n = 200
-#     p = 100
-#     s = 0
-#     snr = 0.
-#
-#     niter = 10
-#     nf = 0
-#     cf = 0
-#
-#     ad_cov = 0.
-#     unad_cov = 0.
-#     split_cov = 0.
-#     Lee_cov = 0.
-#     unad_nonrand_cov = 0.
-#
-#     ad_len = 0.
-#     unad_len = 0.
-#     split_len = 0.
-#     Lee_len = 0.
-#     Lee_inf = 0.
-#     unad_nonrand_len = 0.
-#
-#     no_sel = 0
-#     ad_risk = 0.
-#     unad_risk = 0.
-#     split_risk = 0.
-#     Lee_risk = 0.
-#     unad_nonrand_risk = 0.
-#
-#     ad_power = 0.
-#     unad_power = 0.
-#     split_power = 0.
-#     Lee_power = 0.
-#
-#     for i in range(niter):
-#         np.random.seed(i+22)
-#         X, y, beta, sigma = generate_data_random(n=n, p=p)
-#         print("snr", beta.T.dot(X.T.dot(X)).dot(beta)/n)
-#         snr += beta.T.dot(X.T.dot(X)).dot(beta)/n
-#         print("snr so far", snr/float(i+1))
-#
-#         true_mean = X.dot(beta)
-#         X_scaled = np.sqrt(n) * X
-#         deno = float(beta.T.dot(X.T.dot(X)).dot(beta))
-#         prior_variance = 1000.
-#         noise_variance = sigma ** 2
-#
-#         lam = 1. * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * sigma
-#
-#         true_signals = np.zeros(p, np.bool)
-#         delta = 1.e-1
-#         true_signals[np.abs(beta) > delta] = 1
-#         true_set = np.asarray([u for u in range(p) if true_signals[u]])
-#
-#         glm_LASSO = glmnet_lasso(X_scaled, y, lam/np.sqrt(n))
-#         active_LASSO = (glm_LASSO != 0)
-#         active_set_LASSO = np.asarray([t for t in range(p) if active_LASSO[t]])
-#         active_bool_LASSO = np.zeros(active_LASSO.sum(), np.bool)
-#         for x in range(active_LASSO.sum()):
-#             active_bool_LASSO[x] = (np.in1d(active_set_LASSO[x], true_set).sum() > 0)
-#
-#         print("size of active set", active_LASSO.sum())
-#
-#         if active_LASSO.sum()>0:
-#             Lee_intervals, Lee_pval = selInf_R(X_scaled, y, glm_LASSO, np.sqrt(n) * lam, sigma, Type=0, alpha=0.1)
-#             true_target = np.linalg.pinv(X_scaled[:, active_LASSO]).dot(true_mean)
-#
-#             if (Lee_pval.shape[0] == true_target.shape[0]):
-#                 lasso = carved_lasso_trial(X,
-#                                            y,
-#                                            beta,
-#                                            sigma,
-#                                            lam,
-#                                            true_set)
-#
-#                 ad_cov += lasso[0, 0]
-#                 unad_cov += lasso[1, 0]
-#                 split_cov += lasso[2, 0]
-#                 Lee_cov += np.mean((true_target > Lee_intervals[:, 0]) * (true_target < Lee_intervals[:, 1]))
-#
-#                 ad_len += lasso[3, 0]
-#                 unad_len += lasso[4, 0]
-#                 split_len += lasso[5, 0]
-#                 inf_entries = np.isinf(Lee_intervals[:, 1] - Lee_intervals[:, 0])
-#                 Lee_inf += np.mean(inf_entries)
-#                 if inf_entries.sum() == active_LASSO.sum():
-#                     Lee_len += 0.
-#                 else:
-#                     Lee_len += np.sqrt(n) * np.mean((Lee_intervals[:, 1] - Lee_intervals[:, 0])[~inf_entries])
-#
-#                 ad_risk += lasso[6, 0]
-#                 unad_risk += lasso[7, 0]
-#                 split_risk += lasso[8, 0]
-#                 Lee_risk += np.mean(np.power(np.sqrt(n) * glm_LASSO - beta, 2.).sum()) / deno
-#
-#                 ad_power += lasso[9, 0]
-#                 unad_power += lasso[10, 0]
-#                 split_power += lasso[11, 0]
-#                 Lee_power += ((active_bool_LASSO) * (
-#                     np.logical_or((0. < Lee_intervals[:, 0]), (0. > Lee_intervals[:, 1])))).sum() \
-#                              / float(true_set.shape[0])
-#
-#                 print("\n")
-#                 print("iteration completed", i + 1 - nf)
-#                 print("\n")
-#                 print("adjusted and unadjusted coverage so far ", ad_cov / float(i + 1 - nf-cf),
-#                       unad_cov / float(i + 1 - nf-cf),
-#                       split_cov / float(i + 1 - nf-cf), Lee_cov / float(i + 1 - nf-cf))
-#                 print("adjusted and unadjusted lengths so far ", ad_len / float(i + 1 - nf-cf),
-#                       unad_len / float(i + 1 - nf-cf),
-#                       split_len / float(i + 1 - nf-cf), Lee_len / float(i + 1 - nf-cf))
-#                 print("adjusted and unadjusted risks so far ", ad_risk / float(i + 1 - nf-cf),
-#                       unad_risk / float(i + 1 - nf-cf),
-#                       split_risk / float(i + 1 - nf-cf), Lee_risk / float(i + 1 - nf))
-#                 print("adjusted and unadjusted powers so far ", ad_power / float(i + 1 - nf-cf),
-#                       unad_power / float(i + 1 - nf-cf),
-#                       split_power / float(i + 1 - nf-cf), Lee_power / float(i + 1 - nf-cf))
-#                 print("proportion of Lee intervals that are infty ", Lee_inf / float(i + 1 - nf-cf))
-#
-#             else:
-#                 nf += 1
-#
-#         else:
-#             print("active set chosen by LASSO is 0")
-#             cf += 1
-#             Lee_risk += np.mean(np.power(np.sqrt(n) * glm_LASSO - beta, 2.).sum()) / deno
-
 if __name__ == "__main__":
 
     ### set parameters
@@ -464,15 +334,37 @@ if __name__ == "__main__":
     s = 0
     snr = 0.
 
-    niter = 50
+    niter = 10
     nf = 0
+    cf = 0
 
+    ad_cov = 0.
     unad_cov = 0.
+    split_cov = 0.
+    Lee_cov = 0.
+    unad_nonrand_cov = 0.
+
+    ad_len = 0.
     unad_len = 0.
+    split_len = 0.
+    Lee_len = 0.
+    Lee_inf = 0.
+    unad_nonrand_len = 0.
+
+    no_sel = 0
+    ad_risk = 0.
     unad_risk = 0.
+    split_risk = 0.
+    Lee_risk = 0.
+    unad_nonrand_risk = 0.
+
+    ad_power = 0.
+    unad_power = 0.
+    split_power = 0.
+    Lee_power = 0.
 
     for i in range(niter):
-        np.random.seed(i+10)
+        np.random.seed(i+22)
         X, y, beta, sigma = generate_data_random(n=n, p=p)
         print("snr", beta.T.dot(X.T.dot(X)).dot(beta)/n)
         snr += beta.T.dot(X.T.dot(X)).dot(beta)/n
@@ -491,26 +383,134 @@ if __name__ == "__main__":
         true_signals[np.abs(beta) > delta] = 1
         true_set = np.asarray([u for u in range(p) if true_signals[u]])
 
-        lasso = unadjusted_inference(X,
-                                     y,
-                                     beta,
-                                     sigma,
-                                     lam,
-                                     true_set)
+        glm_LASSO = glmnet_lasso(X_scaled, y, lam/np.sqrt(n))
+        active_LASSO = (glm_LASSO != 0)
+        active_set_LASSO = np.asarray([t for t in range(p) if active_LASSO[t]])
+        active_bool_LASSO = np.zeros(active_LASSO.sum(), np.bool)
+        for x in range(active_LASSO.sum()):
+            active_bool_LASSO[x] = (np.in1d(active_set_LASSO[x], true_set).sum() > 0)
 
-        unad_cov += lasso[0, 0]
-        unad_len += lasso[1, 0]
-        unad_risk += lasso[2, 0]
+        print("size of active set", active_LASSO.sum())
 
+        if active_LASSO.sum()>0:
+            Lee_intervals, Lee_pval = selInf_R(X_scaled, y, glm_LASSO, np.sqrt(n) * lam, sigma, Type=0, alpha=0.1)
+            true_target = np.linalg.pinv(X_scaled[:, active_LASSO]).dot(true_mean)
 
-        print("\n")
-        print("iteration completed", i + 1 - nf)
-        print("\n")
-        print("unadjusted coverage so far ",unad_cov / float(i + 1 - nf ))
-        print("unadjusted lengths so far ", unad_len / float(i + 1 - nf ))
-        print("unadjusted risks so far ", unad_risk / float(i + 1 - nf ))
-    else:
-        nf += 1
+            if (Lee_pval.shape[0] == true_target.shape[0]):
+                lasso = carved_lasso_trial(X,
+                                           y,
+                                           beta,
+                                           sigma,
+                                           lam,
+                                           true_set)
+
+                ad_cov += lasso[0, 0]
+                unad_cov += lasso[1, 0]
+                split_cov += lasso[2, 0]
+                Lee_cov += np.mean((true_target > Lee_intervals[:, 0]) * (true_target < Lee_intervals[:, 1]))
+
+                ad_len += lasso[3, 0]
+                unad_len += lasso[4, 0]
+                split_len += lasso[5, 0]
+                inf_entries = np.isinf(Lee_intervals[:, 1] - Lee_intervals[:, 0])
+                Lee_inf += np.mean(inf_entries)
+                if inf_entries.sum() == active_LASSO.sum():
+                    Lee_len += 0.
+                else:
+                    Lee_len += np.sqrt(n) * np.mean((Lee_intervals[:, 1] - Lee_intervals[:, 0])[~inf_entries])
+
+                ad_risk += lasso[6, 0]
+                unad_risk += lasso[7, 0]
+                split_risk += lasso[8, 0]
+                Lee_risk += np.mean(np.power(np.sqrt(n) * glm_LASSO - beta, 2.).sum()) / deno
+
+                ad_power += lasso[9, 0]
+                unad_power += lasso[10, 0]
+                split_power += lasso[11, 0]
+                Lee_power += ((active_bool_LASSO) * (
+                    np.logical_or((0. < Lee_intervals[:, 0]), (0. > Lee_intervals[:, 1])))).sum() \
+                             / float(true_set.shape[0])
+
+                print("\n")
+                print("iteration completed", i + 1 - nf)
+                print("\n")
+                print("adjusted and unadjusted coverage so far ", ad_cov / float(i + 1 - nf-cf),
+                      unad_cov / float(i + 1 - nf-cf),
+                      split_cov / float(i + 1 - nf-cf), Lee_cov / float(i + 1 - nf-cf))
+                print("adjusted and unadjusted lengths so far ", ad_len / float(i + 1 - nf-cf),
+                      unad_len / float(i + 1 - nf-cf),
+                      split_len / float(i + 1 - nf-cf), Lee_len / float(i + 1 - nf-cf))
+                print("adjusted and unadjusted risks so far ", ad_risk / float(i + 1 - nf-cf),
+                      unad_risk / float(i + 1 - nf-cf),
+                      split_risk / float(i + 1 - nf-cf), Lee_risk / float(i + 1 - nf))
+                print("adjusted and unadjusted powers so far ", ad_power / float(i + 1 - nf-cf),
+                      unad_power / float(i + 1 - nf-cf),
+                      split_power / float(i + 1 - nf-cf), Lee_power / float(i + 1 - nf-cf))
+                print("proportion of Lee intervals that are infty ", Lee_inf / float(i + 1 - nf-cf))
+
+            else:
+                nf += 1
+
+        else:
+            print("active set chosen by LASSO is 0")
+            cf += 1
+            Lee_risk += np.mean(np.power(np.sqrt(n) * glm_LASSO - beta, 2.).sum()) / deno
+
+# if __name__ == "__main__":
+#
+#     ### set parameters
+#     n = 200
+#     p = 100
+#     s = 0
+#     snr = 0.
+#
+#     niter = 50
+#     nf = 0
+#
+#     unad_cov = 0.
+#     unad_len = 0.
+#     unad_risk = 0.
+#
+#     for i in range(niter):
+#         np.random.seed(i+10)
+#         X, y, beta, sigma = generate_data_random(n=n, p=p)
+#         print("snr", beta.T.dot(X.T.dot(X)).dot(beta)/n)
+#         snr += beta.T.dot(X.T.dot(X)).dot(beta)/n
+#         print("snr so far", snr/float(i+1))
+#
+#         true_mean = X.dot(beta)
+#         X_scaled = np.sqrt(n) * X
+#         deno = float(beta.T.dot(X.T.dot(X)).dot(beta))
+#         prior_variance = 1000.
+#         noise_variance = sigma ** 2
+#
+#         lam = 1. * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0)) * sigma
+#
+#         true_signals = np.zeros(p, np.bool)
+#         delta = 1.e-1
+#         true_signals[np.abs(beta) > delta] = 1
+#         true_set = np.asarray([u for u in range(p) if true_signals[u]])
+#
+#         lasso = unadjusted_inference(X,
+#                                      y,
+#                                      beta,
+#                                      sigma,
+#                                      lam,
+#                                      true_set)
+#
+#         unad_cov += lasso[0, 0]
+#         unad_len += lasso[1, 0]
+#         unad_risk += lasso[2, 0]
+#
+#
+#         print("\n")
+#         print("iteration completed", i + 1 - nf)
+#         print("\n")
+#         print("unadjusted coverage so far ",unad_cov / float(i + 1 - nf ))
+#         print("unadjusted lengths so far ", unad_len / float(i + 1 - nf ))
+#         print("unadjusted risks so far ", unad_risk / float(i + 1 - nf ))
+#     else:
+#         nf += 1
 
 
 
