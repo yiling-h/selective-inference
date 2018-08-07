@@ -6,7 +6,6 @@ from rpy2 import robjects
 import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
 
-import numpy as np
 import time
 import regreg.api as rr
 from selection.bayesian.initial_soln import selection
