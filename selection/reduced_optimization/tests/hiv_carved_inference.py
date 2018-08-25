@@ -126,8 +126,8 @@ active_bool = np.zeros(nactive, np.bool)
 prior_variance = 1000.
 noise_variance = sigma_3TC ** 2
 projection_active = X[:, active].dot(np.linalg.inv(X[:, active].T.dot(X[:, active])))
-
 projection_active_split = X_inf[:, active].dot(np.linalg.inv(X_inf[:, active].T.dot(X_inf[:, active])))
+
 M_1 = prior_variance * (X.dot(X.T)) + noise_variance * np.identity(n)
 M_2 = prior_variance * ((X.dot(X.T)).dot(projection_active))
 M_3 = prior_variance * (projection_active.T.dot(X.dot(X.T)).dot(projection_active))
@@ -153,7 +153,9 @@ selective_mean = np.mean(samples, axis=0)
 adjusted_intervals = np.vstack([selective_mean, adjusted_intervals])
 
 intervals = np.vstack([unadjusted_intervals, adjusted_intervals_split, adjusted_intervals])
-print("intervals", unadjusted_intervals.T, adjusted_intervals_split.T, adjusted_intervals.T)
+print("active set and intervals shape", nactive, intervals.shape)
+print("intervals", unadjusted_intervals, adjusted_intervals_split, adjusted_intervals)
+print("average lengths", np.mean(intervals[2,:]-intervals[1,:]), np.mean(intervals[5,:]-intervals[4,:]), np.mean(intervals[8,:]-intervals[7,:]))
 
 ind = np.zeros(len(active_set), np.bool)
 index = active_set_0.index('P184V')
