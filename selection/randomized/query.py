@@ -1334,8 +1334,10 @@ def selective_MLE(observed_target,
     conjugate_arg = prec_opt.dot(cond_mean)
 
     if useC:
+        print("using C")
         solver = solve_barrier_affine_C
     else:
+        print("not using C")
         solver = solve_barrier_affine_py
 
     val, soln, hess = solver(conjugate_arg,

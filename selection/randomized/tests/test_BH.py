@@ -4,12 +4,11 @@ from scipy.stats import norm as ndist
 import rpy2.robjects as rpy
 from rpy2.robjects import numpy2ri
 
-from ...tests.instance import gaussian_instance
-from ...tests.decorators import rpy_test_safe
+from selection.tests.instance import gaussian_instance
+from selection.tests.decorators import rpy_test_safe
 
-from ..screening import stepup
-from ..screening import stepup, stepup_selection
-from ..randomization import randomization
+from selection.randomized.screening import stepup, stepup_selection
+from selection.randomized.randomization import randomization
 
 def BHfilter(pval, q=0.2):
     numpy2ri.activate()
@@ -84,8 +83,8 @@ def test_independent_estimator(n=100, n1=80, q=0.2, signal=3, p=100):
 def test_BH(n=500, 
             p=500, 
             s=50, 
-            sigma=3, 
-            rho=0.65, 
+            sigma=5.,
+            rho=0.35,
             randomizer_scale=1.,
             use_MLE=True,
             marginal=False,
@@ -95,7 +94,7 @@ def test_BH(n=500,
 
         W = rho**(np.fabs(np.subtract.outer(np.arange(p), np.arange(p))))
         sqrtW = np.linalg.cholesky(W)
-        sigma = 0.5
+        #sigma = 0.5
         Z = np.random.standard_normal(p).dot(sqrtW.T) * sigma
         beta = (2 * np.random.binomial(1, 0.5, size=(p,)) - 1) * np.linspace(4, 5, p) * sigma
         np.random.shuffle(beta)
@@ -191,4 +190,5 @@ def main(nsim=500, use_MLE=True, marginal=False):
             plt.legend()
             plt.savefig('BH_pvals.pdf')
 
+main(nsim=500, use_MLE=True, marginal=True)
 
