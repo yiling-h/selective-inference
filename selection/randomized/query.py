@@ -189,7 +189,6 @@ class query(object):
 
 class gaussian_query(query):
 
-    useC = True
 
     """
     A class with Gaussian perturbation to the objective -- easy to apply CLT to such things
@@ -210,8 +209,10 @@ class gaussian_query(query):
                      A_scaling,
                      b_scaling,
                      opt_linear,
-                     opt_offset):
+                     opt_offset,
+                     useC):
 
+        print("use C or not", useC)
         if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
             raise ValueError('constraints not satisfied')
 
@@ -240,7 +241,7 @@ class gaussian_query(query):
                                                log_density,
                                                (logdens_linear, opt_offset),
                                                selection_info=self.selection_variable,
-                                               useC=self.useC)
+                                               useC=useC)
 
     def _setup_implied_gaussian(self, opt_linear, opt_offset):
 

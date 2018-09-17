@@ -162,6 +162,7 @@ class stepup(screening):
                  covariance, 
                  randomizer,
                  stepup_Z,
+                 useC,
                  perturb=None):
 
         screening.__init__(self,
@@ -174,6 +175,8 @@ class stepup(screening):
         if not (np.all(sorted(self.stepup_Z)[::-1] == self.stepup_Z) and
                 np.all(np.greater_equal(self.stepup_Z, 0))):
             raise ValueError('stepup Z values should be non-negative and non-increasing')
+
+        self.useC = useC
 
     def fit(self, perturb=None):
 
@@ -218,7 +221,8 @@ class stepup(screening):
             self._set_sampler(A_scaling,
                               b_scaling,
                               opt_linear,
-                              opt_offset)
+                              opt_offset,
+                              self.useC)
         else:
             self._selected = np.zeros(p, np.bool)
         return self._selected
@@ -229,6 +233,7 @@ class stepup(screening):
            covariance, 
            randomizer_scale,
            q=0.2,
+           useC = False,
            perturb=None):
         
         if not np.allclose(np.diag(covariance), covariance[0, 0]):
@@ -246,6 +251,7 @@ class stepup(screening):
                       covariance,
                       randomizer,
                       stepup_Z,
+                      useC=useC,
                       perturb=perturb)
 
     def BH_general(observed_score,

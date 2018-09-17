@@ -80,10 +80,9 @@ def test_independent_estimator(n=100, n1=80, q=0.2, signal=3, p=100):
                                sorted(BHfilter(2 * ndist.sf(np.fabs(np.sqrt(n1) * Zbar1)))))
 
 
-def test_BH(n=500, 
-            p=500, 
-            s=50, 
-            sigma=5.,
+def test_BH(p=500,
+            s=50,
+            sigma=3.,
             rho=0.35,
             randomizer_scale=1.,
             use_MLE=True,
@@ -94,9 +93,8 @@ def test_BH(n=500,
 
         W = rho**(np.fabs(np.subtract.outer(np.arange(p), np.arange(p))))
         sqrtW = np.linalg.cholesky(W)
-        #sigma = 0.5
         Z = np.random.standard_normal(p).dot(sqrtW.T) * sigma
-        beta = (2 * np.random.binomial(1, 0.5, size=(p,)) - 1) * np.linspace(4, 5, p) * sigma
+        beta = (2 * np.random.binomial(1, 0.5, size=(p,)) - 1) * np.linspace(3, 5, p) * sigma
         np.random.shuffle(beta)
         beta[s:] = 0
         np.random.shuffle(beta)
@@ -158,6 +156,94 @@ def test_BH(n=500,
         else:
             return [], [], [], [], []
 
+def test_python_C(p=1000,
+                  s=50,
+                  sigma=3.,
+                  rho=0.35,
+                  randomizer_scale=1.,
+                  level=0.9,
+                  marginal = True):
+
+    W = rho ** (np.fabs(np.subtract.outer(np.arange(p), np.arange(p))))
+    sqrtW = np.linalg.cholesky(W)
+    Z = np.random.standard_normal(p).dot(sqrtW.T) * sigma
+    beta = np.zeros(p)
+    beta[:s] = (2 * np.random.binomial(1, 0.5, size=(s,)) - 1) * np.linspace(3, 5, s) * sigma
+    np.random.shuffle(beta)
+
+    true_mean = W.dot(beta)
+    score = Z + true_mean
+
+    q = 0.1
+    BH_select_py = stepup.BH(score,
+                             W * sigma ** 2,
+                             randomizer_scale * sigma,
+                             q=q,
+                             useC=False)
+
+    nonzero = BH_select_py.fit()
+    print("here")
+
+    omega = BH_select_py._initial_omega
+    BH_select_C = stepup.BH(score,
+                             W * sigma ** 2,
+                             randomizer_scale * sigma,
+                             q=q,
+                             useC=True,
+                             perturb= omega)
+    nonzero_C = BH_select_C.fit()
+
+    if nonzero is not None:
+        print(nonzero.sum(), 'nonzero')
+
+        if marginal:
+            beta_target = true_mean[nonzero]
+            (observed_target,
+             cov_target,
+             crosscov_target_score,
+             alternatives) = BH_select_py.marginal_targets(nonzero)
+        else:
+            beta_target = beta[nonzero]
+            (observed_target,
+             cov_target,
+             crosscov_target_score,
+             alternatives) = BH_select_py.full_targets(nonzero, dispersion=sigma ** 2)
+
+
+        estimate_py, info_py, _, pval_py, intervals_py, _ = BH_select_py.selective_MLE(observed_target,
+                                                                                       cov_target,
+                                                                                       crosscov_target_score,
+                                                                                       level=level)
+        pivots_py = ndist.cdf((estimate_py - beta_target) / np.sqrt(np.diag(info_py)))
+        pivots_py = 2 * np.minimum(pivots_py, 1 - pivots_py)
+
+        estimate_C, info_C, _, pval_C, intervals_C, _ = BH_select_C.selective_MLE(observed_target,
+                                                                                  cov_target,
+                                                                                  crosscov_target_score,
+                                                                                  level=level)
+        pivots_C = ndist.cdf((estimate_C - beta_target) / np.sqrt(np.diag(info_C)))
+        pivots_C = 2 * np.minimum(pivots_C, 1 - pivots_C)
+
+        print("beta_target and intervals", beta_target, intervals_C, intervals_py)
+        coverage_py = (beta_target > intervals_py[:, 0]) * (beta_target < intervals_py[:, 1])
+        coverage_C = (beta_target > intervals_C[:, 0]) * (beta_target < intervals_C[:, 1])
+        print("coverage for selected target", coverage_py.sum() / float(nonzero.sum()), coverage_C.sum() / float(nonzero.sum()))
+        return pivots_py[beta_target == 0], pivots_py[beta_target != 0], coverage_py, intervals_py, pivots_py,\
+               pivots_C[beta_target == 0], pivots_C[beta_target != 0], coverage_C, intervals_C, pivots_C
+    else:
+        return [], [], [], [], [], [], [], [], [], []
+
+def compare_python_C(nsim =500, marginal = True):
+
+    cover_py, length_int_py, cover_C, length_int_C = [], [], [], []
+    for i in range(nsim):
+        p0_py, pA_py, cover_py_, intervals_py, pivots_py, p0_C, pA_C, cover_C_, intervals_C, pivots_C = test_python_C(marginal = marginal)
+        cover_py.extend(cover_py_)
+        cover_C.extend(cover_C_)
+        print(np.mean(cover_py), np.mean(cover_C), 'coverage so far')
+
+compare_python_C(marginal= True)
+
 def test_both():
     test_BH(marginal=True)
     test_BH(marginal=False)
@@ -190,5 +276,6 @@ def main(nsim=500, use_MLE=True, marginal=False):
             plt.legend()
             plt.savefig('BH_pvals.pdf')
 
-main(nsim=500, use_MLE=True, marginal=True)
+#main(nsim=500, use_MLE=True, marginal=True)
+
 
