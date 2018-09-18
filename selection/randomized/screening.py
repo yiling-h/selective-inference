@@ -23,7 +23,6 @@ class screening(gaussian_query):
         self._initial_omega = perturb
 
     def fit(self, perturb=None):
-
         gaussian_query.fit(self, perturb=perturb)
         self._randomized_score = self.observed_score_state - self._initial_omega
         return self._randomized_score, self._randomized_score.shape[0]
@@ -169,7 +168,7 @@ class stepup(screening):
                            observed_data,
                            covariance, 
                            randomizer,
-                           perturb=None)                           
+                           perturb=perturb)
 
         self.stepup_Z = stepup_Z
         if not (np.all(sorted(self.stepup_Z)[::-1] == self.stepup_Z) and

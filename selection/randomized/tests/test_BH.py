@@ -156,8 +156,8 @@ def test_BH(p=500,
         else:
             return [], [], [], [], []
 
-def test_python_C(p=1000,
-                  s=50,
+def test_python_C(p=100,
+                  s=10,
                   sigma=3.,
                   rho=0.35,
                   randomizer_scale=1.,
@@ -175,26 +175,25 @@ def test_python_C(p=1000,
     score = Z + true_mean
 
     q = 0.1
+    omega = randomization.isotropic_gaussian((p,), randomizer_scale*sigma).sample()
     BH_select_py = stepup.BH(score,
                              W * sigma ** 2,
                              randomizer_scale * sigma,
                              q=q,
+                             perturb = omega,
                              useC=False)
 
     nonzero = BH_select_py.fit()
-    print("here")
-
-    omega = BH_select_py._initial_omega
     BH_select_C = stepup.BH(score,
                              W * sigma ** 2,
                              randomizer_scale * sigma,
                              q=q,
-                             useC=True,
-                             perturb= omega)
+                             perturb= omega,
+                             useC=True)
     nonzero_C = BH_select_C.fit()
 
-    if nonzero is not None:
-        print(nonzero.sum(), 'nonzero')
+    if nonzero.sum()>0:
+        print(nonzero.sum(), nonzero_C.sum(), 'nonzero')
 
         if marginal:
             beta_target = true_mean[nonzero]
@@ -214,6 +213,8 @@ def test_python_C(p=1000,
                                                                                        cov_target,
                                                                                        crosscov_target_score,
                                                                                        level=level)
+        print("here")
+
         pivots_py = ndist.cdf((estimate_py - beta_target) / np.sqrt(np.diag(info_py)))
         pivots_py = 2 * np.minimum(pivots_py, 1 - pivots_py)
 
@@ -221,13 +222,14 @@ def test_python_C(p=1000,
                                                                                   cov_target,
                                                                                   crosscov_target_score,
                                                                                   level=level)
+        
         pivots_C = ndist.cdf((estimate_C - beta_target) / np.sqrt(np.diag(info_C)))
         pivots_C = 2 * np.minimum(pivots_C, 1 - pivots_C)
 
         print("beta_target and intervals", beta_target, intervals_C, intervals_py)
         coverage_py = (beta_target > intervals_py[:, 0]) * (beta_target < intervals_py[:, 1])
         coverage_C = (beta_target > intervals_C[:, 0]) * (beta_target < intervals_C[:, 1])
-        print("coverage for selected target", coverage_py.sum() / float(nonzero.sum()), coverage_C.sum() / float(nonzero.sum()))
+        print("coverage for target", coverage_py.sum() / float(nonzero.sum()), coverage_C.sum() / float(nonzero.sum()))
         return pivots_py[beta_target == 0], pivots_py[beta_target != 0], coverage_py, intervals_py, pivots_py,\
                pivots_C[beta_target == 0], pivots_C[beta_target != 0], coverage_C, intervals_C, pivots_C
     else:
@@ -242,7 +244,7 @@ def compare_python_C(nsim =500, marginal = True):
         cover_C.extend(cover_C_)
         print(np.mean(cover_py), np.mean(cover_C), 'coverage so far')
 
-compare_python_C(marginal= True)
+compare_python_C(marginal= False)
 
 def test_both():
     test_BH(marginal=True)
