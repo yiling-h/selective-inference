@@ -156,11 +156,11 @@ def test_BH(p=500,
         else:
             return [], [], [], [], []
 
-def test_python_C(p=100,
-                  s=10,
-                  sigma=3.,
+def test_python_C(p=500,
+                  s=20,
+                  sigma=1.,
                   rho=0.35,
-                  randomizer_scale=1.,
+                  randomizer_scale=np.sqrt(0.50),
                   level=0.9,
                   marginal = True):
 
@@ -168,7 +168,7 @@ def test_python_C(p=100,
     sqrtW = np.linalg.cholesky(W)
     Z = np.random.standard_normal(p).dot(sqrtW.T) * sigma
     beta = np.zeros(p)
-    beta[:s] = (2 * np.random.binomial(1, 0.5, size=(s,)) - 1) * np.linspace(3, 5, s) * sigma
+    beta[:s] = (2 * np.random.binomial(1, 0.5, size=(s,)) - 1) * np.linspace(5, 5, s) * sigma
     np.random.shuffle(beta)
 
     true_mean = W.dot(beta)
@@ -193,7 +193,6 @@ def test_python_C(p=100,
     nonzero_C = BH_select_C.fit()
 
     if nonzero.sum()>0:
-        print(nonzero.sum(), nonzero_C.sum(), 'nonzero')
 
         if marginal:
             beta_target = true_mean[nonzero]
@@ -213,7 +212,6 @@ def test_python_C(p=100,
                                                                                        cov_target,
                                                                                        crosscov_target_score,
                                                                                        level=level)
-        print("here")
 
         pivots_py = ndist.cdf((estimate_py - beta_target) / np.sqrt(np.diag(info_py)))
         pivots_py = 2 * np.minimum(pivots_py, 1 - pivots_py)
@@ -229,20 +227,26 @@ def test_python_C(p=100,
         print("beta_target and intervals", beta_target, intervals_C, intervals_py)
         coverage_py = (beta_target > intervals_py[:, 0]) * (beta_target < intervals_py[:, 1])
         coverage_C = (beta_target > intervals_C[:, 0]) * (beta_target < intervals_C[:, 1])
-        print("coverage for target", coverage_py.sum() / float(nonzero.sum()), coverage_C.sum() / float(nonzero.sum()))
+        count = 0.
+        if np.mean(coverage_py) != np.mean(coverage_C):
+            print("coverage for target", np.mean(coverage_py), np.mean(coverage_C))
+            count = 1.
         return pivots_py[beta_target == 0], pivots_py[beta_target != 0], coverage_py, intervals_py, pivots_py,\
-               pivots_C[beta_target == 0], pivots_C[beta_target != 0], coverage_C, intervals_C, pivots_C
+               pivots_C[beta_target == 0], pivots_C[beta_target != 0], coverage_C, intervals_C, pivots_C, count
     else:
-        return [], [], [], [], [], [], [], [], [], []
+        return [], [], [], [], [], [], [], [], [], [], 0.
 
 def compare_python_C(nsim =500, marginal = True):
 
     cover_py, length_int_py, cover_C, length_int_C = [], [], [], []
+    count = 0
     for i in range(nsim):
-        p0_py, pA_py, cover_py_, intervals_py, pivots_py, p0_C, pA_C, cover_C_, intervals_C, pivots_C = test_python_C(marginal = marginal)
+        p0_py, pA_py, cover_py_, intervals_py, pivots_py, p0_C, pA_C, cover_C_, intervals_C, pivots_C, count_ = test_python_C(marginal = marginal)
         cover_py.extend(cover_py_)
         cover_C.extend(cover_C_)
+        count += count_
         print(np.mean(cover_py), np.mean(cover_C), 'coverage so far')
+        print('no of times where C and py solver differ', count)
 
 compare_python_C(marginal= False)
 
