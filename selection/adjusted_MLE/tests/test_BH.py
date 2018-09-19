@@ -1,157 +1,74 @@
-import numpy as np
-from scipy.stats import norm as ndist
+import numpy as np, os, itertools
+import pandas as pd
 
-import rpy2.robjects as rpy
-from rpy2.robjects import numpy2ri
+from rpy2 import robjects
+import rpy2.robjects.numpy2ri
+rpy2.robjects.numpy2ri.activate()
+import rpy2.robjects.pandas2ri
+from rpy2.robjects.packages import importr
 
-from selection.tests.instance import gaussian_instance
-from selection.tests.decorators import rpy_test_safe
+from selection.adjusted_MLE.BH_MLE import (BHfilter,
+                                           coverage,
+                                           test_BH)
 
-from selection.randomized.screening import stepup, stepup_selection
-from selection.randomized.randomization import randomization
+def output_file(n=500, p=500, rho=0.35, nsignals=np.array([10, 20, 30, 40, 50]), sigma =3.,
+                target="marginal", randomizing_scale = np.sqrt(0.50), ndraw = 500, outpath = None,
+                plot=False):
 
-def BHfilter(pval, q=0.2):
-    numpy2ri.activate()
-    rpy.r.assign('pval', pval)
-    rpy.r.assign('q', q)
-    rpy.r('Pval = p.adjust(pval, method="BH")')
-    rpy.r('S = which((Pval < q)) - 1')
-    S = rpy.r('S')
-    numpy2ri.deactivate()
-    return np.asarray(S, np.int)
 
-def coverage(intervals, pval, target, truth, alpha):
-    if pval is not None:
-        pval_ralt = (pval[truth != 0]) < alpha
-        pval_rnull = (pval[truth == 0]) < alpha
-        if pval_ralt.sum() > 0:
-            avg_power = np.mean(pval_ralt)
-        else:
-            avg_power = 0.
-        fdr = pval_rnull.sum()/float(max((pval<alpha).sum(), 1.))
+    df_selective_inference = pd.DataFrame()
+    s_list = []
 
-        return np.mean((target > intervals[:, 0]) * (target < intervals[:, 1])), avg_power, fdr, (pval<alpha).sum()
-    else:
-        intervals_nonnull = intervals[(truth != 0), :]
-        intervals_null = intervals[(truth == 0), :]
-        tot_reported = np.array(1-((intervals[:, 0]<=0.)*(intervals[:, 1]>=0.)), np.bool).sum()
-        intervals_ralt = np.array(1-((intervals_nonnull[:, 0]<=0.)*(intervals_nonnull[:, 1]>=0.)), np.bool)
-        intervals_rnull = np.array(1-((intervals_null[:, 0]<=0.)*(intervals_null[:, 1]>=0.)), np.bool)
+    for s in nsignals:
+        s_list.append(s * np.ones(3))
 
-        return np.mean((target > intervals[:, 0]) * (target < intervals[:, 1])), np.mean(intervals_ralt), intervals_rnull.sum()/float(max(tot_reported, 1.)), tot_reported
+        output_overall = np.zeros(23)
+        for i in range(ndraw):
+            output_overall += np.squeeze(
+                test_BH(p=p, s=s, sigma=sigma, rho=rho, randomizer_scale=randomizing_scale, target=target, level=0.9,
+                        q=0.1))
 
-def test_BH(p=500,
-            s=50,
-            sigma=3.,
-            rho=0.35,
-            randomizer_scale=1.,
-            target = "full",
-            level=0.9,
-            q=0.1):
+        nnaive = output_overall[22]
+        nMLE = output_overall[21]
 
-    W = rho ** (np.fabs(np.subtract.outer(np.arange(p), np.arange(p))))
-    sqrtW = np.linalg.cholesky(W)
-    Z = np.random.standard_normal(p).dot(sqrtW.T) * sigma
-    beta = np.zeros(p)
-    beta[:s] = (2 * np.random.binomial(1, 0.5, size=(s,)) - 1) * np.linspace(5, 5, s) * sigma
-    np.random.shuffle(beta)
-    true_mean = W.dot(beta)
+        randomized_MLE_inf = (output_overall[:7] / float(ndraw - nMLE)).reshape((1, 7))
+        naive_inf = (output_overall[7:14] / float(ndraw - nnaive)).reshape((1, 7))
+        fcr_inf = (output_overall[14:21] / float(ndraw - nnaive)).reshape((1, 7))
 
-    score = Z + true_mean
-    omega = randomization.isotropic_gaussian((p,), randomizer_scale * sigma).sample()
+        df_naive = pd.DataFrame(data=naive_inf, columns=['coverage', 'length', 'tot-active', 'bias', 'sel-power', 'sel-fdr', 'tot-discoveries'])
+        df_naive['method'] = "Naive"
 
-    ##using python solver for now:
-    nonrand_BH_select = stepup.BH(score,
-                                  W * sigma ** 2,
-                                  randomizer_scale * sigma,
-                                  q=q,
-                                  perturb=np.zeros(p),
-                                  useC=False)
+        df_MLE = pd.DataFrame(data=randomized_MLE_inf, columns=['coverage', 'length', 'tot-active', 'bias', 'sel-power', 'sel-fdr','tot-discoveries'])
+        df_MLE['method'] = "MLE"
 
-    nonrand_nonzero = nonrand_BH_select.fit()
+        df_fcr = pd.DataFrame(data=fcr_inf, columns=['coverage', 'length', 'tot-active', 'bias', 'sel-power', 'sel-fdr', 'tot-discoveries'])
+        df_fcr['method'] = "FCR"
 
-    BH_select = stepup.BH(score,
-                          W * sigma ** 2,
-                          randomizer_scale * sigma,
-                          q=q,
-                          perturb=omega,
-                          useC=False)
+        df_selective_inference = df_selective_inference.append(df_naive, ignore_index=True)
+        df_selective_inference = df_selective_inference.append(df_MLE, ignore_index=True)
+        df_selective_inference = df_selective_inference.append(df_fcr, ignore_index=True)
 
-    nonzero = BH_select.fit()
-    print("selected", nonzero.sum(), nonrand_nonzero.sum())
+    s_list = list(itertools.chain.from_iterable(s_list))
+    df_selective_inference['n'] = n
+    df_selective_inference['p'] = p
+    df_selective_inference['rho'] = rho
+    df_selective_inference['beta-type'] = 'diff_strengths'
+    df_selective_inference['s'] = pd.Series(np.asarray(s_list))
+    df_selective_inference['target'] = target
 
-    naive_nreport, sel_nreport = [0.,0.]
+    if outpath is None:
+        outpath = os.path.dirname(__file__)
 
-    if target == "marginal":
-        beta_target = true_mean[nonzero]
-        (observed_target,
-         cov_target,
-         crosscov_target_score,
-         alternatives) = BH_select.marginal_targets(nonzero)
+    outfile_inf_csv = os.path.join(outpath, "dims_" + str(n) + "_" + str(p) + "_inference_" + target + "_rho_" + str(rho) + ".csv")
+    outfile_inf_html = os.path.join(outpath, "dims_" + str(n) + "_" + str(p) + "_inference_" + target + "_rho_" + str(rho) + ".html")
+    df_selective_inference.to_csv(outfile_inf_csv, index=False)
+    df_selective_inference.to_html(outfile_inf_html)
 
-        nonrand_beta_target = true_mean[nonrand_nonzero]
-        (nonrand_observed_target,
-         nonrand_cov_target,
-         nonrand_crosscov_target_score,
-         nonrand_alternatives) = nonrand_BH_select.marginal_targets(nonrand_nonzero)
-    else:
-        beta_target = beta[nonzero]
-        (observed_target,
-         cov_target,
-         crosscov_target_score,
-         alternatives) = BH_select.full_targets(nonzero, dispersion=sigma ** 2)
+output_file()
 
-        nonrand_beta_target = beta[nonrand_nonzero]
-        (nonrand_observed_target,
-         nonrand_cov_target,
-         nonrand_crosscov_target_score,
-         nonrand_alternatives) = nonrand_BH_select.full_targets(nonrand_nonzero)
 
-    alpha = 1. - level
-    quantile = ndist.ppf(1 - alpha / 2.)
-    adjusted_alpha = (nonrand_nonzero.sum() * alpha) / p
-    adjusted_quantile = ndist.ppf(1 - adjusted_alpha / 2.)
 
-    if nonzero.sum()>0:
-        sel_estimate, sel_info, _, sel_pval, sel_intervals, _ = BH_select.selective_MLE(observed_target,
-                                                                                        cov_target,
-                                                                                        crosscov_target_score,
-                                                                                        level=level)
 
-        sel_cov, sel_power, sel_fdr, sel_dis = coverage(sel_intervals, sel_pval, beta_target, beta[nonzero], alpha)
-        sel_length = np.mean(sel_intervals[:, 1] - sel_intervals[:, 0])
-        sel_bias = np.mean(sel_estimate - beta_target)
-
-    else:
-        sel_nreport = 1.
-        sel_cov, sel_length, sel_bias, sel_power, sel_fdr, sel_dis = [0., 0., 0., 0., 0., 0.]
-
-    if nonrand_nonzero.sum()>0:
-
-        naive_intervals = np.vstack([nonrand_observed_target - quantile * np.sqrt(np.diag(nonrand_cov_target)),
-                                     nonrand_observed_target + quantile * np.sqrt(np.diag(nonrand_cov_target))]).T
-        naive_pval = 2 * ndist.cdf(np.abs(nonrand_observed_target) / np.sqrt(np.diag(nonrand_cov_target)))
-        naive_cov, naive_power, naive_fdr, naive_dis = coverage(naive_intervals, naive_pval, nonrand_beta_target, beta[nonrand_nonzero], alpha)
-        naive_length = np.mean(naive_intervals[:, 1] - naive_intervals[:, 0])
-        naive_bias = np.mean(nonrand_observed_target - nonrand_beta_target)
-
-        fcr_intervals = np.vstack([nonrand_observed_target - adjusted_quantile * np.sqrt(np.diag(nonrand_cov_target)),
-                                   nonrand_observed_target + adjusted_quantile * np.sqrt(np.diag(nonrand_cov_target))]).T
-        fcr_cov, fcr_power, fcr_fdr, fcr_dis = coverage(naive_intervals, None, nonrand_beta_target, beta[nonrand_nonzero], alpha)
-        fcr_length = np.mean(fcr_intervals[:, 1] - fcr_intervals[:, 0])
-
-    else:
-        naive_nreport = 1.
-        naive_cov, naive_length, naive_bias, naive_power, naive_fdr, naive_dis = [0., 0., 0., 0., 0., 0.]
-
-    MLE_inf = np.vstack((sel_cov, sel_length, nonzero.sum(), sel_bias, sel_power, sel_fdr, sel_dis))
-    naive_inf = np.vstack((naive_cov, naive_length, nonrand_nonzero.sum(), naive_bias, naive_power, naive_fdr, naive_dis))
-    fcr_inf = np.vstack((fcr_cov, fcr_length, nonrand_nonzero.sum(), naive_bias, fcr_power, fcr_fdr, fcr_dis))
-    nreport = np.vstack((sel_nreport, naive_nreport))
-
-    return np.vstack((MLE_inf, naive_inf, fcr_inf, nreport))
-
-test_BH()
 
 
 
