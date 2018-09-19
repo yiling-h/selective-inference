@@ -20,13 +20,25 @@ def BHfilter(pval, q=0.2):
     numpy2ri.deactivate()
     return np.asarray(S, np.int)
 
-def coverage(intervals, pval, target, truth):
-    pval_alt = (pval[truth != 0]) < 0.1
-    if pval_alt.sum() > 0:
-        avg_power = np.mean(pval_alt)
+def coverage(intervals, pval, target, truth, alpha):
+    if pval is not None:
+        pval_ralt = (pval[truth != 0]) < alpha
+        pval_rnull = (pval[truth == 0]) < alpha
+        if pval_ralt.sum() > 0:
+            avg_power = np.mean(pval_ralt)
+        else:
+            avg_power = 0.
+        fdr = pval_rnull.sum()/float(max((pval<alpha).sum(), 1.))
+
+        return np.mean((target > intervals[:, 0]) * (target < intervals[:, 1])), avg_power, fdr, (pval<alpha).sum()
     else:
-        avg_power = 0.
-    return np.mean((target > intervals[:, 0]) * (target < intervals[:, 1])), avg_power
+        intervals_nonnull = intervals[(truth != 0), :]
+        intervals_null = intervals[(truth == 0), :]
+        tot_reported = np.array(1-((intervals[:, 0]<=0.)*(intervals[:, 1]>=0.)), np.bool).sum()
+        intervals_ralt = np.array(1-((intervals_nonnull[:, 0]<=0.)*(intervals_nonnull[:, 1]>=0.)), np.bool)
+        intervals_rnull = np.array(1-((intervals_null[:, 0]<=0.)*(intervals_null[:, 1]>=0.)), np.bool)
+
+        return np.mean((target > intervals[:, 0]) * (target < intervals[:, 1])), np.mean(intervals_ralt), intervals_rnull.sum()/float(max(tot_reported, 1.)), tot_reported
 
 def test_BH(p=500,
             s=50,
@@ -66,6 +78,9 @@ def test_BH(p=500,
                           useC=False)
 
     nonzero = BH_select.fit()
+    print("selected", nonzero.sum(), nonrand_nonzero.sum())
+
+    naive_nreport, sel_nreport = [0.,0.]
 
     if target == "marginal":
         beta_target = true_mean[nonzero]
@@ -75,10 +90,10 @@ def test_BH(p=500,
          alternatives) = BH_select.marginal_targets(nonzero)
 
         nonrand_beta_target = true_mean[nonrand_nonzero]
-        (observed_target,
-         cov_target,
-         crosscov_target_score,
-         alternatives) = nonrand_BH_select.marginal_targets(nonrand_nonzero)
+        (nonrand_observed_target,
+         nonrand_cov_target,
+         nonrand_crosscov_target_score,
+         nonrand_alternatives) = nonrand_BH_select.marginal_targets(nonrand_nonzero)
     else:
         beta_target = beta[nonzero]
         (observed_target,
@@ -87,32 +102,56 @@ def test_BH(p=500,
          alternatives) = BH_select.full_targets(nonzero, dispersion=sigma ** 2)
 
         nonrand_beta_target = beta[nonrand_nonzero]
-        (observed_target,
-         cov_target,
-         crosscov_target_score,
-         alternatives) = nonrand_BH_select.full_targets(nonrand_nonzero)
+        (nonrand_observed_target,
+         nonrand_cov_target,
+         nonrand_crosscov_target_score,
+         nonrand_alternatives) = nonrand_BH_select.full_targets(nonrand_nonzero)
 
-    alpha = 1 - level
+    alpha = 1. - level
     quantile = ndist.ppf(1 - alpha / 2.)
+    adjusted_alpha = (nonrand_nonzero.sum() * alpha) / p
+    adjusted_quantile = ndist.ppf(1 - adjusted_alpha / 2.)
 
-    if nonzero>0:
-
+    if nonzero.sum()>0:
         sel_estimate, sel_info, _, sel_pval, sel_intervals, _ = BH_select.selective_MLE(observed_target,
                                                                                         cov_target,
                                                                                         crosscov_target_score,
                                                                                         level=level)
 
-        sel_cov, sel_power = coverage(sel_intervals, sel_pval, beta_target, beta[nonzero])
+        sel_cov, sel_power, sel_fdr, sel_dis = coverage(sel_intervals, sel_pval, beta_target, beta[nonzero], alpha)
         sel_length = np.mean(sel_intervals[:, 1] - sel_intervals[:, 0])
+        sel_bias = np.mean(sel_estimate - beta_target)
 
-    if nonrand_nonzero>0:
+    else:
+        sel_nreport = 1.
+        sel_cov, sel_length, sel_bias, sel_power, sel_fdr, sel_dis = [0., 0., 0., 0., 0., 0.]
 
-        naive_intervals = np.vstack([observed_target - quantile * np.sqrt(np.diag(cov_target)),
-                                     observed_target + quantile * np.sqrt(np.diag(cov_target))])
-        naive_pval = 2 * ndist.cdf(np.abs(observed_target) / np.sqrt(np.diag(cov_target)))
-        naive_cov, naive_power = coverage(naive_intervals, naive_pval, beta_target, beta[nonzero])
+    if nonrand_nonzero.sum()>0:
+
+        naive_intervals = np.vstack([nonrand_observed_target - quantile * np.sqrt(np.diag(nonrand_cov_target)),
+                                     nonrand_observed_target + quantile * np.sqrt(np.diag(nonrand_cov_target))]).T
+        naive_pval = 2 * ndist.cdf(np.abs(nonrand_observed_target) / np.sqrt(np.diag(nonrand_cov_target)))
+        naive_cov, naive_power, naive_fdr, naive_dis = coverage(naive_intervals, naive_pval, nonrand_beta_target, beta[nonrand_nonzero], alpha)
         naive_length = np.mean(naive_intervals[:, 1] - naive_intervals[:, 0])
+        naive_bias = np.mean(nonrand_observed_target - nonrand_beta_target)
 
+        fcr_intervals = np.vstack([nonrand_observed_target - adjusted_quantile * np.sqrt(np.diag(nonrand_cov_target)),
+                                   nonrand_observed_target + adjusted_quantile * np.sqrt(np.diag(nonrand_cov_target))]).T
+        fcr_cov, fcr_power, fcr_fdr, fcr_dis = coverage(naive_intervals, None, nonrand_beta_target, beta[nonrand_nonzero], alpha)
+        fcr_length = np.mean(fcr_intervals[:, 1] - fcr_intervals[:, 0])
+
+    else:
+        naive_nreport = 1.
+        naive_cov, naive_length, naive_bias, naive_power, naive_fdr, naive_dis = [0., 0., 0., 0., 0., 0.]
+
+    MLE_inf = np.vstack((sel_cov, sel_length, nonzero.sum(), sel_bias, sel_power, sel_fdr, sel_dis))
+    naive_inf = np.vstack((naive_cov, naive_length, nonrand_nonzero.sum(), naive_bias, naive_power, naive_fdr, naive_dis))
+    fcr_inf = np.vstack((fcr_cov, fcr_length, nonrand_nonzero.sum(), naive_bias, fcr_power, fcr_fdr, fcr_dis))
+    nreport = np.vstack((sel_nreport, naive_nreport))
+
+    return np.vstack((MLE_inf, naive_inf, fcr_inf, nreport))
+
+test_BH()
 
 
 
