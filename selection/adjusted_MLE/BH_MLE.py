@@ -53,7 +53,7 @@ def test_BH(p=500,
     sqrtW = np.linalg.cholesky(W)
     Z = np.random.standard_normal(p).dot(sqrtW.T) * sigma
     beta = np.zeros(p)
-    beta[:s] = (2 * np.random.binomial(1, 0.5, size=(s,)) - 1) * np.linspace(5, 5, s) * sigma
+    beta[:s] = (2 * np.random.binomial(1, 0.5, size=(s,)) - 1) * np.linspace(3.5, 3.5, s) * sigma
     np.random.shuffle(beta)
     true_mean = W.dot(beta)
 
@@ -143,6 +143,7 @@ def test_BH(p=500,
     else:
         naive_nreport = 1.
         naive_cov, naive_length, naive_bias, naive_power, naive_fdr, naive_dis = [0., 0., 0., 0., 0., 0.]
+        fcr_cov, fcr_length, fcr_bias, fcr_power, fcr_fdr, fcr_dis = [0., 0., 0., 0., 0., 0.]
 
     MLE_inf = np.vstack((sel_cov, sel_length, nonzero.sum(), sel_bias, sel_power, sel_fdr, sel_dis))
     naive_inf = np.vstack((naive_cov, naive_length, nonrand_nonzero.sum(), naive_bias, naive_power, naive_fdr, naive_dis))

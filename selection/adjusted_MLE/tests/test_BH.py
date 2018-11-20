@@ -11,8 +11,8 @@ from selection.adjusted_MLE.BH_MLE import (BHfilter,
                                            coverage,
                                            test_BH)
 
-def output_file(n=500, p=500, rho=0.35, nsignals=np.array([10, 20, 30, 40, 50]), sigma =3.,
-                target="marginal", randomizing_scale = np.sqrt(0.50), ndraw = 500, outpath = None,
+def output_file(n=2000, p=1000, rho=0.20, nsignals=np.array([1, 5, 10, 12, 15]), sigma =3.,
+                target="marginal", randomizing_scale = np.sqrt(0.5), ndraw = 500, outpath = None,
                 plot=False):
 
 
