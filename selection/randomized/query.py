@@ -204,13 +204,12 @@ class gaussian_query(query):
             self._initial_omega = self.randomizer.sample()
 
     # Private methods
-
-    def _set_sampler(self, 
-                     A_scaling,
-                     b_scaling,
-                     opt_linear,
-                     opt_offset,
-                     useC):
+    def set_sampler(self,
+                    A_scaling,
+                    b_scaling,
+                    opt_linear,
+                    opt_offset,
+                    useC):
 
         print("use C or not", useC)
         if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
@@ -242,6 +241,49 @@ class gaussian_query(query):
                                                (logdens_linear, opt_offset),
                                                selection_info=self.selection_variable,
                                                useC=useC)
+
+    def _set_sampler(self,
+                    A_scaling,
+                    b_scaling,
+                    opt_linear,
+                    opt_offset):
+
+        if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
+            raise ValueError('constraints not satisfied')
+
+        cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian(opt_linear, opt_offset)
+
+        def log_density(logdens_linear, offset, cond_prec, score, opt):
+            if score.ndim == 1:
+                mean_term = logdens_linear.dot(score.T + offset).T
+            else:
+                mean_term = logdens_linear.dot(score.T + offset[:, None]).T
+            arg = opt + mean_term
+            return - 0.5 * np.sum(arg * cond_prec.dot(arg.T).T, 1)
+
+        log_density = functools.partial(log_density, logdens_linear, opt_offset, cond_precision)
+
+        self.cond_mean, self.cond_cov = cond_mean, cond_cov
+
+        affine_con = constraints(A_scaling,
+                                 b_scaling,
+                                 mean=cond_mean,
+                                 covariance=cond_cov)
+
+        # self.sampler = affine_gaussian_sampler(affine_con,
+        #                                        self.observed_opt_state,
+        #                                        self.observed_score_state,
+        #                                        log_density,
+        #                                        (logdens_linear, opt_offset),
+        #                                        selection_info=self.selection_variable,
+        #                                        useC=useC)
+
+        self.sampler = affine_gaussian_sampler(affine_con,
+                                               self.observed_opt_state,
+                                               self.observed_score_state,
+                                               log_density,
+                                               (logdens_linear, opt_offset),
+                                               selection_info=self.selection_variable)
 
     def _setup_implied_gaussian(self, opt_linear, opt_offset):
 
@@ -709,14 +751,41 @@ class affine_gaussian_sampler(optimization_sampler):
     Sample from an affine truncated Gaussian
     '''
 
+    # def __init__(self,
+    #              affine_con,
+    #              initial_point,
+    #              observed_score_state,
+    #              log_density,
+    #              logdens_transform, # described how score enters log_density.
+    #              selection_info=None,
+    #              useC=False):
+    #
+    #     '''
+    #     Parameters
+    #     ----------
+    #
+    #     multi_view : `multiple_queries`
+    #        Instance of `multiple_queries`. Attributes
+    #        `objectives`, `score_info` are key
+    #        attributed. (Should maybe change constructor
+    #        to reflect only what is needed.)
+    #     '''
+    #
+    #     self.affine_con = affine_con
+    #     self.initial_point = initial_point
+    #     self.observed_score_state = observed_score_state
+    #     self.selection_info = selection_info
+    #     self.log_density = log_density
+    #     self.logdens_transform = logdens_transform
+    #     self.useC = useC
+
     def __init__(self,
                  affine_con,
                  initial_point,
                  observed_score_state,
                  log_density,
                  logdens_transform, # described how score enters log_density.
-                 selection_info=None,
-                 useC=False):
+                 selection_info=None):
 
         '''
         Parameters
@@ -735,7 +804,6 @@ class affine_gaussian_sampler(optimization_sampler):
         self.selection_info = selection_info
         self.log_density = log_density
         self.logdens_transform = logdens_transform
-        self.useC = useC
 
     def sample(self, ndraw, burnin):
         '''
@@ -774,18 +842,30 @@ class affine_gaussian_sampler(optimization_sampler):
 
         """
 
-        return selective_MLE(observed_target, 
-                             cov_target, 
-                             cov_target_score, 
-                             init_soln, 
+        # return selective_MLE(observed_target,
+        #                      cov_target,
+        #                      cov_target_score,
+        #                      init_soln,
+        #                      self.affine_con.mean,
+        #                      self.affine_con.covariance,
+        #                      self.logdens_transform[0],
+        #                      self.affine_con.linear_part,
+        #                      self.affine_con.offset,
+        #                      solve_args=solve_args,
+        #                      level=level,
+        #                      useC=self.useC)
+
+        return selective_MLE(observed_target,
+                             cov_target,
+                             cov_target_score,
+                             init_soln,
                              self.affine_con.mean,
                              self.affine_con.covariance,
                              self.logdens_transform[0],
                              self.affine_con.linear_part,
                              self.affine_con.offset,
                              solve_args=solve_args,
-                             level=level,
-                             useC=self.useC)
+                             level=level)
 
     def reparam_map(self, 
                     parameter_target, 
@@ -1308,8 +1388,8 @@ def selective_MLE(observed_target,
                   linear_part,
                   offset,
                   solve_args={'tol':1.e-12}, 
-                  level=0.9,
-                  useC=False):
+                  level=0.9):
+                  #useC=False):
     """
     Selective MLE based on approximation of
     CGF.
@@ -1334,12 +1414,13 @@ def selective_MLE(observed_target,
 
     conjugate_arg = prec_opt.dot(cond_mean)
 
-    if useC:
-        print("using C")
-        solver = solve_barrier_affine_C
-    else:
-        print("not using C")
-        solver = solve_barrier_affine_py
+    # if useC:
+    #     print("using C")
+    #     solver = solve_barrier_affine_C
+    # else:
+    #     print("not using C")
+    #     solver = solve_barrier_affine_py
+    solver = solve_barrier_affine_C
 
     val, soln, hess = solver(conjugate_arg,
                              prec_opt,
