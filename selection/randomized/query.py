@@ -96,6 +96,7 @@ class query(object):
                 ndraw=10000,
                 burnin=2000,
                 compute_intervals=False):
+
         """
         Produce p-values and confidence intervals for targets
         of model including selected features
@@ -178,12 +179,12 @@ class query(object):
         ----------
 
         """
-        
+
         return self.sampler.selective_MLE(observed_target,
                                           cov_target,
                                           cov_target_score,
                                           self.observed_opt_state,
-                                          level=level,
+                                          level=0.9,
                                           solve_args=solve_args)
 
 
@@ -341,8 +342,7 @@ class multiple_queries(object):
 
     def summary(self,
                 observed_target,
-                opt_sampling_info,  # a sequence of (target_cov, score_cov) objects
-                                    # in theory all target_cov should be about the same...
+                opt_sampling_info,  # a sequence of (target_cov, score_cov) objects   # in theory all target_cov should be about the same...
                 alternatives=None,
                 parameter=None,
                 level=0.9,
@@ -832,8 +832,7 @@ class affine_gaussian_sampler(optimization_sampler):
                       observed_target, 
                       cov_target, 
                       cov_target_score, 
-                      init_soln, # initial (observed) value of optimization variables -- used as a feasible point.
-                                 # precise value used only for independent estimator 
+                      init_soln, # initial (observed) value of optimization variables -- used as a feasible point. # precise value used only for independent estimator
                       solve_args={'tol':1.e-12}, 
                       level=0.9):
         """
@@ -1380,22 +1379,20 @@ def _solve_barrier_nonneg(conjugate_arg,
 def selective_MLE(observed_target, 
                   cov_target, 
                   cov_target_score, 
-                  init_soln, # initial (observed) value of optimization variables -- used as a feasible point.
-                             # precise value used only for independent estimator 
+                  init_soln, # initial (observed) value of optimization variables -- used as a feasible point.           # precise value used only for independent estimator
                   cond_mean,
                   cond_cov,
                   logdens_linear,
                   linear_part,
                   offset,
                   solve_args={'tol':1.e-12}, 
-                  level=0.9):
+                  level= 0.9):
                   #useC=False):
     """
     Selective MLE based on approximation of
     CGF.
 
     """
-
     if np.asarray(observed_target).shape in [(), (0,)]:
         raise ValueError('no target specified')
 
@@ -1440,7 +1437,7 @@ def selective_MLE(observed_target,
     pvalues = ndist.cdf(Z_scores)
     pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
 
-    alpha = 1 - level
+    alpha = 1. - level
     quantile = ndist.ppf(1 - alpha / 2.)
     intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
                            final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
