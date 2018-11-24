@@ -59,20 +59,19 @@ def pivot(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1, snr=0.20, randomiz
         time_MLE = tic - toc
 
         toc = time.time()
-        sampler_pivot, sampler_pval, _ = randomized_lasso.summary(observed_target,
-                                                                  cov_target,
-                                                                  cov_target_score,
-                                                                  alternatives,
-                                                                  level=0.9,
-                                                                  compute_intervals=False,
-                                                                  ndraw=500000)
+        sampler_pivot, sampler_pval, sampler_intervals = randomized_lasso.summary(observed_target,
+                                                                                  cov_target,
+                                                                                  cov_target_score,
+                                                                                  alternatives,
+                                                                                  level=0.9,
+                                                                                  compute_intervals=True,
+                                                                                  ndraw=500000)
 
         tic = time.time()
-        #cov_sampler = coverage(sampler_intervals, sampler_pval, target_randomized, beta[nonzero])
+        cov_sampler, _ = coverage(sampler_intervals, sampler_pval, target_randomized, beta[nonzero])
         time_sampler = tic - toc
 
-        return pivot_MLE, sampler_pivot, time_MLE, time_sampler, np.mean(cov_MLE)
-            #, np.mean(cov_sampler)
+        return pivot_MLE, sampler_pivot, time_MLE, time_sampler, np.mean(cov_MLE), np.mean(cov_sampler)
 
 def plot_pivot(ndraw=500):
     import matplotlib.pyplot as plt
@@ -80,34 +79,33 @@ def plot_pivot(ndraw=500):
     _pivot_MLE = []
     _pivot_sampler = []
     _cov_MLE = 0.
-    #_cov_sampler = 0.
+    _cov_sampler = 0.
     _time_MLE = 0.
     _time_sampler = 0.
     for i in range(ndraw):
-        pivot_MLE, pivot_sampler, time_MLE, time_sampler, cov_MLE = pivot()
+        pivot_MLE, pivot_sampler, time_MLE, time_sampler, cov_MLE, cov_sampler = pivot()
         _cov_MLE += cov_MLE
-        #_cov_sampler += cov_sampler
+        _cov_sampler += cov_sampler
         _time_MLE += time_MLE
         _time_sampler += time_sampler
         for j in range(pivot_MLE.shape[0]):
             _pivot_MLE.append(pivot_MLE[j])
             _pivot_sampler.append(pivot_sampler[j])
 
-    print("coverage of MLE", _cov_MLE/ndraw)
+    print("coverage of MLE", _cov_MLE/ndraw, _cov_sampler/ndraw)
     print("times compare", _time_MLE/ndraw,  _time_sampler/ndraw)
     plt.clf()
     ecdf_MLE = ECDF(ndist.cdf(np.asarray(_pivot_MLE)))
-    ecdf_sampler = ECDF(np.asarray(_pivot_sampler))
+    #ecdf_sampler = ECDF(np.asarray(_pivot_sampler))
     grid = np.linspace(0, 1, 101)
-    plt.plot(grid, ecdf_sampler(grid), c='red', marker='^')
     plt.plot(grid, ecdf_MLE(grid), c='blue', marker='^')
     plt.plot(grid, grid, 'k--')
     plt.show()
-    #plt.savefig("/Users/snigdhapanigrahi/Desktop/Boot_pivot_n2000_p2000_amp3.5_sigma1.png")
+    plt.savefig("/Users/psnigdha/maximum_likelihood_inference/Talk_plots/Motivating_example/Pivot_n500_p100_rho35_snr20.png")
 
-#plot_pivot(ndraw=500)
+plot_pivot(ndraw=500)
 
-def joint_pivot(n=500, p=100, nval=500, rho=0., s=5, beta_type=1, snr=0.20, randomizer_scale=np.sqrt(0.50), full_dispersion=True):
+def joint_pivot(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1, snr=0.20, randomizer_scale=np.sqrt(0.50), full_dispersion=True):
 
     X, y, _, _, Sigma, beta, sigma = sim_xy(n=n, p=p, nval=nval, rho=rho, s=s, beta_type=beta_type, snr=snr)
     print("snr", snr)
@@ -178,5 +176,6 @@ def plot_pivot_joint(ndraw=500):
     plt.plot(grid, ecdf_MLE(grid), c='blue', marker='^')
     plt.plot(grid, grid, 'k--')
     plt.show()
+    plt.savefig("/Users/psnigdha/maximum_likelihood_inference/Talk_plots/Motivating_example/Joint_Pivot_n500_p100_rho35_snr20.png")
 
-plot_pivot_joint(ndraw=500)
+#plot_pivot_joint(ndraw=500)
