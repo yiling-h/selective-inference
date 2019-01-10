@@ -1,8 +1,8 @@
 import numpy as np
 import nose.tools as nt
 
-from ..lasso import lasso, full_targets, selected_targets, debiased_targets
-from ...tests.instance import gaussian_instance
+from selection.randomized.lasso import lasso, full_targets, selected_targets, debiased_targets
+from selection.tests.instance import gaussian_instance
 
 def test_full_targets(n=200, 
                       p=1000, 

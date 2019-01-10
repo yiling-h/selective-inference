@@ -1,7 +1,6 @@
-import numpy as np, os, itertools, sys, time
+import numpy as np, sys, time
 import pandas as pd
 from selection.randomized.lasso import lasso, full_targets, selected_targets, debiased_targets
-from selection.algorithms.lasso import lasso_full
 from scipy.stats import norm as ndist, f as F
 
 from selection.adjusted_MLE.cv_MLE import (sim_xy,
@@ -11,7 +10,40 @@ from selection.adjusted_MLE.cv_MLE import (sim_xy,
                                            coverage)
 from statsmodels.distributions.empirical_distribution import ECDF
 
-def pivot(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1, snr=0.20, randomizer_scale=np.sqrt(0.50), full_dispersion=True):
+from rpy2 import robjects
+import rpy2.robjects.numpy2ri
+rpy2.robjects.numpy2ri.activate()
+
+def plotPivot(pivot):
+    robjects.r("""
+                   library(ggplot2)
+                   library(magrittr)
+                   library("tidyr")
+                   library("reshape")
+                   library("cowplot")
+                   library("dplyr")
+                   pivot_plot <- function(pivot, outpath="/Users/psnigdha/maximum_likelihood_inference/Talk_plots/Motivating_example/",
+                                          resolution=300, height=12, width=12, units="cm")
+                    {
+                    pivot = as.vector(pivot)
+                    df = data.frame(pivot =  pivot)
+                    df0  <- melt(df,id.var=1)
+                    var = rep(1, length(pivot))
+                    var[var==1]= "n=500,p=100,s=5"
+                    g= ggplot(df0, aes(pivot), lwd=1, linetype="dotted") + 
+                       stat_ecdf(geom = "point", color="#008B8B")+
+                       labs(x=" ",y=" ")+
+                       facet_wrap( ~ as.factor(var), ncol=1)
+                    outfile = paste(outpath, 'pivot_LASSO.png', sep="")
+                    ggsave(outfile, plot = g, dpi=resolution, dev='png', height=height, width=width, units="cm")   
+                    } 
+                    """)
+
+    R_plot = robjects.globalenv['pivot_plot']
+    r_pivot = robjects.r.matrix(pivot, nrow=pivot.shape[0], ncol=1)
+    R_plot(r_pivot)
+
+def pivot(n=500, p=100, nval=500, rho=0., s=5, beta_type=1, snr=0.25, randomizer_scale=np.sqrt(1.), full_dispersion=True):
 
     X, y, _, _, Sigma, beta, sigma = sim_xy(n=n, p=p, nval=nval, rho=rho, s=s, beta_type=beta_type, snr=snr)
     print("snr", snr)
@@ -65,7 +97,7 @@ def pivot(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1, snr=0.20, randomiz
                                                                                   alternatives,
                                                                                   level=0.9,
                                                                                   compute_intervals=True,
-                                                                                  ndraw=500000)
+                                                                                  ndraw=200000)
 
         tic = time.time()
         cov_sampler, _ = coverage(sampler_intervals, sampler_pval, target_randomized, beta[nonzero])
@@ -73,7 +105,7 @@ def pivot(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1, snr=0.20, randomiz
 
         return pivot_MLE, sampler_pivot, time_MLE, time_sampler, np.mean(cov_MLE), np.mean(cov_sampler)
 
-def plot_pivot(ndraw=500):
+def test_plot_pivot(ndraw=100, plot=True):
     import matplotlib.pyplot as plt
 
     _pivot_MLE = []
@@ -94,16 +126,18 @@ def plot_pivot(ndraw=500):
 
     print("coverage of MLE", _cov_MLE/ndraw, _cov_sampler/ndraw)
     print("times compare", _time_MLE/ndraw,  _time_sampler/ndraw)
-    plt.clf()
-    ecdf_MLE = ECDF(ndist.cdf(np.asarray(_pivot_MLE)))
-    #ecdf_sampler = ECDF(np.asarray(_pivot_sampler))
-    grid = np.linspace(0, 1, 101)
-    plt.plot(grid, ecdf_MLE(grid), c='blue', marker='^')
-    plt.plot(grid, grid, 'k--')
-    plt.show()
-    plt.savefig("/Users/psnigdha/maximum_likelihood_inference/Talk_plots/Motivating_example/Pivot_n500_p100_rho35_snr20.png")
+    #plt.clf()
+    #ecdf_MLE = ECDF(ndist.cdf(np.asarray(_pivot_MLE)))
 
-plot_pivot(ndraw=500)
+    if plot is True:
+        plotPivot(ndist.cdf(np.asarray(_pivot_MLE)))
+    #ecdf_sampler = ECDF(np.asarray(_pivot_sampler))
+    # grid = np.linspace(0, 1, 101)
+    # plt.plot(grid, ecdf_MLE(grid), c='darkcyan', linestyle='-', linewidth=6)
+    # plt.plot(grid, grid, 'k--', linewidth=3)
+    # plt.savefig("/Users/psnigdha/maximum_likelihood_inference/Talk_plots/Motivating_example/Pivot_n500_p100_rho0_snr25.png")
+
+test_plot_pivot(ndraw=200)
 
 def joint_pivot(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1, snr=0.20, randomizer_scale=np.sqrt(0.50), full_dispersion=True):
 
@@ -156,7 +190,7 @@ def joint_pivot(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1, snr=0.20, ra
 
         return joint_pivot_MLE, time_MLE, np.mean(cov_MLE)
 
-def plot_pivot_joint(ndraw=500):
+def plot_pivot_joint(ndraw=500, plot=True):
     import matplotlib.pyplot as plt
 
     _pivot_MLE = []
@@ -168,14 +202,16 @@ def plot_pivot_joint(ndraw=500):
         _time_MLE += time_MLE
         _pivot_MLE.append(pivot_MLE)
 
+    if plot is True:
+        plotPivot(np.asarray(_pivot_MLE))
+
     print("coverage of MLE", _cov_MLE/ndraw)
     print("times compare", _time_MLE/ndraw)
-    plt.clf()
-    ecdf_MLE = ECDF(np.asarray(_pivot_MLE))
-    grid = np.linspace(0, 1, 101)
-    plt.plot(grid, ecdf_MLE(grid), c='blue', marker='^')
-    plt.plot(grid, grid, 'k--')
-    plt.show()
-    plt.savefig("/Users/psnigdha/maximum_likelihood_inference/Talk_plots/Motivating_example/Joint_Pivot_n500_p100_rho35_snr20.png")
+    # plt.clf()
+    # ecdf_MLE = ECDF(np.asarray(_pivot_MLE))
+    # grid = np.linspace(0, 1, 101)
+    # plt.plot(grid, ecdf_MLE(grid), c='blue', marker='^')
+    # plt.plot(grid, grid, 'k--')
+    # plt.savefig("/Users/psnigdha/maximum_likelihood_inference/Talk_plots/Motivating_example/Joint_Pivot_n500_p100_rho35_snr20.png")
 
 #plot_pivot_joint(ndraw=500)

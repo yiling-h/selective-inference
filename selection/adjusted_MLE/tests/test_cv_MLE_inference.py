@@ -44,6 +44,7 @@ def plotRisk(df_risk):
                    scale_shape_manual(labels = names[indices], values=c(15, 17, 16)[indices]) +
                                       scale_linetype_manual(labels = names[indices], values = c(1,1,2)[indices])
                                       outfile = paste(outpath, 'risk.png', sep="")
+                   outfile = paste(outpath, 'risk.png', sep="")                   
                    ggsave(outfile, plot = risk, dpi=resolution, dev='png', height=height, width=width, units="cm")}
                 """)
 

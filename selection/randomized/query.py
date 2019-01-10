@@ -174,6 +174,7 @@ class query(object):
                       cov_target_score, 
                       level=0.9,
                       solve_args={'tol':1.e-12}):
+
         """
         Parameters
         ----------
@@ -187,6 +188,21 @@ class query(object):
                                           level=0.9,
                                           solve_args=solve_args)
 
+    def inference_new(self,
+                      observed_target,
+                      cov_target,
+                      cov_target_score,
+                      level=0.90):
+
+        ci_new, pvalue_new = inference_ci(observed_target,
+                                          cov_target,
+                                          cov_target_score,
+                                          self.cond_mean_vec,
+                                          self.cond_cov_vec,
+                                          self.linear_coef_vec,
+                                          level=level)
+        
+        return ci_new, pvalue_new
 
 class gaussian_query(query):
 
@@ -211,7 +227,6 @@ class gaussian_query(query):
                     opt_linear,
                     opt_offset,
                     useC):
-
         print("use C or not", useC)
         if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
             raise ValueError('constraints not satisfied')
@@ -244,10 +259,10 @@ class gaussian_query(query):
                                                useC=useC)
 
     def _set_sampler(self,
-                    A_scaling,
-                    b_scaling,
-                    opt_linear,
-                    opt_offset):
+                     A_scaling,
+                     b_scaling,
+                     opt_linear,
+                     opt_offset):
 
         if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
             raise ValueError('constraints not satisfied')
@@ -271,13 +286,6 @@ class gaussian_query(query):
                                  mean=cond_mean,
                                  covariance=cond_cov)
 
-        # self.sampler = affine_gaussian_sampler(affine_con,
-        #                                        self.observed_opt_state,
-        #                                        self.observed_score_state,
-        #                                        log_density,
-        #                                        (logdens_linear, opt_offset),
-        #                                        selection_info=self.selection_variable,
-        #                                        useC=useC)
 
         self.sampler = affine_gaussian_sampler(affine_con,
                                                self.observed_opt_state,
@@ -285,6 +293,8 @@ class gaussian_query(query):
                                                log_density,
                                                (logdens_linear, opt_offset),
                                                selection_info=self.selection_variable)
+
+        self.cond_mean_vec, self.cond_cov_vec, self.linear_coef_vec = self._setup_implied_gaussian_univariate(opt_linear, opt_offset)
 
     def _setup_implied_gaussian(self, opt_linear, opt_offset):
 
@@ -302,6 +312,106 @@ class gaussian_query(query):
         cond_mean = -logdens_linear.dot(self.observed_score_state + opt_offset)
 
         return cond_mean, cond_cov, cond_precision, logdens_linear
+
+    def _setup_implied_gaussian_univariate(self, opt_linear, opt_offset):
+
+        _, prec = self.randomizer.cov_prec
+        cond_mean = []
+        cond_cov = []
+        linear_coef = []
+        for j in range(opt_linear.shape[1]):
+            if np.asarray(prec).shape in [(), (0,)]:
+                cond_precision = opt_linear[:, j].T.dot(opt_linear[:, j]) * prec
+                cond_var = 1. / cond_precision
+                cond_cov.append(cond_var)
+                logdens_linear = (cond_var* prec)* (opt_linear[:, j].T)
+                linear_coef.append(logdens_linear)
+            else:
+                cond_precision = opt_linear[:, j].T.dot(prec.dot(opt_linear[:, j]))
+                cond_var = 1. / cond_precision
+                cond_cov.append(cond_var)
+                logdens_linear = cond_var.dot(opt_linear[:, j].T).dot(prec)
+                linear_coef.append(logdens_linear)
+
+            if opt_linear.shape[1] > 1:
+                exclude_array = np.asarray([i for i in range(opt_linear.shape[1]) if i != j])
+                cond_mean.append(-logdens_linear.dot(self.observed_score_state + opt_offset + opt_linear[:, exclude_array]
+                                                .dot(self.observed_opt_state[exclude_array])))
+            else:
+                cond_mean.append(-logdens_linear.dot(self.observed_score_state + opt_offset))
+
+        return np.asarray(cond_mean), np.asarray(cond_cov), np.asarray(linear_coef)
+
+
+def area_normalized_density(target_parameter,
+                            cond_mean,
+                            cond_var,
+                            linear_coef,
+                            observed_target,
+                            cov_target,
+                            cov_target_score,
+                            grid_length=301):
+
+    density_prop = []
+    grid = np.linspace(observed_target - 12., observed_target + 12., num=grid_length)
+    ind_obs = np.argmin(np.abs(grid - observed_target))
+
+    prec_target = 1. / cov_target
+    target_lin = - prec_target * linear_coef.dot(cov_target_score.T)
+    target_offset = cond_mean - target_lin*(observed_target)
+
+    for i in range(grid.shape[0]):
+        reference = 1. - ndist.cdf(-(target_lin * grid[i] + target_offset)/np.sqrt(cond_var))
+        density = np.exp(-np.true_divide((grid[i] - target_parameter) ** 2, 2 * cov_target)) * reference
+        density_prop.append(density)
+
+    return np.cumsum(np.array(density_prop/np.sum(density_prop))), ind_obs
+
+def inference_ci(observed_target,
+                 cov_target,
+                 cov_target_score,
+                 cond_mean_vec,
+                 cond_cov_vec,
+                 linear_coef_vec,
+                 level=0.90):
+
+    ci = np.zeros((2, cond_cov_vec.shape[0]))
+    pvalue = np.zeros(cond_cov_vec.shape[0])
+
+    for j in range(cond_cov_vec.shape[0]):
+        cond_mean = cond_mean_vec[j]
+        cond_var = cond_cov_vec[j]
+        linear_coef = linear_coef_vec[j,:]
+        observed_target_uni = observed_target[j]
+        cov_target_uni = np.diag(cov_target)[j]
+        cov_target_score_uni = cov_target_score[j,:]
+
+        param_grid = np.linspace(observed_target[j]-15., observed_target[j]+15., num=301)
+        area = np.zeros(param_grid.shape[0])
+        for k in range(param_grid.shape[0]):
+            area_vec, ind_obs = area_normalized_density(param_grid[k],
+                                                        cond_mean,
+                                                        cond_var,
+                                                        linear_coef,
+                                                        observed_target_uni,
+                                                        cov_target_uni,
+                                                        cov_target_score_uni)
+            area[k] = area_vec[ind_obs]
+
+        region = param_grid[(area >= 0.05) & (area <= 0.95)]
+        ci[0, j] = np.min(region)
+        ci[1, j] = np.max(region)
+
+        area_vec_null, _ = area_normalized_density(0.,
+                                                   cond_mean,
+                                                   cond_var,
+                                                   linear_coef,
+                                                   observed_target_uni,
+                                                   cov_target_uni,
+                                                   cov_target_score_uni)
+        pvalue[j] = 2 * min(area_vec_null[ind_obs], 1. - area_vec_null[ind_obs])
+
+    return ci, pvalue
 
 class multiple_queries(object):
 
