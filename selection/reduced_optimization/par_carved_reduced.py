@@ -194,6 +194,7 @@ class sel_inf_carved(rr.smooth_atom):
         self.coefs[:] = initial
 
         self.initial_state = initial
+        #self.initial_state = np.zeros(self.param_shape)
 
     def smooth_objective_post(self, sel_param, mode='both', check_feasibility=False):
 
@@ -285,7 +286,7 @@ class sel_inf_carved(rr.smooth_atom):
         print("here", state.shape)
         gradient_map = lambda x: -self.smooth_objective_post(x, 'grad')
         projection_map = lambda x: x
-        stepsize = (1.*0.20) / (self.param_shape)
+        stepsize = (1.*0.1) / (self.param_shape)
         sampler = projected_langevin(state, gradient_map, projection_map, stepsize)
 
         samples = []

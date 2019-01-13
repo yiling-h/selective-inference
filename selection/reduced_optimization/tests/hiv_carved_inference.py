@@ -7,6 +7,97 @@ from selection.randomized.api import randomization
 from selection.reduced_optimization.par_carved_reduced import selection_probability_carved, sel_inf_carved
 from selection.randomized.M_estimator import M_estimator_split
 from selection.randomized.glm import bootstrap_cov
+from scipy.stats import norm as ndist
+from scipy.optimize import bisect
+from selection.algorithms.lasso import lasso
+
+def restricted_gaussian(Z, interval=[-7.,7.]):
+    L_restrict, U_restrict = interval
+    Z_restrict = max(min(Z, U_restrict), L_restrict)
+    return ((ndist.cdf(Z_restrict) - ndist.cdf(L_restrict)) /
+            (ndist.cdf(U_restrict) - ndist.cdf(L_restrict)))
+
+def pivot(L_constraint, Z, U_constraint, S, truth=0):
+    F = restricted_gaussian
+    if F((U_constraint - truth) / S) != F((L_constraint -  truth) / S):
+        v = ((F((Z-truth)/S) - F((L_constraint-truth)/S)) /
+             (F((U_constraint-truth)/S) - F((L_constraint-truth)/S)))
+    elif F((U_constraint - truth) / S) < 0.1:
+        v = 1
+    else:
+        v = 0
+    return v
+
+def equal_tailed_interval(L_constraint, Z, U_constraint, S, alpha=0.05):
+
+    lb = Z - 7. * S
+    ub = Z + 7. * S
+
+    def F(param):
+        return pivot(L_constraint, Z, U_constraint, S, truth=param)
+
+    FL = lambda x: (F(x) - (1 - 0.5 * alpha))
+    FU = lambda x: (F(x) - 0.5* alpha)
+    L_conf = bisect(FL, lb, ub)
+    U_conf = bisect(FU, lb, ub)
+    return np.array([L_conf, U_conf])
+
+def lasso_Gaussian(X, y, lam):
+
+    L = lasso.gaussian(X, y, lam, sigma=1.)
+    soln = L.fit()
+
+    active = soln != 0
+    print("Lasso estimator", soln[active])
+    nactive = active.sum()
+    print("nactive", nactive)
+
+    projection_active = X[:, active].dot(np.linalg.inv(X[:, active].T.dot(X[:, active])))
+
+    active_set = np.nonzero(active)[0]
+    print("active set", active_set)
+
+    active_signs = np.sign(soln[active])
+    C = L.constraints
+    sel_intervals = np.zeros((nactive, 2))
+    ad_length = np.zeros(nactive)
+
+    if C is not None:
+        one_step = L.onestep_estimator
+        print("one step", one_step)
+        for i in range(one_step.shape[0]):
+            eta = np.zeros_like(one_step)
+            eta[i] = active_signs[i]
+            alpha = 0.1
+
+            if C.linear_part.shape[0] > 0:  # there were some constraints
+                L, Z, U, S = C.bounds(eta, one_step)
+                _pval = pivot(L, Z, U, S)
+                # two-sided
+                _pval = 2 * min(_pval, 1 - _pval)
+
+                L, Z, U, S = C.bounds(eta, one_step)
+                _interval = equal_tailed_interval(L, Z, U, S, alpha=alpha)
+                _interval = sorted([_interval[0] * active_signs[i],
+                                    _interval[1] * active_signs[i]])
+
+            else:
+                obs = (eta * one_step).sum()
+                sd = np.sqrt((eta * C.covariance.dot(eta)))
+                Z = obs / sd
+                _pval = 2 * (ndist.sf(min(np.fabs(Z))) - ndist.sf(5)) / (ndist.cdf(5) - ndist.cdf(-5))
+
+                _interval = (obs - ndist.ppf(1 - alpha / 2) * sd,
+                             obs + ndist.ppf(1 - alpha / 2) * sd)
+
+            sel_intervals[i, :] = _interval
+            ad_length[i] = sel_intervals[i, 1] - sel_intervals[i, 0]
+            print("sel_intervals")
+
+        return one_step, sel_intervals, active
+
+    else:
+        return None
 
 class M_estimator_approx_carved(M_estimator_split):
 
@@ -111,12 +202,18 @@ penalty = rr.group_lasso(np.arange(p), weights=dict(zip(np.arange(p), W)), lagra
 total_size = loss.saturated_loss.shape[0]
 subsample_size = int(0.50 * total_size)
 inference_size = total_size - subsample_size
-M_est = M_estimator_approx_carved(loss, epsilon, subsample_size, penalty, 'parametric')
+M_est = M_estimator_approx_carved(loss, 0., subsample_size, penalty, 'parametric')
 
 sel_indx = M_est.sel_indx
 X_inf = X[~sel_indx, :]
 y_inf = Y[~sel_indx]
 M_est.solve_approx()
+
+one_step, Lee_intervals, active_Lee = lasso_Gaussian(X[sel_indx, :],
+                                                     Y[sel_indx],
+                                                     0.5*lam)
+print("Lee intervals", Lee_intervals)
+
 
 active = M_est._overall
 active_set = [t for t in range(p) if active[t]]
@@ -154,8 +251,10 @@ adjusted_intervals = np.vstack([selective_mean, adjusted_intervals])
 
 intervals = np.vstack([unadjusted_intervals, adjusted_intervals_split, adjusted_intervals])
 print("active set and intervals shape", nactive, intervals.shape)
-print("intervals", unadjusted_intervals, adjusted_intervals_split, adjusted_intervals)
-print("average lengths", np.mean(intervals[2,:]-intervals[1,:]), np.mean(intervals[5,:]-intervals[4,:]), np.mean(intervals[8,:]-intervals[7,:]))
+print("intervals", unadjusted_intervals, adjusted_intervals_split, adjusted_intervals, Lee_intervals.T, one_step,
+      [NRTI_muts[i] for i in range(p) if active_Lee[i]])
+print("average lengths", np.mean(intervals[2,:]-intervals[1,:]), np.mean(intervals[5,:]-intervals[4,:]),
+      np.mean(intervals[8,:]-intervals[7,:]), np.mean(Lee_intervals[:,1]- Lee_intervals[:,0]))
 
 ind = np.zeros(len(active_set), np.bool)
 index = active_set_0.index('P184V')
