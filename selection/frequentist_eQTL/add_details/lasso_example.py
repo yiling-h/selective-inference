@@ -503,7 +503,7 @@ def test_approximate_inference(X,
                                seed_n = 0,
                                lam_frac = 1.,
                                loss='gaussian',
-                               randomization_scale = 0.7):
+                               randomization_scale = 0.50):
 
     from selection.api import randomization
 
@@ -611,7 +611,7 @@ if __name__ == "__main__":
     count = 0
     for seed_n in range(10):
 
-        np.random.seed(seed_n+90)
+        np.random.seed(seed_n+40)
         y = np.random.standard_normal(n)
         true_mean = np.zeros(n)
         try:
@@ -633,4 +633,5 @@ if __name__ == "__main__":
         except:
             count += 1
 
-    print("results", count, sel_covered, naive_covered, sel_risk, naive_risk, sel_length, naive_length)
+    print("results", count, sel_covered/(10.-count), naive_covered/(10.-count),
+          sel_risk/(10.-count), naive_risk/(10.-count), sel_length/(10.-count), naive_length/(10.-count))
