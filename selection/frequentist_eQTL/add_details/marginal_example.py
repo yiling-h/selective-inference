@@ -539,7 +539,7 @@ if __name__ == "__main__":
         y = np.random.standard_normal(n)
         sigma_est = 1.
 
-        t_test = (X.T.dot(y) + 0.7 * np.random.standard_normal(p)) / np.sqrt(2.)
+        t_test = (X.T.dot(y) + 0.7 * np.random.standard_normal(p)) / np.sqrt(1.5)
         index = np.argmax(np.abs(t_test))
         T_sign = np.sign(t_test[index])
         T_observed = (X.T.dot(y))[index]

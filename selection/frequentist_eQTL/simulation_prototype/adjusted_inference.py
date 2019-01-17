@@ -775,8 +775,10 @@ if __name__ == "__main__":
     inpath = "/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/simulation_prototype/"
     path = "/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/simulation_prototype/data_directory/"
     outdir = "/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/simulation_prototype/inference/"
+    j = 20
 
-    for egene in range(10):
+    for egene0 in range(20):
+        egene = j+egene0
         content = np.loadtxt(os.path.join(inpath, "eGenes.txt"))
         gene = str(int(content[egene]))
         print("gene", gene)
