@@ -217,11 +217,11 @@ class stepup(screening):
             A_scaling = -np.identity(self.num_opt_var)
             b_scaling = np.zeros(self.num_opt_var)
 
-            self._set_sampler(A_scaling,
-                              b_scaling,
-                              opt_linear,
-                              opt_offset,
-                              self.useC)
+            self.set_sampler(A_scaling,
+                             b_scaling,
+                             opt_linear,
+                             opt_offset,
+                             self.useC)
         else:
             self._selected = np.zeros(p, np.bool)
         return self._selected

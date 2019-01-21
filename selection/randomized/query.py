@@ -14,7 +14,6 @@ from ..distributions.api import discrete_family
 from ..sampling.langevin import projected_langevin
 from ..constraints.affine import (sample_from_constraints,
                                   constraints)
-from ..algorithms.softmax import softmax_objective
 
 class query(object):
 
@@ -250,13 +249,13 @@ class gaussian_query(query):
                                  mean=cond_mean,
                                  covariance=cond_cov)
 
-        self.sampler = affine_gaussian_sampler(affine_con,
-                                               self.observed_opt_state,
-                                               self.observed_score_state,
-                                               log_density,
-                                               (logdens_linear, opt_offset),
-                                               selection_info=self.selection_variable,
-                                               useC=useC)
+        self.sampler = _affine_gaussian_sampler(affine_con,
+                                                self.observed_opt_state,
+                                                self.observed_score_state,
+                                                log_density,
+                                                (logdens_linear, opt_offset),
+                                                selection_info=self.selection_variable,
+                                                useC=useC)
 
     def _set_sampler(self,
                      A_scaling,
@@ -948,22 +947,7 @@ class affine_gaussian_sampler(optimization_sampler):
         """
         Selective MLE based on approximation of
         CGF.
-
         """
-
-        # return selective_MLE(observed_target,
-        #                      cov_target,
-        #                      cov_target_score,
-        #                      init_soln,
-        #                      self.affine_con.mean,
-        #                      self.affine_con.covariance,
-        #                      self.logdens_transform[0],
-        #                      self.affine_con.linear_part,
-        #                      self.affine_con.offset,
-        #                      solve_args=solve_args,
-        #                      level=level,
-        #                      useC=self.useC)
-
         return selective_MLE(observed_target,
                              cov_target,
                              cov_target_score,
@@ -975,48 +959,6 @@ class affine_gaussian_sampler(optimization_sampler):
                              self.affine_con.offset,
                              solve_args=solve_args,
                              level=level)
-
-    def reparam_map(self, 
-                    parameter_target, 
-                    observed_target, 
-                    cov_target, 
-                    cov_target_score, 
-                    init_soln, 
-                    solve_args={'tol':1.e-12}):
-
-        prec_target = np.linalg.inv(cov_target)
-        ndim = prec_target.shape[0]
-        logdens_lin, _ = self.logdens_transform
-        target_lin = - logdens_lin.dot(cov_target_score.T.dot(prec_target))
-        target_offset = self.affine_con.mean - target_lin.dot(observed_target)
-
-        cov_opt = self.affine_con.covariance
-        prec_opt = np.linalg.inv(cov_opt)
-
-        mean_param = target_lin.dot(parameter_target) + target_offset
-        conjugate_arg = prec_opt.dot(mean_param)
-
-        if useC:
-            solver = solve_barrier_affine_C
-        else:
-            solver = solve_barrier_affine_py
-
-        val, soln, hess = solver(conjugate_arg,
-                                 prec_opt, # JT: I think this quadratic is wrong should involve cov_target and target_lin too?
-                                 init_soln,
-                                 self.affine_con.linear_part,
-                                 self.affine_con.offset,
-                                 **solve_args)
-            
-        inter_map = cov_target.dot(target_lin.T.dot(prec_opt))
-        param_map = parameter_target + inter_map.dot(mean_param - soln)
-        log_normalizer_map = ((parameter_target.T.dot(prec_target + target_lin.T.dot(prec_opt).dot(target_lin)).dot(parameter_target))/2. 
-                              - parameter_target.T.dot(target_lin.T).dot(prec_opt.dot(soln)) - target_offset.T.dot(prec_opt).dot(target_offset)/2. 
-                              + val - (param_map.T.dot(prec_target).dot(param_map))/2.)
-
-        jacobian_map = (np.identity(ndim) + inter_map.dot(target_lin)) - inter_map.dot(hess).dot(prec_opt.dot(target_lin))
-
-        return param_map, log_normalizer_map, jacobian_map
 
     def log_density_ray(self,
                         candidate,
@@ -1087,6 +1029,207 @@ class affine_gaussian_sampler(optimization_sampler):
                            self._cache['constant_term'])
         return (-0.5 * candidate**2 * quadratic_term - 
                  candidate * linear_term - 0.5 * constant_term)
+
+
+class _affine_gaussian_sampler(optimization_sampler):
+    '''
+    Sample from an affine truncated Gaussian
+    '''
+
+    def __init__(self,
+                 affine_con,
+                 initial_point,
+                 observed_score_state,
+                 log_density,
+                 logdens_transform, # described how score enters log_density.
+                 selection_info=None,
+                 useC=False):
+
+        '''
+        Parameters
+        ----------
+
+        multi_view : `multiple_queries`
+           Instance of `multiple_queries`. Attributes
+           `objectives`, `score_info` are key
+           attributed. (Should maybe change constructor
+           to reflect only what is needed.)
+        '''
+
+        self.affine_con = affine_con
+        self.initial_point = initial_point
+        self.observed_score_state = observed_score_state
+        self.selection_info = selection_info
+        self.log_density = log_density
+        self.logdens_transform = logdens_transform
+        self.useC = useC
+
+    def sample(self, ndraw, burnin):
+        '''
+        Sample `target` from selective density
+        using projected Langevin sampler with
+        gradient map `self.gradient` and
+        projection map `self.projection`.
+
+        Parameters
+        ----------
+
+        ndraw : int
+           How long a chain to return?
+
+        burnin : int
+           How many samples to discard?
+
+        '''
+
+        return sample_from_constraints(self.affine_con,
+                                       self.initial_point,
+                                       ndraw=ndraw,
+                                       burnin=burnin)
+
+    def selective_MLE(self,
+                      observed_target,
+                      cov_target,
+                      cov_target_score,
+                      init_soln,
+                      # initial (observed) value of optimization variables -- used as a feasible point. # precise value used only for independent estimator
+                      solve_args={'tol': 1.e-12},
+                      level=0.9):
+        """
+        Selective MLE based on approximation of
+        CGF.
+
+        """
+
+        return _selective_MLE(observed_target,
+                              cov_target,
+                              cov_target_score,
+                              init_soln,
+                              self.affine_con.mean,
+                              self.affine_con.covariance,
+                              self.logdens_transform[0],
+                              self.affine_con.linear_part,
+                              self.affine_con.offset,
+                              solve_args=solve_args,
+                              level=level,
+                              useC=self.useC)
+
+    def reparam_map(self,
+                    parameter_target,
+                    observed_target,
+                    cov_target,
+                    cov_target_score,
+                    init_soln,
+                    solve_args={'tol': 1.e-12}):
+
+        prec_target = np.linalg.inv(cov_target)
+        ndim = prec_target.shape[0]
+        logdens_lin, _ = self.logdens_transform
+        target_lin = - logdens_lin.dot(cov_target_score.T.dot(prec_target))
+        target_offset = self.affine_con.mean - target_lin.dot(observed_target)
+
+        cov_opt = self.affine_con.covariance
+        prec_opt = np.linalg.inv(cov_opt)
+
+        mean_param = target_lin.dot(parameter_target) + target_offset
+        conjugate_arg = prec_opt.dot(mean_param)
+
+        if useC:
+            solver = solve_barrier_affine_C
+        else:
+            solver = solve_barrier_affine_py
+
+        val, soln, hess = solver(conjugate_arg,
+                                 prec_opt,
+                                 # JT: I think this quadratic is wrong should involve cov_target and target_lin too?
+                                 init_soln,
+                                 self.affine_con.linear_part,
+                                 self.affine_con.offset,
+                                 **solve_args)
+
+        inter_map = cov_target.dot(target_lin.T.dot(prec_opt))
+        param_map = parameter_target + inter_map.dot(mean_param - soln)
+        log_normalizer_map = ((parameter_target.T.dot(prec_target + target_lin.T.dot(prec_opt).dot(target_lin)).dot(
+            parameter_target)) / 2.
+                              - parameter_target.T.dot(target_lin.T).dot(prec_opt.dot(soln)) - target_offset.T.dot(
+                    prec_opt).dot(target_offset) / 2.
+                              + val - (param_map.T.dot(prec_target).dot(param_map)) / 2.)
+
+        jacobian_map = (np.identity(ndim) + inter_map.dot(target_lin)) - inter_map.dot(hess).dot(
+            prec_opt.dot(target_lin))
+
+        return param_map, log_normalizer_map, jacobian_map
+
+    def log_density_ray(self,
+                        candidate,
+                        direction,
+                        nuisance,
+                        gaussian_sample,
+                        opt_sample):
+        # implicitly caching (opt_sample, gaussian_sample) !!!
+
+        if not hasattr(self, "_direction") or not np.all(self._direction == direction):
+
+            logdens_lin, logdens_offset = self.logdens_transform
+
+            if opt_sample.shape[1] == 1:
+
+                prec = 1. / self.affine_con.covariance[0, 0]
+                quadratic_term = logdens_lin.dot(direction) ** 2 * prec
+                arg = (logdens_lin.dot(nuisance + logdens_offset) +
+                       logdens_lin.dot(direction) * gaussian_sample +
+                       opt_sample[:, 0])
+                linear_term = logdens_lin.dot(direction) * prec * arg
+                constant_term = arg ** 2 * prec
+
+                self._cache = {'linear_term': linear_term,
+                               'quadratic_term': quadratic_term,
+                               'constant_term': constant_term}
+            else:
+                self._direction = direction.copy()
+
+                # density is a Gaussian evaluated at
+                # O_i + A(N + (Z_i + theta) * gamma + b)
+
+                # b is logdens_offset
+                # A is logdens_linear
+                # Z_i is gaussian_sample[i] (real-valued)
+                # gamma is direction
+                # O_i is opt_sample[i]
+
+                # let arg1 = O_i
+                # let arg2 = A(N+b + Z_i \cdot gamma)
+                # then it is of the form (arg1 + arg2 + theta * A gamma)
+
+                logdens_lin, logdens_offset = self.logdens_transform
+                cov = self.affine_con.covariance
+                prec = np.linalg.inv(cov)
+                linear_part = logdens_lin.dot(direction)  # A gamma
+
+                if 1 in opt_sample.shape:
+                    pass  # stop3
+                cov = self.affine_con.covariance
+
+                quadratic_term = linear_part.T.dot(prec).dot(linear_part)
+
+                arg1 = opt_sample.T
+                arg2 = logdens_lin.dot(np.multiply.outer(direction, gaussian_sample) +
+                                       (nuisance + logdens_offset)[:, None])
+                arg = arg1 + arg2
+                linear_term = linear_part.T.dot(prec).dot(arg)
+                constant_term = np.sum(prec.dot(arg) * arg, 0)
+
+                self._cache = {'linear_term': linear_term,
+                               'quadratic_term': quadratic_term,
+                               'constant_term': constant_term}
+        (linear_term,
+         quadratic_term,
+         constant_term) = (self._cache['linear_term'],
+                           self._cache['quadratic_term'],
+                           self._cache['constant_term'])
+        return (-0.5 * candidate ** 2 * quadratic_term -
+                candidate * linear_term - 0.5 * constant_term)
+
 
 class optimization_intervals(object):
 
@@ -1619,3 +1762,70 @@ def normalizing_constant(target_parameter,
              soln[:ntarget], 
              hess[:ntarget][:,:ntarget])
 
+
+def _selective_MLE(observed_target,
+                   cov_target,
+                   cov_target_score,
+                   init_soln,# initial (observed) value of optimization variables -- used as a feasible point. # precise value used only for independent estimator
+                   cond_mean,
+                   cond_cov,
+                   logdens_linear,
+                   linear_part,
+                   offset,
+                   solve_args={'tol': 1.e-12},
+                   level=0.9,
+                   useC=False):
+    """
+    Selective MLE based on approximation of
+    CGF.
+
+    """
+    if np.asarray(observed_target).shape in [(), (0,)]:
+        raise ValueError('no target specified')
+
+    observed_target = np.atleast_1d(observed_target)
+    prec_target = np.linalg.inv(cov_target)
+
+    # target_lin determines how the conditional mean of optimization variables
+    # vary with target
+    # logdens_linear determines how the argument of the optimization density
+    # depends on the score, not how the mean depends on score, hence the minus sign
+
+    target_lin = - logdens_linear.dot(cov_target_score.T.dot(prec_target))
+    target_offset = cond_mean - target_lin.dot(observed_target)
+
+    prec_opt = np.linalg.inv(cond_cov)
+
+    conjugate_arg = prec_opt.dot(cond_mean)
+
+    if useC:
+        print("using C")
+        solver = solve_barrier_affine_C
+    else:
+        print("not using C")
+        solver = solve_barrier_affine_py
+
+    val, soln, hess = solver(conjugate_arg,
+                             prec_opt,
+                             init_soln,
+                             linear_part,
+                             offset,
+                             **solve_args)
+
+    final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
+    ind_unbiased_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean
+                                                                                            - init_soln)))
+    L = target_lin.T.dot(prec_opt)
+    observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
+    observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
+
+    Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
+    pvalues = ndist.cdf(Z_scores)
+    pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
+
+    alpha = 1. - level
+    quantile = ndist.ppf(1 - alpha / 2.)
+    intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
+                           final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
+
+    return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
