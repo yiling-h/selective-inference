@@ -9,10 +9,11 @@ from rpy2.robjects.packages import importr
 
 from selection.adjusted_MLE.BH_MLE import (BHfilter,
                                            coverage,
-                                           test_BH)
+                                           test_BH,
+                                           test_marginal)
 
-def output_file(n=2000, p=1000, rho=0.20, nsignals=np.array([1, 5, 10, 12, 15]), sigma =3.,
-                target="marginal", randomizing_scale = np.sqrt(0.5), ndraw = 500, outpath = None,
+def output_file(n=3000, p=500, rho=0.20, nsignals=np.array([1, 5, 10, 12, 15]), sigma =3.,
+                target="marginal", randomizing_scale = np.sqrt(1.), ndraw = 500, outpath = None,
                 plot=False):
 
 
@@ -25,8 +26,7 @@ def output_file(n=2000, p=1000, rho=0.20, nsignals=np.array([1, 5, 10, 12, 15]),
         output_overall = np.zeros(23)
         for i in range(ndraw):
             output_overall += np.squeeze(
-                test_BH(p=p, s=s, sigma=sigma, rho=rho, randomizer_scale=randomizing_scale, target=target, level=0.9,
-                        q=0.1))
+                test_marginal(p=p, s=s, sigma=sigma, rho=rho, randomizer_scale=randomizing_scale, target=target, level=0.9,q=0.1))
 
         nnaive = output_overall[22]
         nMLE = output_overall[21]

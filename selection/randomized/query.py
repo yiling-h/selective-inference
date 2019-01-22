@@ -226,6 +226,7 @@ class gaussian_query(query):
                     opt_linear,
                     opt_offset,
                     useC):
+
         print("use C or not", useC)
         if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
             raise ValueError('constraints not satisfied')

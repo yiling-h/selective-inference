@@ -75,6 +75,7 @@ class marginal_screening(screening):
                  covariance, 
                  randomizer,
                  threshold,
+                 useC=True,
                  perturb=None):
 
         self.threshold = threshold
@@ -82,7 +83,9 @@ class marginal_screening(screening):
                            observed_data,
                            covariance, 
                            randomizer,
-                           perturb=None)                           
+                           perturb=None)
+
+        self.useC = useC
 
     def fit(self, perturb=None):
 
@@ -111,10 +114,11 @@ class marginal_screening(screening):
         A_scaling = -np.identity(len(active_signs))
         b_scaling = np.zeros(self.num_opt_var)
 
-        self._set_sampler(A_scaling,
-                          b_scaling,
-                          opt_linear,
-                          opt_offset)
+        self.set_sampler(A_scaling,
+                         b_scaling,
+                         opt_linear,
+                         opt_offset,
+                         self.useC)
 
         return self._selected
 
@@ -123,7 +127,8 @@ class marginal_screening(screening):
               covariance, 
               marginal_level,
               randomizer_scale,
-              perturb=None):
+              perturb=None,
+              useC=False):
         '''
         Threshold
         '''
@@ -131,12 +136,17 @@ class marginal_screening(screening):
         randomized_stdev = np.sqrt(np.diag(covariance) + randomizer_scale**2)
         p = covariance.shape[0]
         randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
-        threshold = randomized_stdev * ndist.ppf(1. - marginal_level / 2.)
+        if np.any(perturb) == True:
+            threshold = randomized_stdev * ndist.ppf(1. - marginal_level / 2.)
+        else:
+            stdev = np.sqrt(np.diag(covariance))
+            threshold = stdev * ndist.ppf(1. - marginal_level / 2.)
 
         return marginal_screening(observed_data,
                                   covariance, 
                                   randomizer,
                                   threshold,
+                                  useC=useC,
                                   perturb=perturb)
 
 # Stepup procedures like Benjamini-Hochberg
@@ -161,7 +171,7 @@ class stepup(screening):
                  covariance, 
                  randomizer,
                  stepup_Z,
-                 useC,
+                 useC = True,
                  perturb=None):
 
         screening.__init__(self,
@@ -232,7 +242,7 @@ class stepup(screening):
            covariance, 
            randomizer_scale,
            q=0.2,
-           useC = False,
+           useC= False,
            perturb=None):
         
         if not np.allclose(np.diag(covariance), covariance[0, 0]):
