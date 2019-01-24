@@ -5,9 +5,9 @@ import numpy as np
 from regreg.atoms.slope import slope as slope_atom
 import regreg.api as rr
 
-from ..slope import slope
-from ..lasso import full_targets
-from ...tests.decorators import rpy_test_safe
+from selection.randomized.slope import slope
+from selection.randomized.lasso import full_targets, selected_targets
+from selection.tests.decorators import rpy_test_safe
 from statsmodels.distributions import ECDF
 
 import matplotlib.pyplot as plt
@@ -114,8 +114,8 @@ def test_outputs_SLOPE_weights(n=500, p=100, signal_fac=1., s=5, sigma=3., rho=0
     print("relative difference in solns", np.linalg.norm(soln-r_beta)/np.linalg.norm(r_beta))
 
 @rpy_test_safe(libraries=['SLOPE'])
-def test_randomized_slope(n=500, p=100, signal_fac=1.2, s=5, sigma=1., rho=0.35, randomizer_scale= np.sqrt(0.25),
-                          target = "full", use_MLE=True):
+def test_randomized_slope(n=500, p=100, signal_fac=1.3, s=5, sigma=3., rho=0.35, randomizer_scale= np.sqrt(1.),
+                          target = "selected", use_MLE=True):
 
     while True:
         inst = gaussian_instance
@@ -130,17 +130,21 @@ def test_randomized_slope(n=500, p=100, signal_fac=1.2, s=5, sigma=1., rho=0.35,
                           random_signs=True)[:3]
 
         sigma_ = np.sqrt(np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p))
+
+        Y/= sigma_
         r_beta, r_E, r_lambda_seq, r_sigma = slope_R(X,
                                                      Y,
                                                      W=None,
                                                      normalize=True,
                                                      choice_weights="gaussian", #put gaussian
-                                                     sigma=sigma_)
+                                                     sigma=1.)
 
+        #print("check", r_beta, r_E, r_sigma * r_lambda_seq)
         conv = slope.gaussian(X,
                               Y,
                               r_sigma * r_lambda_seq,
-                              randomizer_scale=randomizer_scale * sigma_)
+                              sigma= 1.,
+                              randomizer_scale=randomizer_scale * 1.)
 
         signs = conv.fit()
         nonzero = signs != 0
@@ -154,24 +158,27 @@ def test_randomized_slope(n=500, p=100, signal_fac=1.2, s=5, sigma=1., rho=0.35,
                  cov_target_score, 
                  alternatives) = full_targets(conv.loglike, 
                                               conv._W, 
-                                              nonzero, dispersion=sigma_)
+                                              nonzero,
+                                              dispersion=1.)
             elif target == 'selected':
                 (observed_target, 
                  cov_target, 
                  cov_target_score, 
-                 alternatives) = selected_targets(conv.loglike, 
+                 alternatives) = selected_targets(conv.loglike,
                                                   conv._W, 
-                                                  nonzero, dispersion=sigma_)
+                                                  nonzero,
+                                                  dispersion=1.)
 
             if target == "selected":
-                beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+                beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))/sigma_
             else:
-                beta_target = beta[nonzero]
+                beta_target = beta[nonzero]/sigma_
             if use_MLE:
 
                 estimate, _, _, pval, intervals, _ = conv.selective_MLE(observed_target, 
                                                                         cov_target, 
-                                                                        cov_target_score)
+                                                                        cov_target_score,
+                                                                        alternatives)
             else:
                 _, pval, intervals = conv.summary(observed_target, 
                                                   cov_target, 
@@ -196,7 +203,7 @@ def main(nsim=100):
         PA.extend(pA)
         print('coverage', np.mean(cover))
 
-
+main()
 
 
 

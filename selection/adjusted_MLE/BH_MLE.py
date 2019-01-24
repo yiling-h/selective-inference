@@ -225,8 +225,8 @@ def test_marginal(p=500,
 
     alpha = 1. - level
     quantile = ndist.ppf(1 - alpha / 2.)
-    adjusted_alpha = (nonrand_nonzero.sum() * alpha) / p
-    adjusted_quantile = ndist.ppf(1 - adjusted_alpha / 2.)
+    adjusted_alpha = (nonrand_nonzero.sum() * alpha) / float(p)
+    adjusted_quantile = ndist.ppf(1 - adjusted_alpha /2.)
 
     if nonzero.sum()>0:
         sel_estimate, sel_info, _, sel_pval, sel_intervals, _ = marginal_select.selective_MLE(observed_target,

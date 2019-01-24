@@ -183,11 +183,12 @@ class slope(gaussian_query):
     def gaussian(X,
                  Y,
                  slope_weights,
-                 sigma=1.,
+                 sigma,
                  quadratic=None,
                  ridge_term=0.,
                  randomizer_scale=None):
 
+        print("sigma", sigma)
         loglike = rr.glm.gaussian(X, Y, coef=1. / sigma ** 2, quadratic=quadratic)
         n, p = X.shape
 
@@ -201,7 +202,7 @@ class slope(gaussian_query):
         randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
 
         return slope(loglike, 
-                     np.asarray(slope_weights) / sigma ** 2, 
+                     np.asarray(slope_weights) / sigma ** 2,
                      ridge_term, 
                      randomizer)
 

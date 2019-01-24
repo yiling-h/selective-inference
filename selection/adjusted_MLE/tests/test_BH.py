@@ -12,7 +12,7 @@ from selection.adjusted_MLE.BH_MLE import (BHfilter,
                                            test_BH,
                                            test_marginal)
 
-def output_file(n=3000, p=500, rho=0.20, nsignals=np.array([1, 5, 10, 12, 15]), sigma =3.,
+def output_file(n=3000, p=500, rho=0., nsignals=np.array([1, 5, 10, 12, 15]), sigma =3.,
                 target="marginal", randomizing_scale = np.sqrt(1.), ndraw = 500, outpath = None,
                 plot=False):
 
