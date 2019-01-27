@@ -72,7 +72,7 @@ class marginal_screening(screening):
 
     def __init__(self,
                  observed_data,
-                 covariance, 
+                 covariance,
                  randomizer,
                  threshold,
                  useC=True,
@@ -81,7 +81,7 @@ class marginal_screening(screening):
         self.threshold = threshold
         screening.__init__(self,
                            observed_data,
-                           covariance, 
+                           covariance,
                            randomizer,
                            perturb=None)
 
@@ -124,7 +124,7 @@ class marginal_screening(screening):
 
     @staticmethod
     def type1(observed_data,
-              covariance, 
+              covariance,
               marginal_level,
               randomizer_scale,
               perturb=None,
@@ -143,12 +143,11 @@ class marginal_screening(screening):
             threshold = stdev * ndist.ppf(1. - marginal_level / 2.)
 
         return marginal_screening(observed_data,
-                                  covariance, 
+                                  covariance,
                                   randomizer,
                                   threshold,
                                   useC=useC,
                                   perturb=perturb)
-
 # Stepup procedures like Benjamini-Hochberg
 
 def stepup_selection(Z_values, stepup_Z):

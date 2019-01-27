@@ -287,3 +287,4 @@ def _projection_onto_selected_subgradients(prox_arg,
         cur_idx += len(cluster)
 
     return result
+

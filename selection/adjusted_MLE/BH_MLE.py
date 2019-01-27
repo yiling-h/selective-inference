@@ -209,7 +209,7 @@ def test_marginal(p=500,
         (nonrand_observed_target,
          nonrand_cov_target,
          nonrand_crosscov_target_score,
-         nonrand_alternatives) = nonrand_marginal_select.marginal_targets(nonrand_nonzero)
+         nonrand_alternatives) = nonrand_marginal_select.marginal_targets(nonrand_nonzero, dispersion=sigma ** 2)
     else:
         beta_target = beta[nonzero]
         (observed_target,

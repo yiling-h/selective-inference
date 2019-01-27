@@ -203,6 +203,95 @@ class query(object):
         
         return ci_new, pvalue_new
 
+class two_stage_gaussian_query(query):
+
+    def fit(self, perturb=None):
+
+        p = self.nfeature
+
+        # take a new perturbation if supplied
+        if perturb is not None:
+            self._initial_omega = perturb
+        if self._initial_omega is None:
+            self._initial_omega = self.randomizer.sample()
+
+    def set_sampler(self,
+                    A_scaling,
+                    b_scaling,
+                    opt_linear,
+                    opt_offset,
+                    useC):
+
+        print("use C or not", useC)
+        if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
+            raise ValueError('constraints not satisfied')
+
+        cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian(opt_linear, opt_offset)
+
+        def log_density(logdens_linear, offset, cond_prec, score, opt):
+            if score.ndim == 1:
+                mean_term = logdens_linear.dot(score.T + offset).T
+            else:
+                mean_term = logdens_linear.dot(score.T + offset[:, None]).T
+            arg = opt + mean_term
+            return - 0.5 * np.sum(arg * cond_prec.dot(arg.T).T, 1)
+
+        log_density = functools.partial(log_density, logdens_linear, opt_offset, cond_precision)
+
+        affine_con = constraints(A_scaling,
+                                 b_scaling,
+                                 mean=cond_mean,
+                                 covariance=cond_cov)
+
+
+        return cond_mean, cond_cov, affine_con, logdens_linear, self.observed_opt_state
+
+    def _set_sampler(self,
+                     A_scaling,
+                     b_scaling,
+                     opt_linear,
+                     opt_offset):
+
+        if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
+            raise ValueError('constraints not satisfied')
+
+        cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian(opt_linear, opt_offset)
+
+        def log_density(logdens_linear, offset, cond_prec, score, opt):
+            if score.ndim == 1:
+                mean_term = logdens_linear.dot(score.T + offset).T
+            else:
+                mean_term = logdens_linear.dot(score.T + offset[:, None]).T
+            arg = opt + mean_term
+            return - 0.5 * np.sum(arg * cond_prec.dot(arg.T).T, 1)
+
+        log_density = functools.partial(log_density, logdens_linear, opt_offset, cond_precision)
+
+        affine_con = constraints(A_scaling,
+                                 b_scaling,
+                                 mean=cond_mean,
+                                 covariance=cond_cov)
+
+        return cond_mean, cond_cov, affine_con, logdens_linear, self.observed_opt_state
+
+
+    def _setup_implied_gaussian(self, opt_linear, opt_offset):
+
+        _, prec = self.randomizer.cov_prec
+
+        if np.asarray(prec).shape in [(), (0,)]:
+            cond_precision = opt_linear.T.dot(opt_linear) * prec
+            cond_cov = np.linalg.inv(cond_precision)
+            logdens_linear = cond_cov.dot(opt_linear.T) * prec
+        else:
+            cond_precision = opt_linear.T.dot(prec.dot(opt_linear))
+            cond_cov = np.linalg.inv(cond_precision)
+            logdens_linear = cond_cov.dot(opt_linear.T).dot(prec)
+
+        cond_mean = -logdens_linear.dot(self.observed_score_state + opt_offset)
+
+        return cond_mean, cond_cov, cond_precision, logdens_linear
+
 class gaussian_query(query):
 
 
@@ -1685,6 +1774,78 @@ def selective_MLE(observed_target,
                                                                                             - init_soln)))
     L = target_lin.T.dot(prec_opt)
     observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
+    observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
+
+    Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
+    pvalues = ndist.cdf(Z_scores)
+    pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
+
+    alpha = 1. - level
+    quantile = ndist.ppf(1 - alpha / 2.)
+    intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
+                           final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
+
+    return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
+
+def twostage_selective_MLE(observed_target,
+                           cov_target,
+                           cov_target_score_1,
+                           cov_target_score_2,
+                           init_soln_1,
+                           init_soln_2,
+                           cond_mean_1,
+                           cond_mean_2,
+                           cond_cov_1,
+                           cond_cov_2,
+                           logdens_linear_1,
+                           logdens_linear_2,
+                           linear_part_1,
+                           linear_part_2,
+                           offset_1,
+                           offset_2,
+                           solve_args={'tol': 1.e-12},
+                           level=0.9):
+    """
+    Selective MLE based on approximation of
+    CGF for a two-stage query
+    """
+    if np.asarray(observed_target).shape in [(), (0,)]:
+        raise ValueError('no target specified')
+
+    observed_target = np.atleast_1d(observed_target)
+    prec_target = np.linalg.inv(cov_target)
+    solver = solve_barrier_affine_C
+
+    target_lin_1 = - logdens_linear_1.dot(cov_target_score_1.T.dot(prec_target))
+    prec_opt_1 = np.linalg.inv(cond_cov_1)
+    conjugate_arg_1 = prec_opt_1.dot(cond_mean_1)
+
+    val_1, soln_1, hess_1 = solver(conjugate_arg_1,
+                                   prec_opt_1,
+                                   init_soln_1,
+                                   linear_part_1,
+                                   offset_1,
+                                   **solve_args)
+
+    target_lin_2 = - logdens_linear_2.dot(cov_target_score_2.T.dot(prec_target))
+    prec_opt_2 = np.linalg.inv(cond_cov_2)
+    conjugate_arg_2 = prec_opt_2.dot(cond_mean_2)
+
+    val_2, soln_2, hess_2 = solver(conjugate_arg_2,
+                                   prec_opt_2,
+                                   init_soln_2,
+                                   linear_part_2,
+                                   offset_2,
+                                   **solve_args)
+
+    final_estimator = observed_target + cov_target.dot(target_lin_1.T.dot(prec_opt_1.dot(cond_mean_1 - soln_1))
+                                                       + target_lin_2.T.dot(prec_opt_2.dot(cond_mean_2 - soln_2)))
+    ind_unbiased_estimator = observed_target + cov_target.dot(target_lin_1.T.dot(prec_opt_1.dot(cond_mean_1- init_soln_1)) +
+                                                              target_lin_2.T.dot(prec_opt_2.dot(cond_mean_2 - init_soln_2)))
+
+    L_1 = target_lin_1.T.dot(prec_opt_1)
+    L_2 = target_lin_2.T.dot(prec_opt_2)
+    observed_info_natural = prec_target + L_1.dot(target_lin_1) + L_2.dot(target_lin_2) - L_1.dot(hess_1.dot(L_1.T)) - L_2.dot(hess_2.dot(L_2.T))
     observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
 
     Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
