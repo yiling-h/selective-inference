@@ -6,6 +6,7 @@ from selection.randomized.lasso import full_targets, selected_targets
 from selection.randomized.marginal_slope_twostage import marginal_screening, slope
 from selection.randomized.randomization import randomization
 from selection.randomized.query import twostage_selective_MLE
+from scipy.stats import norm as ndist
 
 try:
     from rpy2.robjects.packages import importr
@@ -74,12 +75,12 @@ if rpy_loaded:
 
         return result
 
-def test_marginal_slope(n=4000, p=2000, signal_fac=1.2, s=50, sigma=3., rho=0.20, randomizer_scale= np.sqrt(1.),
-                        target = "selected"):
+def test_marginal_slope(n=1500, p=1000, signal_fac=1.5, s=20, sigma=1., rho=0.20, randomizer_scale= np.sqrt(0.5),
+                        split_proportion= 0.67, target = "selected"):
 
     inst = gaussian_instance
     signal = np.sqrt(signal_fac * 2. * np.log(p))
-    X, Y, beta = inst(n=n,
+    X, y, beta = inst(n=n,
                       p=p,
                       signal=signal,
                       s=s,
@@ -88,23 +89,22 @@ def test_marginal_slope(n=4000, p=2000, signal_fac=1.2, s=50, sigma=3., rho=0.20
                       sigma=sigma,
                       random_signs=True)[:3]
 
-    sigma_ = np.sqrt(np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p))
-    Y /= sigma_
+    #sigma_ = np.sqrt(np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p))
+    sigma_ = np.std(y)/np.sqrt(2.)
+    Y = y/sigma_
 
     score = X.T.dot(Y)
     omega = randomization.isotropic_gaussian((p,), randomizer_scale * sigma_).sample()
     W = X.T.dot(X)
     marginal_select = marginal_screening.type1(score,
-                                               W * sigma_ ** 2,
+                                               W,
                                                0.1,
-                                               randomizer_scale * sigma_,
+                                               randomizer_scale,
                                                useC=True,
                                                perturb=omega)
 
     boundary, cond_mean_1, cond_cov_1, affine_con_1, logdens_linear_1, initial_soln_1 = marginal_select.fit()
     nonzero = boundary != 0
-
-    print("selected", nonzero.sum())
     first_selected = np.asarray([t for t in range(p) if nonzero[t]])
 
     X_tilde = X[:, nonzero]
@@ -124,8 +124,49 @@ def test_marginal_slope(n=4000, p=2000, signal_fac=1.2, s=50, sigma=3., rho=0.20
 
     signs, cond_mean_2, cond_cov_2, affine_con_2, logdens_linear_2, initial_soln_2 = conv.fit()
     nonzero_slope = signs != 0
-    print("final dimensions", nonzero_slope.sum())
     second_selected = np.asarray([s for s in range(nonzero.sum()) if nonzero_slope[s]])
+
+    subsample_size = int(split_proportion * n)
+    sel_idx = np.zeros(n, np.bool)
+    sel_idx[:subsample_size] = 1
+    np.random.shuffle(sel_idx)
+    inf_idx = ~sel_idx
+
+    Y_inf = Y[inf_idx]
+    X_inf = X[inf_idx, :]
+    #_sigma_ = np.sqrt(np.linalg.norm(Y_inf - X_inf.dot(np.linalg.pinv(X_inf).dot(Y_inf))) ** 2 / (n - p))
+    Y_sel = Y[sel_idx]
+    X_sel = X[sel_idx, :]
+    #Y_inf /= _sigma_
+
+    score_split = X_sel.T.dot(Y_sel)
+    stdev_split = np.sqrt(np.diag(X_sel.T.dot(X_sel)))
+    threshold_split = stdev_split * ndist.ppf(1. - 0.1/ 2.)
+    boundary_split = np.fabs(score_split) >= threshold_split
+    nonzero_split = boundary_split != 0
+    first_selected_split = np.asarray([u for u in range(p) if nonzero_split[u]])
+
+    X_tilde_sel = X_sel[:, nonzero_split]
+    r_beta_split, r_E_split, r_lambda_seq_split, r_sigma_split = slope_R(X_tilde_sel,
+                                                                         Y_sel,
+                                                                         W=None,
+                                                                         normalize=True,
+                                                                         choice_weights="gaussian",
+                                                                         sigma=1.)
+
+    nonzero_slope_split = (r_beta_split != 0)
+    second_selected_split = np.asarray([r for r in range(nonzero_split.sum()) if nonzero_slope_split[r]])
+
+    print("compare dimensions- ms ", nonzero.sum(), nonzero_split.sum())
+    print("compare dimensions- slope ", nonzero_slope.sum(), nonzero_slope_split.sum())
+
+    beta_target_split = np.linalg.pinv(X_inf[:, first_selected_split[second_selected_split]]).dot(X_inf[:, first_selected_split].dot(beta[nonzero_split]))/ sigma_
+    post_split_OLS = np.linalg.pinv(X_inf[:, first_selected_split[second_selected_split]]).dot(Y_inf)
+    naive_split_sd = np.sqrt(np.diag((np.linalg.inv(X_inf[:, first_selected_split[second_selected_split]].T.dot(X_inf[:, first_selected_split[second_selected_split]])))))
+    intervals_split = np.vstack([post_split_OLS - 1.65 * naive_split_sd,
+                                 post_split_OLS + 1.65 * naive_split_sd]).T
+    coverage_split = (beta_target_split > intervals_split[:, 0]) * (beta_target_split < intervals_split[:, 1])
+    length_split = intervals_split[:, 1] - intervals_split[:, 0]
 
     if target == "selected":
         _, _, cov_target_score_1, _ = marginal_select.multivariate_targets(first_selected[second_selected])
@@ -182,20 +223,24 @@ def test_marginal_slope(n=4000, p=2000, signal_fac=1.2, s=50, sigma=3., rho=0.20
     coverage_naive = (beta_target > intervals_naive[:, 0]) * (beta_target < intervals_naive[:, 1])
     length_naive = intervals_naive[:, 1] - intervals_naive[:, 0]
 
-    return coverage_adjusted, sigma_ * length_adjusted, coverage_naive, sigma_ * length_naive
+    return coverage_adjusted, sigma_ * length_adjusted, coverage_naive, sigma_ * length_naive, coverage_split, sigma_ * length_split
 
 
 def main(nsim=100):
-    cover_adjusted, length_adjusted, cover_naive, length_naive = [], [], [], []
+    cover_adjusted, length_adjusted, cover_naive, length_naive, cover_split, length_split = [], [], [], [], [], []
 
     for i in range(nsim):
         results_ = test_marginal_slope()
 
         cover_adjusted.extend(results_[0])
         cover_naive.extend(results_[2])
+        cover_split.extend(results_[4])
         length_adjusted.extend(results_[1])
         length_naive.extend(results_[3])
-        print('coverage and lengths', np.mean(cover_adjusted), np.mean(cover_naive), np.mean(length_adjusted), np.mean(length_naive))
+        length_split.extend(results_[5])
+
+        print('coverage and lengths', np.mean(cover_adjusted), np.mean(cover_split), np.mean(cover_naive), np.mean(length_adjusted),
+        np.mean(length_split), np.mean(length_naive))
 
 main()
 
