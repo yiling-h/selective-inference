@@ -74,7 +74,7 @@ if rpy_loaded:
 
         return result
 
-def test_marginal_slope(n=4000, p=2000, signal_fac=2., s=50, sigma=3., rho=0.20, randomizer_scale= np.sqrt(1.),
+def test_marginal_slope(n=4000, p=2000, signal_fac=1.2, s=50, sigma=3., rho=0.20, randomizer_scale= np.sqrt(1.),
                         target = "selected"):
 
     inst = gaussian_instance
@@ -105,8 +105,7 @@ def test_marginal_slope(n=4000, p=2000, signal_fac=2., s=50, sigma=3., rho=0.20,
     nonzero = boundary != 0
 
     print("selected", nonzero.sum())
-
-    _, _, cov_target_score_1, _ = marginal_select.multivariate_targets(nonzero)
+    first_selected = np.asarray([t for t in range(p) if nonzero[t]])
 
     X_tilde = X[:, nonzero]
 
@@ -126,16 +125,33 @@ def test_marginal_slope(n=4000, p=2000, signal_fac=2., s=50, sigma=3., rho=0.20,
     signs, cond_mean_2, cond_cov_2, affine_con_2, logdens_linear_2, initial_soln_2 = conv.fit()
     nonzero_slope = signs != 0
     print("final dimensions", nonzero_slope.sum())
+    second_selected = np.asarray([s for s in range(nonzero.sum()) if nonzero_slope[s]])
 
-    (observed_target,
-     cov_target,
-     cov_target_score_2,
-     alternatives) = selected_targets(conv.loglike,
+    if target == "selected":
+        _, _, cov_target_score_1, _ = marginal_select.multivariate_targets(first_selected[second_selected])
+
+        (observed_target,
+         cov_target,
+         cov_target_score_2,
+         alternatives) = selected_targets(conv.loglike,
+                                          conv._W,
+                                          nonzero_slope,
+                                          dispersion=1.)
+
+        beta_target = np.linalg.pinv(X_tilde[:, nonzero_slope]).dot(X_tilde.dot(beta[nonzero])) / sigma_
+
+    elif target == "full":
+        _, _, cov_target_score_1, _ = marginal_select.marginal_targets(first_selected[second_selected])
+
+        (observed_target,
+         cov_target,
+         cov_target_score_2,
+         alternatives) = full_targets(conv.loglike,
                                       conv._W,
                                       nonzero_slope,
                                       dispersion=1.)
 
-    beta_target = np.linalg.pinv(X_tilde[:, nonzero_slope]).dot(X_tilde.dot(beta[nonzero])) / sigma_
+        beta_target = beta[first_selected[second_selected]] / sigma_
 
     estimate, _, _, pval, intervals, _ = twostage_selective_MLE(observed_target,
                                                                 cov_target,
@@ -150,12 +166,37 @@ def test_marginal_slope(n=4000, p=2000, signal_fac=2., s=50, sigma=3., rho=0.20,
                                                                 logdens_linear_1,
                                                                 logdens_linear_2,
                                                                 affine_con_1.linear_part,
-                                                                affine_con_1.linear_part,
+                                                                affine_con_2.linear_part,
                                                                 affine_con_1.offset,
                                                                 affine_con_2.offset,
                                                                 solve_args={'tol': 1.e-12},
                                                                 level=0.9)
 
-test_marginal_slope()
+    coverage_adjusted = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
+    length_adjusted = intervals[:, 1] - intervals[:, 0]
+
+    post_sel_OLS = np.linalg.pinv(X_tilde[:, nonzero_slope]).dot(Y)
+    naive_sd = np.sqrt(np.diag((np.linalg.inv(X_tilde[:, nonzero_slope].T.dot(X_tilde[:, nonzero_slope])))))
+    intervals_naive = np.vstack([post_sel_OLS - 1.65 * naive_sd,
+                                 post_sel_OLS + 1.65 * naive_sd]).T
+    coverage_naive = (beta_target > intervals_naive[:, 0]) * (beta_target < intervals_naive[:, 1])
+    length_naive = intervals_naive[:, 1] - intervals_naive[:, 0]
+
+    return coverage_adjusted, sigma_ * length_adjusted, coverage_naive, sigma_ * length_naive
+
+
+def main(nsim=100):
+    cover_adjusted, length_adjusted, cover_naive, length_naive = [], [], [], []
+
+    for i in range(nsim):
+        results_ = test_marginal_slope()
+
+        cover_adjusted.extend(results_[0])
+        cover_naive.extend(results_[2])
+        length_adjusted.extend(results_[1])
+        length_naive.extend(results_[3])
+        print('coverage and lengths', np.mean(cover_adjusted), np.mean(cover_naive), np.mean(length_adjusted), np.mean(length_naive))
+
+main()
 
 

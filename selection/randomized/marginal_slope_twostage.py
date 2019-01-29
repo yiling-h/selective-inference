@@ -315,7 +315,6 @@ class slope(two_stage_gaussian_query):
                  ridge_term=0.,
                  randomizer_scale=None):
 
-        print("sigma", sigma)
         loglike = rr.glm.gaussian(X, Y, coef=1. / sigma ** 2, quadratic=quadratic)
         n, p = X.shape
 

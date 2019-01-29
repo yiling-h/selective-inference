@@ -139,7 +139,6 @@ def test_randomized_slope(n=500, p=100, signal_fac=1.3, s=5, sigma=3., rho=0.35,
                                                      choice_weights="gaussian", #put gaussian
                                                      sigma=1.)
 
-        #print("check", r_beta, r_E, r_sigma * r_lambda_seq)
         conv = slope.gaussian(X,
                               Y,
                               r_sigma * r_lambda_seq,
