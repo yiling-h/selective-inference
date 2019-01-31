@@ -75,8 +75,8 @@ if rpy_loaded:
 
         return result
 
-def test_marginal_slope(n=1500, p=1000, signal_fac=1.5, s=20, sigma=1., rho=0.20, randomizer_scale= np.sqrt(0.5),
-                        split_proportion= 0.67, target = "selected"):
+def test_marginal_slope(n=3000, p=1000, signal_fac=1.5, s=30, sigma=1., rho=0.20, randomizer_scale= np.sqrt(1.),
+                        split_proportion= 0.50, target = "selected"):
 
     inst = gaussian_instance
     signal = np.sqrt(signal_fac * 2. * np.log(p))
@@ -89,8 +89,9 @@ def test_marginal_slope(n=1500, p=1000, signal_fac=1.5, s=20, sigma=1., rho=0.20
                       sigma=sigma,
                       random_signs=True)[:3]
 
-    #sigma_ = np.sqrt(np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p))
-    sigma_ = np.std(y)/np.sqrt(2.)
+    sigma_ = np.sqrt(np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p))
+    #sigma_ = np.std(y)/np.sqrt(2)
+    #sigma_ = 1.
     Y = y/sigma_
 
     score = X.T.dot(Y)
@@ -167,6 +168,13 @@ def test_marginal_slope(n=1500, p=1000, signal_fac=1.5, s=20, sigma=1., rho=0.20
                                  post_split_OLS + 1.65 * naive_split_sd]).T
     coverage_split = (beta_target_split > intervals_split[:, 0]) * (beta_target_split < intervals_split[:, 1])
     length_split = intervals_split[:, 1] - intervals_split[:, 0]
+    pval_split = 2 *(1.-ndist.cdf(np.abs(post_split_OLS) / naive_split_sd))
+
+    pval_alt_split = (pval_split[beta[first_selected_split[second_selected_split]] != 0]) < 0.1
+    if pval_alt_split.sum() > 0:
+        power_split = np.mean(pval_alt_split)
+    else:
+        power_split = 0.
 
     if target == "selected":
         _, _, cov_target_score_1, _ = marginal_select.multivariate_targets(first_selected[second_selected])
@@ -212,6 +220,11 @@ def test_marginal_slope(n=1500, p=1000, signal_fac=1.5, s=20, sigma=1., rho=0.20
                                                                 affine_con_2.offset,
                                                                 solve_args={'tol': 1.e-12},
                                                                 level=0.9)
+    pval_alt = (pval[beta[first_selected[second_selected]] != 0]) < 0.1
+    if pval_alt.sum() > 0:
+        power_adjusted = np.mean(pval_alt)
+    else:
+        power_adjusted = 0.
 
     coverage_adjusted = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
     length_adjusted = intervals[:, 1] - intervals[:, 0]
@@ -223,24 +236,27 @@ def test_marginal_slope(n=1500, p=1000, signal_fac=1.5, s=20, sigma=1., rho=0.20
     coverage_naive = (beta_target > intervals_naive[:, 0]) * (beta_target < intervals_naive[:, 1])
     length_naive = intervals_naive[:, 1] - intervals_naive[:, 0]
 
-    return coverage_adjusted, sigma_ * length_adjusted, coverage_naive, sigma_ * length_naive, coverage_split, sigma_ * length_split
+    return coverage_adjusted, sigma_ * length_adjusted, power_adjusted, coverage_naive, sigma_ * length_naive, coverage_split, sigma_ * length_split, power_split
 
 
 def main(nsim=100):
-    cover_adjusted, length_adjusted, cover_naive, length_naive, cover_split, length_split = [], [], [], [], [], []
+    cover_adjusted, length_adjusted, power_adjusted, cover_naive, length_naive, \
+    cover_split, length_split, power_split = [], [], 0., [], [], [], [], 0.
 
     for i in range(nsim):
         results_ = test_marginal_slope()
 
         cover_adjusted.extend(results_[0])
-        cover_naive.extend(results_[2])
-        cover_split.extend(results_[4])
+        cover_naive.extend(results_[3])
+        cover_split.extend(results_[5])
         length_adjusted.extend(results_[1])
-        length_naive.extend(results_[3])
-        length_split.extend(results_[5])
+        length_naive.extend(results_[4])
+        length_split.extend(results_[6])
+        power_split += results_[7]
+        power_adjusted += results_[2]
 
         print('coverage and lengths', np.mean(cover_adjusted), np.mean(cover_split), np.mean(cover_naive), np.mean(length_adjusted),
-        np.mean(length_split), np.mean(length_naive))
+        np.mean(length_split), np.mean(length_naive), power_adjusted/float(i+1), power_split/float(i+1))
 
 main()
 
