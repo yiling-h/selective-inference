@@ -698,6 +698,7 @@ def debiased_targets(loglike,
         dispersion = (((y - loglike.saturated_loss.mean_function(Xfeat.dot(relaxed_soln)))**2 / W).sum() / 
                       (n - features.sum()))
 
+    print("dispersion ", dispersion)
     alternatives = ['twosided'] * features.sum()
     return observed_target, cov_target * dispersion, crosscov_target_score.T * dispersion, alternatives
 
@@ -713,3 +714,234 @@ def form_targets(target,
                    W,
                    features,
                    **kwargs)
+
+
+class carved_lasso(gaussian_query):
+
+    r"""
+    A class for the carved LASSO for post-selection inference.
+    """
+
+    def __init__(self,
+                 loglike,
+                 feature_weights,
+                 ridge_term,
+                 perturb_split,
+                 randomization_cov):
+        r"""
+        Create a new post-selection object for the LASSO problem
+
+        Parameters
+        ----------
+
+        loglike : `regreg.smooth.glm.glm`
+            A (negative) log-likelihood as implemented in `regreg`.
+
+        feature_weights : np.ndarray
+            Feature weights for L-1 penalty. If a float,
+            it is brodcast to all features.
+
+        ridge_term : float
+            How big a ridge term to add?
+
+        randomizer : object
+            Randomizer -- contains representation of randomization density.
+
+        perturb : np.ndarray
+            Random perturbation subtracted as a linear
+            term in the objective function.
+        """
+
+        self.loglike = loglike
+        self.nfeature = p = self.loglike.shape[0]
+
+        if np.asarray(feature_weights).shape == ():
+            feature_weights = np.ones(loglike.shape) * feature_weights
+        self.feature_weights = np.asarray(feature_weights)
+
+        self.ridge_term = ridge_term
+        self.penalty = rr.weighted_l1norm(self.feature_weights, lagrange=1.)
+        self.perturb_split = perturb_split
+        self.randomization_cov = randomization_cov
+
+    def fit(self,
+            solve_args={'tol': 1.e-12, 'min_its': 50}):
+        """
+        Fit the randomized lasso using `regreg`.
+        Parameters
+        ----------
+        solve_args : keyword args
+             Passed to `regreg.problems.simple_problem.solve`.
+        Returns
+        -------
+        signs : np.float
+             Support and non-zero signs of randomized lasso solution.
+
+        """
+
+        p = self.nfeature
+        self.initial_soln, self.initial_subgrad = self._solve_carved_problem(solve_args=solve_args)
+
+        active_signs = np.sign(self.initial_soln)
+        active = self._active = active_signs != 0
+
+        self._lagrange = self.penalty.weights
+        unpenalized = self._lagrange == 0
+
+        active *= ~unpenalized
+
+        self._overall = overall = (active + unpenalized) > 0
+        self._inactive = inactive = ~self._overall
+        self._unpenalized = unpenalized
+
+        _active_signs = active_signs.copy()
+        _active_signs[unpenalized] = np.nan  # don't release sign of unpenalized variables
+        self.selection_variable = {'sign': _active_signs,
+                                   'variables': self._overall}
+
+        # initial state for opt variables
+
+        initial_scalings = np.fabs(self.initial_soln[active])
+        initial_unpenalized = self.initial_soln[self._unpenalized]
+
+        self.observed_opt_state = np.concatenate([initial_scalings,
+                                                  initial_unpenalized])
+
+        _beta_unpenalized = restricted_estimator(self.loglike, self._overall, solve_args=solve_args)
+
+        beta_bar = np.zeros(p)
+        beta_bar[overall] = _beta_unpenalized
+        self._beta_full = beta_bar
+
+        # observed state for score in internal coordinates
+
+        self.observed_internal_state = np.hstack([_beta_unpenalized,
+                                                  -self.loglike.smooth_objective(beta_bar, 'grad')[inactive]])
+
+        # form linear part
+
+        self.num_opt_var = self.observed_opt_state.shape[0]
+
+        # (\bar{\beta}_{E \cup U}, N_{-E}, c_E, \beta_U, z_{-E})
+        # E for active
+        # U for unpenalized
+        # -E for inactive
+
+        opt_linear = np.zeros((p, self.num_opt_var))
+        _score_linear_term = np.zeros((p, self.num_opt_var))
+
+        # \bar{\beta}_{E \cup U} piece -- the unpenalized M estimator
+
+        X, y = self.loglike.data
+        W = self._W = self.loglike.saturated_loss.hessian(X.dot(beta_bar))
+        _hessian_active = np.dot(X.T, X[:, active] * W[:, None])
+        _hessian_unpen = np.dot(X.T, X[:, unpenalized] * W[:, None])
+
+        _score_linear_term = -np.hstack([_hessian_active, _hessian_unpen])
+
+        # set the observed score (data dependent) state
+
+        self.observed_score_state = _score_linear_term.dot(_beta_unpenalized)
+        self.observed_score_state[inactive] += self.loglike.smooth_objective(beta_bar, 'grad')[inactive]
+
+        def signed_basis_vector(p, j, s):
+            v = np.zeros(p)
+            v[j] = s
+            return v
+
+        active_directions = np.array([signed_basis_vector(p, j, active_signs[j]) for j in np.nonzero(active)[0]]).T
+
+        scaling_slice = slice(0, active.sum())
+        if np.sum(active) == 0:
+            _opt_hessian = 0
+        else:
+            _opt_hessian = _hessian_active * active_signs[None, active] + self.ridge_term * active_directions
+        opt_linear[:, scaling_slice] = _opt_hessian
+
+        # beta_U piece
+
+        unpenalized_slice = slice(active.sum(), self.num_opt_var)
+        unpenalized_directions = np.array([signed_basis_vector(p, j, 1) for j in np.nonzero(unpenalized)[0]]).T
+        if unpenalized.sum():
+            opt_linear[:, unpenalized_slice] = (_hessian_unpen
+                                                      + self.ridge_term * unpenalized_directions)
+
+        opt_offset = self.initial_subgrad
+
+        # now make the constraints and implied gaussian
+
+        self._setup = True
+        A_scaling = -np.identity(self.num_opt_var)
+        b_scaling = np.zeros(self.num_opt_var)
+
+        self._set_sampler_(A_scaling,
+                           b_scaling,
+                           opt_linear,
+                           opt_offset,
+                           self.randomization_cov)
+
+        return active_signs
+
+    def _solve_carved_problem(self,
+                              solve_args={'tol': 1.e-12, 'min_its': 50}):
+
+        self.initial_omega = self.perturb_split
+        quad = rr.identity_quadratic(self.ridge_term, 0, -self.perturb_split, 0)
+        problem = rr.simple_problem(self.loglike, self.penalty)
+
+        initial_soln = problem.solve(quad, **solve_args)
+        initial_subgrad = -(self.loglike.smooth_objective(initial_soln, 'grad') +
+                            quad.objective(initial_soln, 'grad'))
+
+        return initial_soln, initial_subgrad
+
+    @staticmethod
+    def gaussian(X,
+                 Y,
+                 feature_weights,
+                 noise_variance,
+                 randomization_cov,
+                 sigma=1.,
+                 subsample_frac=0.5,
+                 quadratic=None,
+                 ridge_term=None,
+                 solve_args={'tol': 1.e-12, 'min_its': 50}):
+
+        loglike = rr.glm.gaussian(X, Y, coef=1. / sigma ** 2, quadratic=quadratic)
+        n, p = X.shape
+
+        mean_diag = np.mean((X ** 2).sum(0))
+        if ridge_term is None:
+            ridge_term = np.std(Y) * np.sqrt(mean_diag) / np.sqrt(n - 1)
+
+        subsample_size = int(subsample_frac * n)
+        sel_idx = np.zeros(n, np.bool)
+        sel_idx[:subsample_size] = 1
+        np.random.shuffle(sel_idx)
+        sel_indices = np.asarray([t for t in range(n) if sel_idx[t]])
+        Y_sel = Y[sel_idx]
+        X_sel = X[sel_idx, :]
+        rho_ = subsample_size / float(n)
+
+        loglike_split = rr.glm.gaussian(X_sel, Y_sel, coef=1./(rho_ *(sigma ** 2)), quadratic=quadratic)
+        quad_split = rr.identity_quadratic(ridge_term, 0., 0., 0.)
+        problem_split = rr.simple_problem(loglike_split, rr.weighted_l1norm(feature_weights, lagrange=1.))
+        #split_lasso = problem_split.solve()
+        split_lasso = problem_split.solve(quad_split, **solve_args)
+
+        subgrad_split = -(loglike_split.smooth_objective(split_lasso, 'grad') + quad_split.objective(split_lasso, 'grad'))
+        perturb_split = subgrad_split - X.T.dot(Y - X.dot(split_lasso)) + quad_split.objective(split_lasso, 'grad')
+        print("check", np.allclose(X_sel.T.dot(Y_sel - X_sel.dot(split_lasso))/rho_ - X.T.dot(Y - X.dot(split_lasso)), perturb_split))
+
+        # id = np.zeros((n, subsample_size))
+        # for k in range(subsample_size):
+        #     (id[:, k])[sel_indices[k]] = 1
+        # randomization_cov = noise_variance * (
+        #             X.T.dot(X) + X_sel.T.dot(X_sel) / (rho_ ** 2) - 2 * X.T.dot(id).dot(X_sel) / rho_)
+
+        return carved_lasso(loglike,
+                            np.asarray(feature_weights) / sigma ** 2,
+                            ridge_term,
+                            perturb_split,
+                            n*randomization_cov)
+

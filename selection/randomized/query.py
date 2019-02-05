@@ -383,7 +383,61 @@ class gaussian_query(query):
                                                (logdens_linear, opt_offset),
                                                selection_info=self.selection_variable)
 
-        self.cond_mean_vec, self.cond_cov_vec, self.linear_coef_vec = self._setup_implied_gaussian_univariate(opt_linear, opt_offset)
+        #self.cond_mean_vec, self.cond_cov_vec, self.linear_coef_vec = self._setup_implied_gaussian_univariate(opt_linear, opt_offset)
+
+    def _set_sampler_(self,
+                      A_scaling,
+                      b_scaling,
+                      opt_linear,
+                      opt_offset,
+                      randomization_cov):
+
+        if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
+            raise ValueError('constraints not satisfied')
+
+        cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian_(opt_linear, opt_offset, randomization_cov)
+
+        def log_density(logdens_linear, offset, cond_prec, score, opt):
+            if score.ndim == 1:
+                mean_term = logdens_linear.dot(score.T + offset).T
+            else:
+                mean_term = logdens_linear.dot(score.T + offset[:, None]).T
+            arg = opt + mean_term
+            return - 0.5 * np.sum(arg * cond_prec.dot(arg.T).T, 1)
+
+        log_density = functools.partial(log_density, logdens_linear, opt_offset, cond_precision)
+
+        self.cond_mean, self.cond_cov = cond_mean, cond_cov
+
+        affine_con = constraints(A_scaling,
+                                 b_scaling,
+                                 mean=cond_mean,
+                                 covariance=cond_cov)
+
+
+        self.sampler = affine_gaussian_sampler(affine_con,
+                                               self.observed_opt_state,
+                                               self.observed_score_state,
+                                               log_density,
+                                               (logdens_linear, opt_offset),
+                                               selection_info=self.selection_variable)
+
+    def _setup_implied_gaussian_(self, opt_linear, opt_offset, randomization_cov):
+
+        prec = np.linalg.inv(randomization_cov)
+
+        if np.asarray(prec).shape in [(), (0,)]:
+            cond_precision = opt_linear.T.dot(opt_linear) * prec
+            cond_cov = np.linalg.inv(cond_precision)
+            logdens_linear = cond_cov.dot(opt_linear.T) * prec
+        else:
+            cond_precision = opt_linear.T.dot(prec.dot(opt_linear))
+            cond_cov = np.linalg.inv(cond_precision)
+            logdens_linear = cond_cov.dot(opt_linear.T).dot(prec)
+
+        cond_mean = -logdens_linear.dot(self.observed_score_state + opt_offset)
+
+        return cond_mean, cond_cov, cond_precision, logdens_linear
 
     def _setup_implied_gaussian(self, opt_linear, opt_offset):
 
@@ -1728,7 +1782,7 @@ def selective_MLE(observed_target,
                   logdens_linear,
                   linear_part,
                   offset,
-                  solve_args={'tol':1.e-12}, 
+                  solve_args={'tol':1.e-12},
                   level= 0.9):
                   #useC=False):
     """
