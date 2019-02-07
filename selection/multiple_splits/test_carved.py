@@ -82,21 +82,21 @@ def test_carved_lasso(n=500, p=100, nval=500, rho=0.20, s=5, beta_type=1, snr=0.
         print("sigma ", sigma)
         if n<p:
             dispersion = None
-            #sigma_ = np.std(y)
-            sigma_ = sigma
+            sigma_ = np.std(y)
+            #sigma_ = sigma
         else:
             dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
             sigma_ = np.sqrt(dispersion)
 
         lam_theory = sigma_ * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
-        randomization_cov = ((sigma**2)*((1.-subsample_frac)/subsample_frac))* Sigma
+        randomization_cov = ((sigma_**2)*((1.-subsample_frac)/subsample_frac))* Sigma
 
         carved_lasso_sol = carved_lasso.gaussian(X,
                                                  y,
                                                  noise_variance= sigma_ ** 2.,
+                                                 rand_covariance = "None",
                                                  randomization_cov = randomization_cov,
                                                  feature_weights=lam_theory* np.ones(p),
-                                                 ridge_term= 0.,
                                                  subsample_frac= subsample_frac)
 
         signs = carved_lasso_sol.fit()

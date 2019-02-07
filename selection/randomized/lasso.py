@@ -900,6 +900,7 @@ class carved_lasso(gaussian_query):
                  Y,
                  feature_weights,
                  noise_variance,
+                 rand_covariance,
                  randomization_cov,
                  sigma=1.,
                  subsample_frac=0.5,
@@ -933,12 +934,13 @@ class carved_lasso(gaussian_query):
         perturb_split = subgrad_split - X.T.dot(Y - X.dot(split_lasso)) + quad_split.objective(split_lasso, 'grad')
         print("check", np.allclose(X_sel.T.dot(Y_sel - X_sel.dot(split_lasso))/rho_ - X.T.dot(Y - X.dot(split_lasso)), perturb_split))
 
-        # id = np.zeros((n, subsample_size))
-        # for k in range(subsample_size):
-        #     (id[:, k])[sel_indices[k]] = 1
-        # randomization_cov = noise_variance * (
-        #             X.T.dot(X) + X_sel.T.dot(X_sel) / (rho_ ** 2) - 2 * X.T.dot(id).dot(X_sel) / rho_)
-
+        if rand_covariance == "None":
+            id = np.zeros((n, subsample_size))
+            for k in range(subsample_size):
+                (id[:, k])[sel_indices[k]] = 1
+            randomization_cov = (noise_variance/n) * (X.T.dot(X) + X_sel.T.dot(X_sel) / (rho_ ** 2) - 2 * X.T.dot(id).dot(X_sel) / rho_)
+        elif rand_covariance == "True":
+            randomization_cov = randomization_cov
         return carved_lasso(loglike,
                             np.asarray(feature_weights) / sigma ** 2,
                             ridge_term,
