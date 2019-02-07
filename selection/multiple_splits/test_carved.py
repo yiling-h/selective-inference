@@ -72,102 +72,18 @@ def glmnet_lasso(X, y, lambda_val):
     lam_1se = np.asscalar(np.array(lambda_R(r_X, r_y, r_lam).rx2('lam.1se')))
     return estimate, estimate_1se, estimate_min, lam_min, lam_1se
 
-# def test_carved_lasso(n=300, p=600, nval=300, rho=0.20, s=15, beta_type=1, snr=0.55, subsample_frac=0.80):
-#
-#     while True:
-#         X, y, _, _, Sigma, beta, sigma = sim_xy(n=n, p=p, nval=nval, rho=rho, s=s, beta_type=beta_type, snr=snr)
-#         X -= X.mean(0)[None, :]
-#         X /= (X.std(0)[None, :] * np.sqrt(n / (n - 1.)))
-#         y = y - y.mean()
-#         print("sigma ", sigma)
-#         if n<p:
-#             dispersion = None
-#             #sigma_ = np.std(y)
-#             sigma_ = sigma
-#         else:
-#             dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
-#             sigma_ = np.sqrt(dispersion)
-#
-#         lam_theory = sigma_ * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
-#         randomization_cov = ((sigma**2)*((1.-subsample_frac)/subsample_frac))* Sigma
-#
-#         carved_lasso_sol = carved_lasso.gaussian(X,
-#                                                  y,
-#                                                  noise_variance= sigma_ ** 2.,
-#                                                  randomization_cov = randomization_cov,
-#                                                  feature_weights=lam_theory* np.ones(p),
-#                                                  ridge_term= 0.,
-#                                                  subsample_frac= subsample_frac)
-#
-#         signs = carved_lasso_sol.fit()
-#         nonzero = signs != 0
-#         print("solution", nonzero.sum())
-#
-#         if nonzero.sum() > 0:
-#
-#             if n>p:
-#                 target_randomized = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
-#                 (observed_target,
-#                  cov_target,
-#                  cov_target_score,
-#                  alternatives) = selected_targets(carved_lasso_sol.loglike,
-#                                                   carved_lasso_sol._W,
-#                                                   nonzero,
-#                                                   dispersion=dispersion)
-#
-#                 MLE_estimate, _, _, MLE_pval, MLE_intervals, ind_unbiased_estimator = carved_lasso_sol.selective_MLE(observed_target,
-#                                                                                                                      cov_target,
-#                                                                                                                      cov_target_score,
-#                                                                                                                      alternatives)
-#                 print("MLE intervals ", MLE_intervals, target_randomized)
-#
-#             else:
-#                 target_randomized = beta[nonzero]
-#                 (observed_target,
-#                  cov_target,
-#                  cov_target_score,
-#                  alternatives) = debiased_targets(carved_lasso_sol.loglike,
-#                                                   carved_lasso_sol._W,
-#                                                   nonzero,
-#                                                   penalty=carved_lasso_sol.penalty,
-#                                                   dispersion=dispersion)
-#
-#                 MLE_estimate, _, _, MLE_pval, MLE_intervals, ind_unbiased_estimator = carved_lasso_sol.selective_MLE(observed_target,
-#                                                                                                                      cov_target,
-#                                                                                                                      cov_target_score,
-#                                                                                                                      alternatives)
-#                 print("MLE intervals ", MLE_intervals, target_randomized)
-#
-#             return (MLE_estimate-target_randomized), np.mean((target_randomized > MLE_intervals[:, 0]) * (target_randomized < MLE_intervals[:, 1]))
-
-# def main(nsim=500):
-#     cover = 0.
-#     nn = []
-#     bias = 0.
-#
-#     for i in range(nsim):
-#         nn_, cover_ = test_carved_lasso()
-#         cover += cover_
-#         bias += np.mean(nn_)
-#         nn.extend(nn_)
-#         print("completed ", i, cover / float(i + 1), bias / float(i + 1))
-#
-#     # sns.distplot(np.asarray(nn))
-#     # plt.show()
-#     stats.probplot(np.asarray(nn), dist="norm", plot=pylab)
-#     pylab.show()
-
-
-def test_carved_lasso_singleinstance(X, y, Sigma, beta, sigma, subsample_frac=0.80, target="selected"):
+def test_carved_lasso(n=500, p=100, nval=500, rho=0.20, s=5, beta_type=1, snr=0.20, subsample_frac=0.80):
 
     while True:
-        n, p = X.shape
+        X, y, _, _, Sigma, beta, sigma = sim_xy(n=n, p=p, nval=nval, rho=rho, s=s, beta_type=beta_type, snr=snr)
+        X -= X.mean(0)[None, :]
+        X /= (X.std(0)[None, :] * np.sqrt(n / (n - 1.)))
+        y = y - y.mean()
         print("sigma ", sigma)
         if n<p:
             dispersion = None
             #sigma_ = np.std(y)
             sigma_ = sigma
-            dispersion = sigma ** 2.
         else:
             dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
             sigma_ = np.sqrt(dispersion)
@@ -189,7 +105,7 @@ def test_carved_lasso_singleinstance(X, y, Sigma, beta, sigma, subsample_frac=0.
 
         if nonzero.sum() > 0:
 
-            if target=="selected":
+            if n>p:
                 target_randomized = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
                 (observed_target,
                  cov_target,
@@ -224,27 +140,13 @@ def test_carved_lasso_singleinstance(X, y, Sigma, beta, sigma, subsample_frac=0.
 
             return (MLE_estimate-target_randomized), np.mean((target_randomized > MLE_intervals[:, 0]) * (target_randomized < MLE_intervals[:, 1]))
 
-
 def main(nsim=500):
     cover = 0.
     nn = []
     bias = 0.
-    n = 300
-    p = 600
-    nval = n
-    rho = 0.20
-    s = 15
-    beta_type = 1
-    snr = 0.55
-    subsample_frac = 0.80
-
-    X, y, _, _, Sigma, beta, sigma = sim_xy(n=n, p=p, nval=nval, rho=rho, s=s, beta_type=beta_type, snr=snr)
-    X -= X.mean(0)[None, :]
-    X /= (X.std(0)[None, :] * np.sqrt(n / (n - 1.)))
-    y = y - y.mean()
 
     for i in range(nsim):
-        nn_, cover_ = test_carved_lasso_singleinstance(X=X, y=y, Sigma=Sigma, beta=beta, sigma=sigma, subsample_frac=0.80, target="selected")
+        nn_, cover_ = test_carved_lasso()
         cover += cover_
         bias += np.mean(nn_)
         nn.extend(nn_)
@@ -256,5 +158,103 @@ def main(nsim=500):
     pylab.show()
 
 main(nsim=500)
+
+# def test_carved_lasso_singleinstance(X, y, Sigma, beta, sigma, subsample_frac=0.80, target="selected"):
+#
+#     while True:
+#         n, p = X.shape
+#         print("sigma ", sigma)
+#         if n<p:
+#             dispersion = None
+#             #sigma_ = np.std(y)
+#             sigma_ = sigma
+#             dispersion = sigma ** 2.
+#         else:
+#             dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
+#             sigma_ = np.sqrt(dispersion)
+#
+#         lam_theory = sigma_ * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
+#         randomization_cov = ((sigma**2)*((1.-subsample_frac)/subsample_frac))* Sigma
+#
+#         carved_lasso_sol = carved_lasso.gaussian(X,
+#                                                  y,
+#                                                  noise_variance= sigma_ ** 2.,
+#                                                  randomization_cov = randomization_cov,
+#                                                  feature_weights=lam_theory* np.ones(p),
+#                                                  ridge_term= 0.,
+#                                                  subsample_frac= subsample_frac)
+#
+#         signs = carved_lasso_sol.fit()
+#         nonzero = signs != 0
+#         print("solution", nonzero.sum())
+#
+#         if nonzero.sum() > 0:
+#
+#             if target=="selected":
+#                 target_randomized = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+#                 (observed_target,
+#                  cov_target,
+#                  cov_target_score,
+#                  alternatives) = selected_targets(carved_lasso_sol.loglike,
+#                                                   carved_lasso_sol._W,
+#                                                   nonzero,
+#                                                   dispersion=dispersion)
+#
+#                 MLE_estimate, _, _, MLE_pval, MLE_intervals, ind_unbiased_estimator = carved_lasso_sol.selective_MLE(observed_target,
+#                                                                                                                      cov_target,
+#                                                                                                                      cov_target_score,
+#                                                                                                                      alternatives)
+#                 print("MLE intervals ", MLE_intervals, target_randomized)
+#
+#             else:
+#                 target_randomized = beta[nonzero]
+#                 (observed_target,
+#                  cov_target,
+#                  cov_target_score,
+#                  alternatives) = debiased_targets(carved_lasso_sol.loglike,
+#                                                   carved_lasso_sol._W,
+#                                                   nonzero,
+#                                                   penalty=carved_lasso_sol.penalty,
+#                                                   dispersion=dispersion)
+#
+#                 MLE_estimate, _, _, MLE_pval, MLE_intervals, ind_unbiased_estimator = carved_lasso_sol.selective_MLE(observed_target,
+#                                                                                                                      cov_target,
+#                                                                                                                      cov_target_score,
+#                                                                                                                      alternatives)
+#                 print("MLE intervals ", MLE_intervals, target_randomized)
+#
+#             return (MLE_estimate-target_randomized), np.mean((target_randomized > MLE_intervals[:, 0]) * (target_randomized < MLE_intervals[:, 1]))
+#
+#
+# def main(nsim=500):
+#     cover = 0.
+#     nn = []
+#     bias = 0.
+#     n = 500
+#     p = 100
+#     nval = n
+#     rho = 0.20
+#     s = 10
+#     beta_type = 1
+#     snr = 0.20
+#     subsample_frac = 0.80
+#
+#     X, y, _, _, Sigma, beta, sigma = sim_xy(n=n, p=p, nval=nval, rho=rho, s=s, beta_type=beta_type, snr=snr)
+#     X -= X.mean(0)[None, :]
+#     X /= (X.std(0)[None, :] * np.sqrt(n / (n - 1.)))
+#     y = y - y.mean()
+#
+#     for i in range(nsim):
+#         nn_, cover_ = test_carved_lasso_singleinstance(X=X, y=y, Sigma=Sigma, beta=beta, sigma=sigma, subsample_frac=0.80, target="selected")
+#         cover += cover_
+#         bias += np.mean(nn_)
+#         nn.extend(nn_)
+#         print("completed ", i, cover / float(i + 1), bias / float(i + 1))
+#
+#     # sns.distplot(np.asarray(nn))
+#     # plt.show()
+#     stats.probplot(np.asarray(nn), dist="norm", plot=pylab)
+#     pylab.show()
+
 
 

@@ -3,12 +3,16 @@ import nose.tools as nt
 
 from selection.randomized.lasso import lasso, full_targets, selected_targets, debiased_targets
 from selection.tests.instance import gaussian_instance
+import matplotlib.pyplot as plt
+import scipy.stats as stats
+import pylab
 
 def test_full_targets(n=200, 
                       p=1000, 
                       signal_fac=0.5, 
-                      s=5, sigma=3, 
-                      rho=0.4, 
+                      s=5,
+                      sigma=3.,
+                      rho=0.20,
                       randomizer_scale=0.5,
                       full_dispersion=False):
     """
@@ -77,7 +81,7 @@ def test_full_targets(n=200,
             print("estimate, intervals", estimate, intervals)
 
             coverage = (beta[nonzero] > intervals[:, 0]) * (beta[nonzero] < intervals[:, 1])
-            return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
+            return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals, (estimate-beta[nonzero])
 
 
 def test_selected_targets(n=2000, 
@@ -85,7 +89,7 @@ def test_selected_targets(n=2000,
                           signal_fac=1., 
                           s=5, 
                           sigma=3, 
-                          rho=0.4, 
+                          rho=0.40,
                           randomizer_scale=1,
                           full_dispersion=True):
     """
@@ -143,14 +147,14 @@ def test_selected_targets(n=2000,
             beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
             coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
-            return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
+            return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals, (estimate-beta_target)
 
 
 def main(nsim=500, full=False):
-    P0, PA, cover, length_int = [], [], [], []
+    P0, PA, cover, length_int, nn = [], [], [], [], []
     from statsmodels.distributions import ECDF
 
-    n, p, s = 500, 100, 10
+    n, p, s = 200, 500, 5
 
     for i in range(nsim):
         if full:
@@ -158,14 +162,15 @@ def main(nsim=500, full=False):
                 full_dispersion = True
             else:
                 full_dispersion = False
-            p0, pA, cover_, intervals = test_full_targets(n=n, p=p, s=s, full_dispersion=full_dispersion)
+            p0, pA, cover_, intervals, nn_ = test_full_targets(n=n, p=p, s=s, full_dispersion=full_dispersion)
             avg_length = intervals[:, 1] - intervals[:, 0]
         else:
             full_dispersion = True
-            p0, pA, cover_, intervals = test_selected_targets(n=n, p=p, s=s,
+            p0, pA, cover_, intervals, nn_ = test_selected_targets(n=n, p=p, s=s,
                                                               full_dispersion=full_dispersion)
             avg_length = intervals[:, 1] - intervals[:, 0]
 
+        nn.extend(nn_)
         cover.extend(cover_)
         P0.extend(p0)
         PA.extend(pA)
@@ -173,4 +178,8 @@ def main(nsim=500, full=False):
             np.array(PA) < 0.1, np.mean(P0), np.std(P0), np.mean(np.array(P0) < 0.1), np.mean(np.array(PA) < 0.1), np.mean(cover),
             np.mean(avg_length), 'null pvalue + power + length')
 
-main(nsim=1, full=False)
+    print("coverage", np.mean(cover))
+    stats.probplot(np.asarray(nn), dist="norm", plot=pylab)
+    pylab.show()
+
+main(nsim=300, full=True)
