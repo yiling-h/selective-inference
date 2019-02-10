@@ -880,6 +880,8 @@ class carved_lasso(gaussian_query):
                            opt_offset,
                            self.randomization_cov)
 
+        self.A_scaling = A_scaling
+        self.b_scaling = b_scaling
         return active_signs
 
     def _solve_carved_problem(self,

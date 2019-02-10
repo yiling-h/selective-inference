@@ -10,7 +10,7 @@ from selection.adjusted_MLE.cv_MLE import (sim_xy,
 
 def output_compare_carved_split(n=500, p=100, rho=0.35, s=5, beta_type=1, snr_values=np.array([0.15, 0.21, 0.26, 0.31, 0.36,
                                                                                               0.42, 0.71, 1.22, 2.07, 3.52]),
-                               target="selected", tuning_rand="lambda.theory", tuning_nonrand ="lambda.theory",
+                               target="selected", tuning_rand="lambda.min", tuning_nonrand ="lambda.min",
                                split_proportion = 0.67, ndraw = 50, outpath = None):
 
     df_selective_inference = pd.DataFrame()
@@ -63,4 +63,4 @@ def output_compare_carved_split(n=500, p=100, rho=0.35, s=5, beta_type=1, snr_va
     df_selective_inference.to_csv(outfile_inf_csv, index=False)
     df_selective_inference.to_html(outfile_inf_html)
 
-output_compare_carved_split(outpath='/Users/psnigdha/adjusted_MLE/n_500_p_100/lam_theory/betatype_1/')
+output_compare_carved_split(outpath='/Users/psnigdha/adjusted_MLE/n_500_p_100/lam_min/betatype_1/')

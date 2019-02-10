@@ -407,7 +407,7 @@ class gaussian_query(query):
 
         log_density = functools.partial(log_density, logdens_linear, opt_offset, cond_precision)
 
-        self.cond_mean, self.cond_cov = cond_mean, cond_cov
+        self.cond_mean, self.cond_cov, self.logdens_linear = cond_mean, cond_cov, logdens_linear
 
         affine_con = constraints(A_scaling,
                                  b_scaling,
@@ -1773,7 +1773,7 @@ def _solve_barrier_nonneg(conjugate_arg,
     hess = np.linalg.inv(precision + np.diag(barrier_hessian(current)))
     return current_value, current, hess
 
-def selective_MLE(observed_target, 
+def selective_MLE(observed_target,
                   cov_target, 
                   cov_target_score, 
                   init_soln, # initial (observed) value of optimization variables -- used as a feasible point.           # precise value used only for independent estimator
@@ -1805,7 +1805,6 @@ def selective_MLE(observed_target,
     target_offset = cond_mean - target_lin.dot(observed_target)
 
     prec_opt = np.linalg.inv(cond_cov)
-
     conjugate_arg = prec_opt.dot(cond_mean)
 
     # if useC:
@@ -1988,7 +1987,7 @@ def _selective_MLE(observed_target,
                    logdens_linear,
                    linear_part,
                    offset,
-                   solve_args={'tol': 1.e-12},
+                   solve_args={'tol': 1.e-15},
                    level=0.9,
                    useC=False):
     """
@@ -2045,3 +2044,69 @@ def _selective_MLE(observed_target,
                            final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
 
     return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
+
+def selective_MLE_grid(observed_target,
+                       obs_target,
+                       cov_target,
+                       cov_target_score,
+                       init_soln,
+                       cond_mean_carved,
+                       cond_cov,
+                       logdens_linear,
+                       linear_part,
+                       offset,
+                       solve_args={'tol': 1.e-15},
+                       level=0.9):
+
+    if np.asarray(observed_target).shape in [(), (0,)]:
+        raise ValueError('no target specified')
+
+    observed_target = np.atleast_1d(observed_target)
+    prec_target = np.linalg.inv(cov_target)
+
+    # target_lin determines how the conditional mean of optimization variables
+    # vary with target
+    # logdens_linear determines how the argument of the optimization density
+    # depends on the score, not how the mean depends on score, hence the minus sign
+
+    target_lin = - logdens_linear.dot(cov_target_score.T.dot(prec_target))
+
+    prec_opt = np.linalg.inv(cond_cov)
+    cond_mean = target_lin.dot(observed_target) + (cond_mean_carved-target_lin.dot(obs_target))
+    conjugate_arg = prec_opt.dot(cond_mean)
+
+    # if useC:
+    #     print("using C")
+    #     solver = solve_barrier_affine_C
+    # else:
+    #     print("not using C")
+    #     solver = solve_barrier_affine_py
+    solver = solve_barrier_affine_C
+
+    val, soln, hess = solver(conjugate_arg,
+                             prec_opt,
+                             init_soln,
+                             linear_part,
+                             offset,
+                             **solve_args)
+
+    final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
+    ind_unbiased_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean
+                                                                                            - init_soln)))
+    L = target_lin.T.dot(prec_opt)
+    observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
+    observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
+
+    Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
+    pvalues = ndist.cdf(Z_scores)
+    pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
+
+    alpha = 1. - level
+    quantile = ndist.ppf(1 - alpha / 2.)
+    intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
+                           final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
+
+    return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
+
+
+
