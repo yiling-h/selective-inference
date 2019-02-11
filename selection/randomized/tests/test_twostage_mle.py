@@ -75,8 +75,8 @@ if rpy_loaded:
 
         return result
 
-def test_marginal_slope(n=3000, p=1000, signal_fac=1.5, s=30, sigma=1., rho=0.20, randomizer_scale= np.sqrt(1.),
-                        split_proportion= 0.50, target = "selected"):
+def test_marginal_slope(n=3000, p=1000, signal_fac=1.5, s=30, sigma=2., rho=0.20, randomizer_scale= np.sqrt(0.5),
+                        split_proportion= 0.67, target = "selected"):
 
     inst = gaussian_instance
     signal = np.sqrt(signal_fac * 2. * np.log(p))
@@ -225,6 +225,7 @@ def test_marginal_slope(n=3000, p=1000, signal_fac=1.5, s=30, sigma=1., rho=0.20
         power_adjusted = np.mean(pval_alt)
     else:
         power_adjusted = 0.
+    fdr = ((pval[beta[first_selected[second_selected]] == 0]) < 0.1).sum() / float((pval < 0.1).sum())
 
     coverage_adjusted = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
     length_adjusted = intervals[:, 1] - intervals[:, 0]
@@ -236,12 +237,13 @@ def test_marginal_slope(n=3000, p=1000, signal_fac=1.5, s=30, sigma=1., rho=0.20
     coverage_naive = (beta_target > intervals_naive[:, 0]) * (beta_target < intervals_naive[:, 1])
     length_naive = intervals_naive[:, 1] - intervals_naive[:, 0]
 
-    return coverage_adjusted, sigma_ * length_adjusted, power_adjusted, coverage_naive, sigma_ * length_naive, coverage_split, sigma_ * length_split, power_split
+    return coverage_adjusted, sigma_ * length_adjusted, power_adjusted, coverage_naive, sigma_ * length_naive, \
+           coverage_split, sigma_ * length_split, power_split, fdr
 
 
 def main(nsim=100):
     cover_adjusted, length_adjusted, power_adjusted, cover_naive, length_naive, \
-    cover_split, length_split, power_split = [], [], 0., [], [], [], [], 0.
+    cover_split, length_split, power_split, fdr = [], [], 0., [], [], [], [], 0., 0.
 
     for i in range(nsim):
         results_ = test_marginal_slope()
@@ -254,9 +256,10 @@ def main(nsim=100):
         length_split.extend(results_[6])
         power_split += results_[7]
         power_adjusted += results_[2]
+        fdr += results_[8]
 
         print('coverage and lengths', np.mean(cover_adjusted), np.mean(cover_split), np.mean(cover_naive), np.mean(length_adjusted),
-        np.mean(length_split), np.mean(length_naive), power_adjusted/float(i+1), power_split/float(i+1))
+        np.mean(length_split), np.mean(length_naive), power_adjusted/float(i+1), power_split/float(i+1), fdr/float(i+1))
 
 main()
 

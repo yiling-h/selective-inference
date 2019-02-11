@@ -1002,9 +1002,6 @@ def compare_split_MLE(n=200, p=1000, nval=200, rho=0.35, s=10, beta_type=1, snr=
     return np.vstack((MLE_inf, split_inf, nreport, nreport_split))
 
 
-# compare_split_MLE(n=200, p=1000, nval=200, rho=0.35, s=10, beta_type=1, snr=0.20, target= "selected",
-#                   randomizer_scale=np.sqrt(0.50), full_dispersion=False, tuning_rand="lambda.1se",
-#                   tuning_nonrand="lambda.min", split_proportion=0.67)
 
 
 
