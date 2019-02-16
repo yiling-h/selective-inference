@@ -202,6 +202,8 @@ class lasso(gaussian_query):
         A_scaling = -np.identity(self.num_opt_var)
         b_scaling = np.zeros(self.num_opt_var)
 
+        #print("check", A_scaling.dot(self.observed_opt_state) - b_scaling <= 0)
+
         self._set_sampler(A_scaling,
                           b_scaling,
                           opt_linear,
@@ -697,8 +699,6 @@ def debiased_targets(loglike,
         relaxed_soln = nonrand_soln[features] - np.linalg.inv(Qrelax).dot(G_nonrand[features])
         dispersion = (((y - loglike.saturated_loss.mean_function(Xfeat.dot(relaxed_soln)))**2 / W).sum() / 
                       (n - features.sum()))
-
-    print("dispersion ", dispersion)
     alternatives = ['twosided'] * features.sum()
     return observed_target, cov_target * dispersion, crosscov_target_score.T * dispersion, alternatives
 

@@ -448,6 +448,7 @@ class gaussian_query(query):
             cond_cov = np.linalg.inv(cond_precision)
             logdens_linear = cond_cov.dot(opt_linear.T) * prec
         else:
+            print("shapes", prec.shape, opt_linear.shape)
             cond_precision = opt_linear.T.dot(prec.dot(opt_linear))
             cond_cov = np.linalg.inv(cond_precision)
             logdens_linear = cond_cov.dot(opt_linear.T).dot(prec)
