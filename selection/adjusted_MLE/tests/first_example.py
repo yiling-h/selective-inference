@@ -137,7 +137,7 @@ def test_plot_pivot(ndraw=100, plot=True):
     # plt.plot(grid, grid, 'k--', linewidth=3)
     # plt.savefig("/Users/psnigdha/maximum_likelihood_inference/Talk_plots/Motivating_example/Pivot_n500_p100_rho0_snr25.png")
 
-test_plot_pivot(ndraw=200)
+#test_plot_pivot(ndraw=200)
 
 def joint_pivot(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1, snr=0.20, randomizer_scale=np.sqrt(0.50), full_dispersion=True):
 
@@ -188,19 +188,22 @@ def joint_pivot(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1, snr=0.20, ra
         joint_pivot_MLE = F.cdf((n-nactive)*pivot_MLE/((n-1.)*nactive), nactive, n-nactive)
         time_MLE = tic - toc
 
-        return joint_pivot_MLE, time_MLE, np.mean(cov_MLE)
+        joint_cov_MLE = ((n-nactive)*pivot_MLE/((n-1.)*nactive) <= F.ppf(0.90, nactive, n-nactive))
 
-def plot_pivot_joint(ndraw=500, plot=True):
+        return joint_pivot_MLE, time_MLE, np.mean(cov_MLE), joint_cov_MLE
+
+def plot_pivot_joint(ndraw=500, plot=False):
     import matplotlib.pyplot as plt
 
     _pivot_MLE = []
     _cov_MLE = 0.
     _time_MLE = 0.
     for i in range(ndraw):
-        pivot_MLE, time_MLE, cov_MLE = joint_pivot()
+        pivot_MLE, time_MLE, _, cov_MLE = joint_pivot()
         _cov_MLE += cov_MLE
         _time_MLE += time_MLE
         _pivot_MLE.append(pivot_MLE)
+        print("coverage so far ", _cov_MLE/float(i+1))
 
     if plot is True:
         plotPivot(np.asarray(_pivot_MLE))
@@ -214,4 +217,4 @@ def plot_pivot_joint(ndraw=500, plot=True):
     # plt.plot(grid, grid, 'k--')
     # plt.savefig("/Users/psnigdha/maximum_likelihood_inference/Talk_plots/Motivating_example/Joint_Pivot_n500_p100_rho35_snr20.png")
 
-#plot_pivot_joint(ndraw=500)
+plot_pivot_joint(ndraw=500)
