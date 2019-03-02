@@ -203,6 +203,7 @@ class query(object):
         
         return ci_new, pvalue_new
 
+
 class two_stage_gaussian_query(query):
 
     def fit(self, perturb=None):
@@ -2046,68 +2047,52 @@ def _selective_MLE(observed_target,
 
     return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
 
-def selective_MLE_grid(observed_target,
-                       obs_target,
-                       cov_target,
-                       cov_target_score,
-                       init_soln,
-                       cond_mean_carved,
-                       cond_cov,
-                       logdens_linear,
-                       linear_part,
-                       offset,
-                       solve_args={'tol': 1.e-15},
-                       level=0.9):
+def approx_reference(grid,
+                     observed_target,
+                     cov_target,
+                     cov_target_score,
+                     init_soln,
+                     cond_mean,
+                     cond_cov,
+                     logdens_linear,
+                     linear_part,
+                     offset,
+                     solve_args={'tol': 1.e-15}):
 
     if np.asarray(observed_target).shape in [(), (0,)]:
         raise ValueError('no target specified')
 
     observed_target = np.atleast_1d(observed_target)
     prec_target = np.linalg.inv(cov_target)
-
-    # target_lin determines how the conditional mean of optimization variables
-    # vary with target
-    # logdens_linear determines how the argument of the optimization density
-    # depends on the score, not how the mean depends on score, hence the minus sign
-
     target_lin = - logdens_linear.dot(cov_target_score.T.dot(prec_target))
 
     prec_opt = np.linalg.inv(cond_cov)
-    cond_mean = target_lin.dot(observed_target) + (cond_mean_carved-target_lin.dot(obs_target))
-    conjugate_arg = prec_opt.dot(cond_mean)
-
-    # if useC:
-    #     print("using C")
-    #     solver = solve_barrier_affine_C
-    # else:
-    #     print("not using C")
-    #     solver = solve_barrier_affine_py
     solver = solve_barrier_affine_C
+    ref_hat =[]
 
-    val, soln, hess = solver(conjugate_arg,
-                             prec_opt,
-                             init_soln,
-                             linear_part,
-                             offset,
-                             **solve_args)
+    for k in range(grid.shape[0]):
+        cond_mean_grid = target_lin.dot(grid[k]) + (cond_mean - target_lin.dot(observed_target))
+        conjugate_arg = prec_opt.dot(cond_mean_grid)
+        ref_hat.append(-solver(conjugate_arg,
+                               prec_opt,
+                               init_soln,
+                               linear_part,
+                               offset,
+                               **solve_args)[0])
 
-    final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
-    ind_unbiased_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean
-                                                                                            - init_soln)))
-    L = target_lin.T.dot(prec_opt)
-    observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
-    observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
+    return np.asarray(ref_hat)
 
-    Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
-    pvalues = ndist.cdf(Z_scores)
-    pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
+def approx_density(grid,
+                   mean_parameter,
+                   cov_target,
+                   approx_log_ref):
 
-    alpha = 1. - level
-    quantile = ndist.ppf(1 - alpha / 2.)
-    intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
-                           final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
+    normalizer = 0.
+    for k in range(grid.shape[0]):
+        approx_density = np.exp(-np.true_divide((grid[k] - mean_parameter) ** 2, 2 * cov_target)+ approx_log_ref[k])
+        normalizer += approx_density
 
-    return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
+    return np.cumsum(approx_density/float(normalizer))
 
 
 
