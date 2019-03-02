@@ -369,13 +369,12 @@ class gaussian_query(query):
 
         log_density = functools.partial(log_density, logdens_linear, opt_offset, cond_precision)
 
-        self.cond_mean, self.cond_cov = cond_mean, cond_cov
+        self.cond_mean, self.cond_cov, self.logdens_linear = cond_mean, cond_cov, logdens_linear
 
         affine_con = constraints(A_scaling,
                                  b_scaling,
                                  mean=cond_mean,
                                  covariance=cond_cov)
-
 
         self.sampler = affine_gaussian_sampler(affine_con,
                                                self.observed_opt_state,

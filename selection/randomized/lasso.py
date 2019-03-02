@@ -202,12 +202,13 @@ class lasso(gaussian_query):
         A_scaling = -np.identity(self.num_opt_var)
         b_scaling = np.zeros(self.num_opt_var)
 
-        #print("check", A_scaling.dot(self.observed_opt_state) - b_scaling <= 0)
-
         self._set_sampler(A_scaling,
                           b_scaling,
                           opt_linear,
                           opt_offset)
+
+        self.A_scaling = A_scaling
+        self.b_scaling = b_scaling
 
         return active_signs
 
