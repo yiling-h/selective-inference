@@ -940,6 +940,7 @@ class carved_lasso(gaussian_query):
             id = np.zeros((n, subsample_size))
             for k in range(subsample_size):
                 (id[:, k])[sel_indices[k]] = 1
+            #randomization_cov = (noise_variance) * (X.T.dot(X) + X_sel.T.dot(X_sel) / (rho_ ** 2) - 2 * X.T.dot(id).dot(X_sel) / rho_)
             randomization_cov = (noise_variance/n) * (X.T.dot(X) + X_sel.T.dot(X_sel) / (rho_ ** 2) - 2 * X.T.dot(id).dot(X_sel) / rho_)
         elif rand_covariance == "True":
             randomization_cov = randomization_cov

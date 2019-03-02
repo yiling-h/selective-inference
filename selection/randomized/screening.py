@@ -148,6 +148,103 @@ class marginal_screening(screening):
                                   threshold,
                                   useC=useC,
                                   perturb=perturb)
+
+
+# class marginal_screening_carved(screening):
+#
+#     useC = True
+#
+#     def __init__(self,
+#                  observed_data,
+#                  covariance,
+#                  randomizer,
+#                  threshold,
+#                  useC=True,
+#                  perturb=None):
+#
+#         self.threshold = threshold
+#         screening.__init__(self,
+#                            observed_data,
+#                            covariance,
+#                            randomizer,
+#                            perturb=None)
+#
+#         self.useC = useC
+#
+#     def fit(self, perturb=None):
+#
+#         _randomized_score, p = screening.fit(self, perturb=perturb)
+#         active = np.fabs(_randomized_score) >= self.threshold
+#
+#         self._selected = active
+#         self._not_selected = ~self._selected
+#         sign = np.sign(-_randomized_score)
+#         active_signs = sign[self._selected]
+#         sign[self._not_selected] = 0
+#         self.selection_variable = {'sign': sign,
+#                                    'variables': self._selected.copy()}
+#
+#         self.observed_opt_state = (np.fabs(_randomized_score) - self.threshold)[self._selected]
+#         self.num_opt_var = self.observed_opt_state.shape[0]
+#
+#         opt_linear = np.zeros((p, self.num_opt_var))
+#         opt_linear[self._selected,:] = np.diag(active_signs)
+#         opt_offset = np.zeros(p)
+#         opt_offset[self._selected] = active_signs * self.threshold[self._selected]
+#         opt_offset[self._not_selected] = _randomized_score[self._not_selected]
+#
+#         self._setup = True
+#
+#         A_scaling = -np.identity(len(active_signs))
+#         b_scaling = np.zeros(self.num_opt_var)
+#
+#         self.set_sampler(A_scaling,
+#                          b_scaling,
+#                          opt_linear,
+#                          opt_offset,
+#                          self.useC)
+#
+#         return self._selected
+#
+#     @staticmethod
+#     def type1(observed_data,
+#               covariance,
+#               marginal_level,
+#               split_fraction,
+#               sample_size,
+#               useC=False):
+#         '''
+#         Threshold
+#         '''
+#
+#         rho = (1.-split_fraction)/split_fraction
+#         randomized_stdev = np.sqrt(1.+rho)* np.sqrt(np.diag(covariance))
+#         p = covariance.shape[0]
+#         threshold_split = randomized_stdev * ndist.ppf(1. - marginal_level / 2.)
+#
+#         n = sample_size
+#         subsample_size = int(split_fraction * n)
+#         sel_idx = np.zeros(n, np.bool)
+#         sel_idx[:subsample_size] = 1
+#         np.random.shuffle(sel_idx)
+#         sel_indices = np.asarray([t for t in range(n) if sel_idx[t]])
+#         observed_data_sel = observed_data[sel_idx]
+#         active_split = np.fabs(observed_data_sel) >= threshold_split
+#         sign_split = np.sign(-observed_data_sel)
+#         active_signs_split = sign_split[active_split]
+#
+#         solution_split = np.zeros(p)
+#         solution_split[active_split] = active_signs_split * threshold_split[active_split]
+#         solution_split[~active_split] = observed_data_sel[~active_split]
+#         perturb_split = -solution_split/rho-observed_data +observed_data_sel/rho
+#
+#         return marginal_screening(observed_data,
+#                                   covariance,
+#                                   randomizer,
+#                                   threshold,
+#                                   useC=useC,
+#                                   perturb=perturb)
+
 # Stepup procedures like Benjamini-Hochberg
 
 def stepup_selection(Z_values, stepup_Z):
