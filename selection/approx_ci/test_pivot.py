@@ -6,7 +6,7 @@ import nose.tools as nt, functools
 import regreg.api as rr
 
 from selection.randomized.lasso import lasso, carved_lasso, selected_targets, full_targets, debiased_targets
-from selection.tests.instance import gaussian_instance
+from selection.tests.instance import gaussian_instance, nonnormal_instance
 from selection.tests.flags import SET_SEED
 from selection.tests.decorators import set_sampling_params_iftrue, set_seed_iftrue
 from selection.algorithms.sqrt_lasso import choose_lambda, solve_sqrt_lasso
@@ -84,7 +84,8 @@ def test_approx_pivot(n= 500,
                       rho= 0.40,
                       randomizer_scale= 1.):
 
-    inst = gaussian_instance
+    #inst = gaussian_instance
+    inst = nonnormal_instance
     signal = np.sqrt(signal_fac * 2. * np.log(p))
 
     while True:
@@ -155,7 +156,7 @@ def test_approx_pivot(n= 500,
 
 from statsmodels.distributions.empirical_distribution import ECDF
 
-def main(nsim=50):
+def main(nsim=150):
     _pivot=[]
     for i in range(nsim):
         _pivot.extend(test_approx_pivot())

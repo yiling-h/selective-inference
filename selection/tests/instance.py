@@ -239,9 +239,9 @@ def nonnormal_instance(n=100, p=200, s=7, sigma=5, rho=0., signal=7,
     # noise model
     def _noise(n, df=np.inf):
         if df == np.inf:
-            #return (np.random.standard_normal(n) + np.random.exponential(scale=1.0) - 1.)/np.sqrt(2.)
+            return (np.random.standard_normal(n) + np.random.exponential(scale=1.0) - 1.)/np.sqrt(2.)
             #return np.random.exponential(scale=1.0, size=n) - 1.
-            return np.random.laplace(loc=0,scale=1., size=n)/np.sqrt(2.)
+            #return np.random.laplace(loc=0,scale=1., size=n)/np.sqrt(2.)
         else:
             sd_t = np.std(tdist.rvs(df, size=50000))
         return tdist.rvs(df, size=n) / sd_t
