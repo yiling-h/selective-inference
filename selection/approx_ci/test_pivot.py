@@ -12,7 +12,7 @@ from selection.tests.decorators import set_sampling_params_iftrue, set_seed_iftr
 from selection.algorithms.sqrt_lasso import choose_lambda, solve_sqrt_lasso
 from selection.randomized.randomization import randomization
 from selection.tests.decorators import rpy_test_safe
-from selection.randomized.query import approx_density, approx_reference
+#from selection.randomized.query import approx_density, approx_reference
 
 from rpy2 import robjects
 import rpy2.robjects.numpy2ri
@@ -23,6 +23,58 @@ import pylab
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 from selection.tests.instance import gaussian_instance
+from selection.randomized.selective_MLE_utils import solve_barrier_affine as solve_barrier_affine_C
+
+def approx_reference(grid,
+                     observed_target,
+                     cov_target,
+                     cov_target_score,
+                     init_soln,
+                     cond_mean,
+                     cond_cov,
+                     logdens_linear,
+                     linear_part,
+                     offset,
+                     solve_args={'tol': 1.e-15}
+                     ):
+
+    if np.asarray(observed_target).shape in [(), (0,)]:
+        raise ValueError('no target specified')
+
+    observed_target = np.atleast_1d(observed_target)
+    prec_target = np.linalg.inv(cov_target)
+    target_lin = - logdens_linear.dot(cov_target_score.T.dot(prec_target))
+
+    prec_opt = np.linalg.inv(cond_cov)
+
+    ref_hat =[]
+    solver = solve_barrier_affine_C
+    for k in range(grid.shape[0]):
+        cond_mean_grid = target_lin.dot(np.asarray([grid[k]])) + (cond_mean - target_lin.dot(observed_target))
+        conjugate_arg = prec_opt.dot(cond_mean_grid)
+
+        val, _, _ = solver(conjugate_arg,
+                           prec_opt,
+                           init_soln,
+                           linear_part,
+                           offset,
+                           **solve_args)
+
+        ref_hat.append(-val-(conjugate_arg.T.dot(cond_cov).dot(conjugate_arg)/2.))
+
+    return np.asarray(ref_hat)
+
+def approx_density(grid,
+                   mean_parameter,
+                   cov_target,
+                   approx_log_ref):
+
+    _approx_density = []
+    for k in range(grid.shape[0]):
+        _approx_density.append(np.exp(-np.true_divide((grid[k] - mean_parameter) ** 2, 2 * cov_target)+ approx_log_ref[k]))
+    _approx_density_ = np.asarray(_approx_density)/(np.asarray(_approx_density).sum())
+    #print("normalized density ", _approx_density_/float(_approx_density_.sum()))
+    return np.cumsum(_approx_density_)
 
 def test_approx_pivot(n= 500,
                       p= 100,
@@ -33,7 +85,7 @@ def test_approx_pivot(n= 500,
                       randomizer_scale= 1.):
 
     inst = gaussian_instance
-    signal = np.sqrt(signal_fac * 2 * np.log(p))
+    signal = np.sqrt(signal_fac * 2. * np.log(p))
 
     while True:
         X, y, beta = inst(n=n,
@@ -69,16 +121,17 @@ def test_approx_pivot(n= 500,
                                           nonzero,
                                           dispersion=dispersion)
 
-        grid_num = 1501
+        grid_num = 361
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
-
+        pivot = []
         for m in range(nonzero.sum()):
             observed_target_uni = (observed_target[m]).reshape((1,))
             cov_target_uni = (np.diag(cov_target)[m]).reshape((1,1))
             cov_target_score_uni = cov_target_score[m,:].reshape((1, p))
             mean_parameter = beta_target[m]
-            grid = np.linspace(observed_target_uni - 15., observed_target_uni + 15., num=grid_num)
+            grid = np.linspace(- 18., 18., num=grid_num)
             grid_indx_obs = np.argmin(np.abs(grid - observed_target_uni))
+            print("check grid position ", observed_target_uni, grid_indx_obs)
 
             approx_log_ref= approx_reference(grid,
                                              observed_target_uni,
@@ -89,18 +142,32 @@ def test_approx_pivot(n= 500,
                                              conv.cond_cov,
                                              conv.logdens_linear,
                                              conv.A_scaling,
-                                             conv.b_scaling,
-                                             solve_args={'tol': 1.e-15})
+                                             conv.b_scaling)
 
             area_cum = approx_density(grid,
                                       mean_parameter,
                                       cov_target_uni,
                                       approx_log_ref)
 
-            pivot = area_cum[grid_indx_obs]
+            pivot.append(1. - area_cum[grid_indx_obs])
+            print("variable completed ", m+1)
+        return pivot
 
-            return pivot
+from statsmodels.distributions.empirical_distribution import ECDF
 
+def main(nsim=50):
+    _pivot=[]
+    for i in range(nsim):
+        _pivot.extend(test_approx_pivot())
+        print("iteration completed ", i)
+    plt.clf()
+    ecdf_MLE = ECDF(np.asarray(_pivot))
+    grid = np.linspace(0, 1, 101)
+    plt.plot(grid, ecdf_MLE(grid), c='blue', marker='^')
+    plt.plot(grid, grid, 'k--')
+    plt.show()
+
+main()
 
 
 

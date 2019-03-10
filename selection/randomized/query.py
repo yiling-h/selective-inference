@@ -2046,52 +2046,6 @@ def _selective_MLE(observed_target,
 
     return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
 
-def approx_reference(grid,
-                     observed_target,
-                     cov_target,
-                     cov_target_score,
-                     init_soln,
-                     cond_mean,
-                     cond_cov,
-                     logdens_linear,
-                     linear_part,
-                     offset,
-                     solve_args={'tol': 1.e-15}):
-
-    if np.asarray(observed_target).shape in [(), (0,)]:
-        raise ValueError('no target specified')
-
-    observed_target = np.atleast_1d(observed_target)
-    prec_target = np.linalg.inv(cov_target)
-    target_lin = - logdens_linear.dot(cov_target_score.T.dot(prec_target))
-
-    prec_opt = np.linalg.inv(cond_cov)
-    solver = solve_barrier_affine_C
-    ref_hat =[]
-
-    for k in range(grid.shape[0]):
-        cond_mean_grid = target_lin.dot(grid[k]) + (cond_mean - target_lin.dot(observed_target))
-        conjugate_arg = prec_opt.dot(cond_mean_grid)
-        ref_hat.append(-solver(conjugate_arg,
-                               prec_opt,
-                               init_soln,
-                               linear_part,
-                               offset,
-                               **solve_args)[0])
-
-    return np.asarray(ref_hat)
-
-def approx_density(grid,
-                   mean_parameter,
-                   cov_target,
-                   approx_log_ref):
-
-    normalizer = 0.
-    for k in range(grid.shape[0]):
-        approx_density = np.exp(-np.true_divide((grid[k] - mean_parameter) ** 2, 2 * cov_target)+ approx_log_ref[k])
-        normalizer += approx_density
-
-    return np.cumsum(approx_density/float(normalizer))
 
 
 
