@@ -728,7 +728,8 @@ class carved_lasso(gaussian_query):
                  feature_weights,
                  ridge_term,
                  perturb_split,
-                 randomization_cov):
+                 randomization_cov,
+                 sel_idx):
         r"""
         Create a new post-selection object for the LASSO problem
 
@@ -755,6 +756,7 @@ class carved_lasso(gaussian_query):
 
         self.loglike = loglike
         self.nfeature = p = self.loglike.shape[0]
+        self.sel_idx = sel_idx
 
         if np.asarray(feature_weights).shape == ():
             feature_weights = np.ones(loglike.shape) * feature_weights
@@ -930,7 +932,6 @@ class carved_lasso(gaussian_query):
         loglike_split = rr.glm.gaussian(X_sel, Y_sel, coef=1./(rho_ *(sigma ** 2)), quadratic=quadratic)
         quad_split = rr.identity_quadratic(ridge_term, 0., 0., 0.)
         problem_split = rr.simple_problem(loglike_split, rr.weighted_l1norm(feature_weights, lagrange=1.))
-        #split_lasso = problem_split.solve()
         split_lasso = problem_split.solve(quad_split, **solve_args)
 
         subgrad_split = -(loglike_split.smooth_objective(split_lasso, 'grad') + quad_split.objective(split_lasso, 'grad'))
@@ -949,5 +950,6 @@ class carved_lasso(gaussian_query):
                             np.asarray(feature_weights) / sigma ** 2,
                             ridge_term,
                             perturb_split,
-                            n*randomization_cov)
+                            n*randomization_cov,
+                            sel_idx)
 
