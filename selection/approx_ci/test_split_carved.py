@@ -1,21 +1,21 @@
 from __future__ import division, print_function
 import numpy as np
 from selection.randomized.lasso import lasso, carved_lasso, selected_targets, full_targets, debiased_targets
-from selection.tests.instance import gaussian_instance, nonnormal_instance, mixed_normal_instance
+from selection.tests.instance import gaussian_instance, exp_instance, normexp_instance, mixednormal_instance, laplace_instance
 import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
 
 from selection.approx_ci.approx_reference import approx_reference, approx_density, approx_ci
 
-def test_approx_ci_carved(n= 200,
+def test_approx_ci_carved(n= 100,
                           p= 50,
-                          signal_fac= 1.,
+                          signal_fac= 3.,
                           s= 5,
                           sigma= 1.,
                           rho= 0.40,
                           split_proportion=0.50):
 
-    inst = nonnormal_instance
+    inst = normexp_instance
     signal = np.sqrt(signal_fac * 2. * np.log(p))
 
     while True:
@@ -56,6 +56,7 @@ def test_approx_ci_carved(n= 200,
         if nonzero.sum() > 0:
             sel_indx = conv.sel_idx
             inf_indx = ~sel_indx
+            print("check", inf_indx.sum())
             beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
             X_split = X[inf_indx, :]
@@ -101,12 +102,34 @@ def test_approx_ci_carved(n= 200,
                                                    approx_log_ref,
                                                    grid_indx_obs)
 
-                print("variable completed ", m + 1)
+                #print("variable completed ", m + 1)
                 coverage += (approx_lci < mean_parameter) * (approx_uci > mean_parameter)
                 length += (approx_uci - approx_lci)
 
-            print("coverages and lengths so far ", coverage_split, length_split, coverage / float(nonzero.sum()), length / float(nonzero.sum()))
             return coverage / float(nonzero.sum()), length / float(nonzero.sum()), \
-                   coverage_split / float(nonzero.sum()), length_split /float(nonzero.sum())
+                   coverage_split, length_split
 
-test_approx_ci_carved()
+def main(nsim = 100):
+
+    _coverage = 0.
+    _coverage_split = 0.
+    _length = 0.
+    _length_split = 0.
+    for l in range(nsim):
+        coverage, length, coverage_split, length_split = test_approx_ci_carved(n= 100,
+                                                                               p= 50,
+                                                                               signal_fac= 5.,
+                                                                               s= 5,
+                                                                               sigma= 1.,
+                                                                               rho= 0.40,
+                                                                               split_proportion=0.50)
+        _coverage += coverage
+        _coverage_split += coverage_split
+        _length += length
+        _length_split += length_split
+
+        print("coverage so far ", _coverage/(l+1.), _coverage_split/(l+1.))
+        print("lengths so far ", _length/(l+1.), _length_split/(l+1.))
+        print("iteration completed ", l + 1)
+
+main(nsim = 100)

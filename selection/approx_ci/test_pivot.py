@@ -2,13 +2,13 @@ from __future__ import division, print_function
 
 import numpy as np
 from selection.randomized.lasso import lasso, carved_lasso, selected_targets, full_targets, debiased_targets
-from selection.tests.instance import gaussian_instance, nonnormal_instance, mixed_normal_instance
+from selection.tests.instance import gaussian_instance, exp_instance, normexp_instance, mixednormal_instance, laplace_instance
 import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
 
-
 import matplotlib.pyplot as plt
 from selection.approx_ci.approx_reference import approx_reference, approx_density
+from statsmodels.distributions.empirical_distribution import ECDF
 
 def test_approx_pivot(n= 500,
                       p= 100,
@@ -18,8 +18,8 @@ def test_approx_pivot(n= 500,
                       rho= 0.40,
                       randomizer_scale= 1.):
 
-    #inst = gaussian_instance
-    inst = nonnormal_instance
+    inst = gaussian_instance
+    #inst = nonnormal_instance
     signal = np.sqrt(signal_fac * 2. * np.log(p))
 
     while True:
@@ -89,9 +89,6 @@ def test_approx_pivot(n= 500,
             print("variable completed ", m+1)
         return pivot
 
-from statsmodels.distributions.empirical_distribution import ECDF
-
-
 def test_approx_pivot_carved(n= 100,
                              p= 50,
                              signal_fac= 1.,
@@ -100,7 +97,7 @@ def test_approx_pivot_carved(n= 100,
                              rho= 0.40,
                              split_proportion=0.50):
 
-    inst = nonnormal_instance
+    inst = laplace_instance
     signal = np.sqrt(signal_fac * 2. * np.log(p))
 
     while True:
@@ -174,7 +171,7 @@ def test_approx_pivot_carved(n= 100,
             print("variable completed ", m + 1)
         return pivot
 
-def main(nsim=150):
+def EDCF_pivot(nsim=150):
     _pivot=[]
     for i in range(nsim):
         _pivot.extend(test_approx_pivot_carved())
@@ -186,6 +183,42 @@ def main(nsim=150):
     plt.plot(grid, grid, 'k--')
     plt.show()
 
+from rpy2 import robjects
+import rpy2.robjects.numpy2ri
+rpy2.robjects.numpy2ri.activate()
+
+def plotPivot(pivot):
+    robjects.r("""
+    
+               pivot_plot <- function(pivot, outpath="/Users/psnigdha/Research/Pivot_selective_MLE/ArXiV-2/submission-revision/",
+                                      resolution=350, height=10, width=10)
+               {
+                    pivot = as.vector(pivot)
+                    outfile = paste(outpath, 'pivot_LASSO_laplace_snr50.png', sep="")
+                    png(outfile, res = resolution, width = width, height = height, units = 'cm')
+                    par(mar=c(5,4,2,2)+0.1)
+                    plot(ecdf(pivot), lwd=8, lty = 2, col="#000080", main="Model-4", ylab="", xlab="", cex.main=0.95)
+                    abline(a = 0, b = 1, lwd=5, col="black")
+                    dev.off()
+               }                       
+               """)
+
+    R_plot = robjects.globalenv['pivot_plot']
+    r_pivot = robjects.r.matrix(pivot, nrow=pivot.shape[0], ncol=1)
+    R_plot(r_pivot)
+
+def main(nsim=150):
+    _pivot=[]
+    for i in range(nsim):
+        _pivot.extend(test_approx_pivot_carved(n= 100,
+                                               p= 50,
+                                               signal_fac= 5.,
+                                               s= 5,
+                                               sigma= 1.,
+                                               rho= 0.40,
+                                               split_proportion=0.50))
+        print("iteration completed ", i)
+
+    plotPivot(np.asarray(_pivot))
+
 main()
-
-

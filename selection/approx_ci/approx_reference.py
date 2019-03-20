@@ -1,26 +1,9 @@
 from __future__ import division, print_function
 
 import numpy as np
-import nose.tools as nt, functools
 
-import regreg.api as rr
-
-from selection.randomized.lasso import lasso, carved_lasso, selected_targets, full_targets, debiased_targets
-from selection.tests.instance import gaussian_instance, nonnormal_instance, mixed_normal_instance
-from selection.tests.flags import SET_SEED
-from selection.tests.decorators import set_sampling_params_iftrue, set_seed_iftrue
-from selection.algorithms.sqrt_lasso import choose_lambda, solve_sqrt_lasso
-from selection.randomized.randomization import randomization
-from selection.tests.decorators import rpy_test_safe
-
-from rpy2 import robjects
 import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
-
-import seaborn as sns
-import pylab
-import matplotlib.pyplot as plt
-import scipy.stats as stats
 from selection.randomized.selective_MLE_utils import solve_barrier_affine as solve_barrier_affine_C
 
 def approx_reference(grid,
