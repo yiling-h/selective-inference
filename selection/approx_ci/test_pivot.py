@@ -190,11 +190,10 @@ rpy2.robjects.numpy2ri.activate()
 def plotPivot(pivot):
     robjects.r("""
     
-               pivot_plot <- function(pivot, outpath="/Users/psnigdha/Research/Pivot_selective_MLE/ArXiV-2/submission-revision/",
-                                      resolution=350, height=10, width=10)
+               pivot_plot <- function(pivot, outpath, resolution=350, height=10, width=10)
                {
                     pivot = as.vector(pivot)
-                    outfile = paste(outpath, 'pivot_LASSO_laplace_snr50.png', sep="")
+                    outfile = paste(outpath, 'pivot_LASSO_n500_laplace_snr20.png', sep="")
                     png(outfile, res = resolution, width = width, height = height, units = 'cm')
                     par(mar=c(5,4,2,2)+0.1)
                     plot(ecdf(pivot), lwd=8, lty = 2, col="#000080", main="Model-4", ylab="", xlab="", cex.main=0.95)
@@ -207,13 +206,13 @@ def plotPivot(pivot):
     r_pivot = robjects.r.matrix(pivot, nrow=pivot.shape[0], ncol=1)
     R_plot(r_pivot)
 
-def main(nsim=150):
+def main(nsim=50):
     _pivot=[]
     for i in range(nsim):
-        _pivot.extend(test_approx_pivot_carved(n= 100,
-                                               p= 50,
-                                               signal_fac= 5.,
-                                               s= 5,
+        _pivot.extend(test_approx_pivot_carved(n= 500,
+                                               p= 100,
+                                               signal_fac= 15.,
+                                               s= 10,
                                                sigma= 1.,
                                                rho= 0.40,
                                                split_proportion=0.50))

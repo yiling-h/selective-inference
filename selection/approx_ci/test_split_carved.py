@@ -15,7 +15,7 @@ def test_approx_ci_carved(n= 100,
                           rho= 0.40,
                           split_proportion=0.50):
 
-    inst = normexp_instance
+    inst = gaussian_instance
     signal = np.sqrt(signal_fac * 2. * np.log(p))
 
     while True:
@@ -58,6 +58,7 @@ def test_approx_ci_carved(n= 100,
             inf_indx = ~sel_indx
             print("check", inf_indx.sum())
             beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+            print("beta target ", beta_target)
 
             X_split = X[inf_indx, :]
             y_split = y[inf_indx]
@@ -95,7 +96,7 @@ def test_approx_ci_carved(n= 100,
                                                   conv.A_scaling,
                                                   conv.b_scaling)
 
-                param_grid = np.linspace(-12., 12., num=241)
+                param_grid = np.linspace(-15., 15., num=301)
                 approx_lci, approx_uci = approx_ci(param_grid,
                                                    grid,
                                                    cov_target_uni,
@@ -116,10 +117,10 @@ def main(nsim = 100):
     _length = 0.
     _length_split = 0.
     for l in range(nsim):
-        coverage, length, coverage_split, length_split = test_approx_ci_carved(n= 100,
-                                                                               p= 50,
-                                                                               signal_fac= 5.,
-                                                                               s= 5,
+        coverage, length, coverage_split, length_split = test_approx_ci_carved(n= 500,
+                                                                               p= 100,
+                                                                               signal_fac= 20.,
+                                                                               s= 10,
                                                                                sigma= 1.,
                                                                                rho= 0.40,
                                                                                split_proportion=0.50)
@@ -132,4 +133,4 @@ def main(nsim = 100):
         print("lengths so far ", _length/(l+1.), _length_split/(l+1.))
         print("iteration completed ", l + 1)
 
-main(nsim = 100)
+main(nsim = 25)
