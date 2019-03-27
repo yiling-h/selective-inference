@@ -97,7 +97,7 @@ def test_approx_pivot_carved(n= 100,
                              rho= 0.40,
                              split_proportion=0.50):
 
-    inst = laplace_instance
+    inst = gaussian_instance
     signal = np.sqrt(signal_fac * 2. * np.log(p))
 
     while True:
@@ -115,8 +115,10 @@ def test_approx_pivot_carved(n= 100,
         print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
         n, p = X.shape
 
-        dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
-        sigma_ = np.sqrt(dispersion)
+        #dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
+        #sigma_ = np.sqrt(dispersion)
+        sigma_ = np.std(y)
+        dispersion = None
         print("sigma estimated and true ", sigma, sigma_)
         randomization_cov = ((sigma_ ** 2) * ((1. - split_proportion) / split_proportion)) * sigmaX
         lam_theory = sigma_ * 1. * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
@@ -124,7 +126,7 @@ def test_approx_pivot_carved(n= 100,
         conv = carved_lasso.gaussian(X,
                                      y,
                                      noise_variance=sigma_ ** 2.,
-                                     rand_covariance="None",
+                                     rand_covariance="True",
                                      randomization_cov=randomization_cov / float(n),
                                      feature_weights=np.ones(X.shape[1]) * lam_theory,
                                      subsample_frac=split_proportion)
@@ -140,7 +142,7 @@ def test_approx_pivot_carved(n= 100,
                                           nonzero,
                                           dispersion=dispersion)
 
-        grid_num = 361
+        grid_num = 501
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
         pivot = []
         for m in range(nonzero.sum()):
@@ -148,7 +150,7 @@ def test_approx_pivot_carved(n= 100,
             cov_target_uni = (np.diag(cov_target)[m]).reshape((1, 1))
             cov_target_score_uni = cov_target_score[m, :].reshape((1, p))
             mean_parameter = beta_target[m]
-            grid = np.linspace(- 18., 18., num=grid_num)
+            grid = np.linspace(- 25., 25., num=grid_num)
             grid_indx_obs = np.argmin(np.abs(grid - observed_target_uni))
 
             approx_log_ref = approx_reference(grid,
@@ -190,10 +192,10 @@ rpy2.robjects.numpy2ri.activate()
 def plotPivot(pivot):
     robjects.r("""
     
-               pivot_plot <- function(pivot, outpath, resolution=350, height=10, width=10)
+               pivot_plot <- function(pivot, outpath='/Users/psnigdha/Research/Pivot_selective_MLE/ArXiV-2/submission-revision/', resolution=350, height=10, width=10)
                {
                     pivot = as.vector(pivot)
-                    outfile = paste(outpath, 'pivot_LASSO_n500_laplace_snr20.png', sep="")
+                    outfile = paste(outpath, 'pivot_LASSO_n200_gaussian_snr20.png', sep="")
                     png(outfile, res = resolution, width = width, height = height, units = 'cm')
                     par(mar=c(5,4,2,2)+0.1)
                     plot(ecdf(pivot), lwd=8, lty = 2, col="#000080", main="Model-4", ylab="", xlab="", cex.main=0.95)
@@ -206,15 +208,15 @@ def plotPivot(pivot):
     r_pivot = robjects.r.matrix(pivot, nrow=pivot.shape[0], ncol=1)
     R_plot(r_pivot)
 
-def main(nsim=50):
+def main(nsim=200):
     _pivot=[]
     for i in range(nsim):
-        _pivot.extend(test_approx_pivot_carved(n= 500,
-                                               p= 100,
-                                               signal_fac= 15.,
+        _pivot.extend(test_approx_pivot_carved(n= 300,
+                                               p= 500,
+                                               signal_fac= 1.,
                                                s= 10,
                                                sigma= 1.,
-                                               rho= 0.40,
+                                               rho= 0.20,
                                                split_proportion=0.50))
         print("iteration completed ", i)
 

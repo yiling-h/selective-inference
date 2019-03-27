@@ -2,7 +2,7 @@ from __future__ import division, print_function
 
 import numpy as np
 from selection.randomized.lasso import lasso, carved_lasso, selected_targets, full_targets, debiased_targets
-from selection.tests.instance import gaussian_instance, nonnormal_instance, mixed_normal_instance
+from selection.tests.instance import gaussian_instance, exp_instance, normexp_instance, mixednormal_instance, laplace_instance
 import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
 
@@ -16,7 +16,7 @@ def test_approx_ci_carved(n= 200,
                           rho= 0.40,
                           split_proportion=0.50):
 
-    inst = nonnormal_instance
+    inst = gaussian_instance
     signal = np.sqrt(signal_fac * 2. * np.log(p))
 
     while True:
@@ -35,7 +35,9 @@ def test_approx_ci_carved(n= 200,
         n, p = X.shape
 
         dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
+        #dispersion = None
         sigma_ = np.sqrt(dispersion)
+        #sigma_ = np.std(y)
         print("sigma estimated and true ", sigma, sigma_)
         randomization_cov = ((sigma_ ** 2) * ((1. - split_proportion) / split_proportion)) * sigmaX
         lam_theory = sigma_ * 1. * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
@@ -43,7 +45,7 @@ def test_approx_ci_carved(n= 200,
         conv = carved_lasso.gaussian(X,
                                      y,
                                      noise_variance=sigma_ ** 2.,
-                                     rand_covariance="None",
+                                     rand_covariance="True",
                                      randomization_cov=randomization_cov / float(n),
                                      feature_weights=np.ones(X.shape[1]) * lam_theory,
                                      subsample_frac=split_proportion)
@@ -60,7 +62,7 @@ def test_approx_ci_carved(n= 200,
                                               nonzero,
                                               dispersion=dispersion)
 
-            grid_num = 361
+            grid_num = 501
             beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
             coverage = 0.
             length = 0.
@@ -70,7 +72,7 @@ def test_approx_ci_carved(n= 200,
                 cov_target_uni = (np.diag(cov_target)[m]).reshape((1, 1))
                 cov_target_score_uni = cov_target_score[m, :].reshape((1, p))
                 mean_parameter = beta_target[m]
-                grid = np.linspace(- 18., 18., num=grid_num)
+                grid = np.linspace(- 25., 25., num=grid_num)
                 grid_indx_obs = np.argmin(np.abs(grid - observed_target_uni))
 
                 approx_log_ref = approx_reference(grid,
@@ -101,7 +103,13 @@ def main(nsim=150):
     _coverage = 0.
     _length = 0.
     for i in range(nsim):
-        cov, len =  test_approx_ci_carved()
+        cov, len =  test_approx_ci_carved(n= 500,
+                                          p= 250,
+                                          signal_fac= 1.,
+                                          s= 10,
+                                          sigma= 1.,
+                                          rho= 0.20,
+                                          split_proportion=0.50)
         _coverage += cov
         _length += len
         print("iteration completed ", i)
