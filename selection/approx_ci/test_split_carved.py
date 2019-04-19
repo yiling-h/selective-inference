@@ -7,6 +7,96 @@ rpy2.robjects.numpy2ri.activate()
 
 from selection.approx_ci.approx_reference import approx_reference, approx_density, approx_ci
 
+def test_approx_ci(n= 500,
+                   p= 100,
+                   signal_fac= 1.,
+                   s= 5,
+                   sigma= 1.,
+                   rho= 0.40,
+                   randomizer_scale= 1.):
+
+    inst = gaussian_instance
+    signal = np.sqrt(signal_fac * 2. * np.log(p))
+
+    while True:
+        X, y, beta = inst(n=n,
+                          p=p,
+                          signal=signal,
+                          s=s,
+                          equicorrelated=False,
+                          rho=rho,
+                          sigma=sigma,
+                          random_signs=True)[:3]
+
+        idx = np.arange(p)
+        sigmaX = rho ** np.abs(np.subtract.outer(idx, idx))
+        print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
+        n, p = X.shape
+
+        if n > p:
+            dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
+            sigma_ = np.sqrt(dispersion)
+        else:
+            dispersion = None
+            sigma_ = np.std(y)
+        print("sigma estimated and true ", sigma, sigma_)
+
+        W = np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
+
+        conv = lasso.gaussian(X,
+                              y,
+                              W,
+                              randomizer_scale=randomizer_scale * sigma_)
+
+        signs = conv.fit()
+        nonzero = signs != 0
+
+        (observed_target,
+         cov_target,
+         cov_target_score,
+         alternatives) = selected_targets(conv.loglike,
+                                          conv._W,
+                                          nonzero,
+                                          dispersion=dispersion)
+
+        grid_num = 501
+
+        coverage = 0.
+        length = 0.
+        beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+
+        for m in range(nonzero.sum()):
+            observed_target_uni = (observed_target[m]).reshape((1,))
+            cov_target_uni = (np.diag(cov_target)[m]).reshape((1, 1))
+            cov_target_score_uni = cov_target_score[m, :].reshape((1, p))
+            mean_parameter = beta_target[m]
+            grid = np.linspace(- 25., 25., num=grid_num)
+            grid_indx_obs = np.argmin(np.abs(grid - observed_target_uni))
+
+            approx_log_ref = approx_reference(grid,
+                                              observed_target_uni,
+                                              cov_target_uni,
+                                              cov_target_score_uni,
+                                              conv.observed_opt_state,
+                                              conv.cond_mean,
+                                              conv.cond_cov,
+                                              conv.logdens_linear,
+                                              conv.A_scaling,
+                                              conv.b_scaling)
+
+            param_grid = np.linspace(-15., 15., num=301)
+            approx_lci, approx_uci = approx_ci(param_grid,
+                                               grid,
+                                               cov_target_uni,
+                                               approx_log_ref,
+                                               grid_indx_obs)
+
+            coverage += (approx_lci < mean_parameter) * (approx_uci > mean_parameter)
+            length += (approx_uci - approx_lci)
+
+        return coverage / float(nonzero.sum()), length / float(nonzero.sum())
+
+
 def test_approx_ci_carved(n= 100,
                           p= 50,
                           signal_fac= 3.,
@@ -33,15 +123,19 @@ def test_approx_ci_carved(n= 100,
         print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
         n, p = X.shape
 
-        dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
-        sigma_ = np.sqrt(dispersion)
+        if n>p:
+            dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
+            sigma_ = np.sqrt(dispersion)
+        else:
+            dispersion = None
+            sigma_ = np.std(y)
         print("sigma estimated and true ", sigma, sigma_)
         randomization_cov = ((sigma_ ** 2) * ((1. - split_proportion) / split_proportion)) * sigmaX
         lam_theory = sigma_ * 1. * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
         conv = carved_lasso.gaussian(X,
                                      y,
                                      noise_variance=sigma_ ** 2.,
-                                     rand_covariance="None",
+                                     rand_covariance="True",
                                      randomization_cov=randomization_cov / float(n),
                                      feature_weights=np.ones(X.shape[1]) * lam_theory,
                                      subsample_frac=split_proportion)
@@ -103,7 +197,6 @@ def test_approx_ci_carved(n= 100,
                                                    approx_log_ref,
                                                    grid_indx_obs)
 
-                #print("variable completed ", m + 1)
                 coverage += (approx_lci < mean_parameter) * (approx_uci > mean_parameter)
                 length += (approx_uci - approx_lci)
 
@@ -116,21 +209,34 @@ def main(nsim = 100):
     _coverage_split = 0.
     _length = 0.
     _length_split = 0.
+
+    _coverage_rand = 0.
+    _length_rand = 0.
     for l in range(nsim):
-        coverage, length, coverage_split, length_split = test_approx_ci_carved(n= 500,
-                                                                               p= 100,
-                                                                               signal_fac= 20.,
+        coverage, length, coverage_split, length_split = test_approx_ci_carved(n= 100,
+                                                                               p= 500,
+                                                                               signal_fac= 0.6,
                                                                                s= 10,
                                                                                sigma= 1.,
                                                                                rho= 0.40,
                                                                                split_proportion=0.50)
+        coverage_rand, length_rand = test_approx_ci(n= 100,
+                                                    p= 500,
+                                                    signal_fac= 0.6,
+                                                    s= 10,
+                                                    sigma= 1.,
+                                                    rho= 0.40,
+                                                    randomizer_scale= 1.)
+
         _coverage += coverage
         _coverage_split += coverage_split
         _length += length
         _length_split += length_split
+        _coverage_rand += coverage_rand
+        _length_rand += length_rand
 
-        print("coverage so far ", _coverage/(l+1.), _coverage_split/(l+1.))
-        print("lengths so far ", _length/(l+1.), _length_split/(l+1.))
+        print("coverage so far ", _coverage/(l+1.), _coverage_split/(l+1.), _coverage_rand/(l+1.))
+        print("lengths so far ", _length/(l+1.), _length_split/(l+1.), _length_rand/(l+1.))
         print("iteration completed ", l + 1)
 
-main(nsim = 25)
+main(nsim = 100)
