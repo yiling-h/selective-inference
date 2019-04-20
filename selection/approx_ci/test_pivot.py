@@ -249,8 +249,6 @@ def plotPivot_randomization(pivot_carved, pivot_randomized):
     r_pivot_randomized = robjects.r.matrix(pivot_randomized, nrow=pivot_randomized.shape[0], ncol=1)
     R_plot(r_pivot_carved, r_pivot_randomized)
 
-
-
 def main(nsim=200):
     _pivot=[]
     for i in range(nsim):
