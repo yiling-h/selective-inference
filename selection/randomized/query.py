@@ -1789,6 +1789,51 @@ def selective_MLE(observed_target,
 
     return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
 
+def log_posterior(target_parameter,
+                  observed_target,
+                  cov_target,
+                  cov_target_score,
+                  feasible_point,
+                  cond_mean,
+                  cond_cov,
+                  logdens_linear,
+                  linear_part,
+                  offset,
+                  solve_args={'tol': 1.e-12}):
+
+    if np.asarray(observed_target).shape in [(), (0,)]:
+        raise ValueError('no target specified')
+
+    observed_target = np.atleast_1d(observed_target)
+    prec_target = np.linalg.inv(cov_target)
+
+    target_lin = - logdens_linear.dot(cov_target_score.T.dot(prec_target))
+    target_offset = cond_mean - target_lin.dot(observed_target)
+
+    prec_opt = np.linalg.inv(cond_cov)
+    mean_opt = target_lin.dot(target_parameter)+target_offset
+    conjugate_arg = prec_opt.dot(mean_opt)
+
+    solver = solve_barrier_affine_C
+
+    val, soln, hess = solver(conjugate_arg,
+                             prec_opt,
+                             feasible_point,
+                             linear_part,
+                             offset,
+                             **solve_args)
+
+    reparam = target_parameter + cov_target.dot(target_lin.T.dot(prec_opt.dot(mean_opt - soln)))
+    normalizer = (target_lin.T.dot(prec_opt.dot(mean_opt - soln))).T.dot(cov_target).dot(target_lin.T.dot(prec_opt.dot(mean_opt - soln)))+ val \
+                 + mean_opt.T.dot(prec_opt).dot(mean_opt)
+
+    L = target_lin.T.dot(prec_opt)
+    jacobian = (np.identity(observed_target.shape[0])+ cov_target.dot(target_lin.T).dot(prec_opt).dot(target_lin)) - \
+               cov_target.dot(L).dot(hess).dot(L.T)
+
+    return normalizer, jacobian
+
+
 def twostage_selective_MLE(observed_target,
                            cov_target,
                            cov_target_score_1,
@@ -1860,7 +1905,6 @@ def twostage_selective_MLE(observed_target,
                            final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
 
     return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
-
 
 def normalizing_constant(target_parameter,
                          observed_target,
