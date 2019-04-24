@@ -1,7 +1,8 @@
 import numpy as np, sys
 from selection.randomized.lasso import lasso, selected_targets, full_targets, debiased_targets
 from selection.tests.instance import gaussian_instance
-from selection.bayesian.utils import projected_langevin, gradient_log_likelihood
+from selection.bayesian.utils import inference_lasso
+
 
 def test_approx_pivot(n= 500,
                       p= 100,
@@ -53,46 +54,25 @@ def test_approx_pivot(n= 500,
                                           nonzero,
                                           dispersion=dispersion)
 
-        MLE_estimate, _, _, _, _, _ = conv.selective_MLE(observed_target,
-                                                         cov_target,
-                                                         cov_target_score,
-                                                         alternatives)
 
-        def grad_posterior(par):
+        posterior_inf = inference_lasso(observed_target,
+                                        cov_target,
+                                        cov_target_score,
+                                        conv.observed_opt_state,
+                                        conv.cond_mean,
+                                        conv.cond_cov,
+                                        conv.logdens_linear,
+                                        conv.A_scaling,
+                                        conv.b_scaling)
 
-            log_lik = gradient_log_likelihood(par,
-                                              observed_target,
-                                              cov_target,
-                                              cov_target_score,
-                                              conv.observed_opt_state,
-                                              conv.cond_mean,
-                                              conv.cond_cov,
-                                              conv.logdens_linear,
-                                              conv.A_scaling,
-                                              conv.b_scaling)
-
-            return log_lik
-
-        state = np.zeros(nonzero.sum())
-        stepsize = 1. / (0.5 * nonzero.sum())
-        sampler = projected_langevin(state, grad_posterior, stepsize)
-
-        samples = []
-
-        for i in range(2000):
-            sampler.next()
-            samples.append(sampler.state.copy())
-            sys.stderr.write("sample number: " + str(i) + "\n")
-
-        samples = np.array(samples)
-
+        samples = posterior_inf.posterior_sampler(np.zeros(nonzero.sum()))
         print("sample quantiles ", np.percentile(samples, 5, axis=0), np.percentile(samples, 95, axis=0))
 
         return samples
 
 test_approx_pivot(n= 100,
-                  p= 1000,
-                  signal_fac= 1.,
+                  p= 500,
+                  signal_fac= 1.5,
                   s= 10,
                   sigma= 1.,
                   rho= 0.40,
