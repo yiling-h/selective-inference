@@ -213,14 +213,14 @@ def main(nsim = 100):
     _coverage_rand = 0.
     _length_rand = 0.
     for l in range(nsim):
-        coverage, length, coverage_split, length_split = test_approx_ci_carved(n= 100,
+        coverage, length, coverage_split, length_split = test_approx_ci_carved(n= 65,
                                                                                p= 500,
                                                                                signal_fac= 0.6,
                                                                                s= 10,
                                                                                sigma= 1.,
                                                                                rho= 0.40,
-                                                                               split_proportion=0.50)
-        coverage_rand, length_rand = test_approx_ci(n= 100,
+                                                                               split_proportion=0.70)
+        coverage_rand, length_rand = test_approx_ci(n= 65,
                                                     p= 500,
                                                     signal_fac= 0.6,
                                                     s= 10,
