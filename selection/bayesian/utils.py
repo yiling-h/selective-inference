@@ -154,7 +154,7 @@ class inference_lasso():
     def posterior_sampler(self, initial_state, nsample= 2000, nburnin=100):
 
         state = initial_state
-        stepsize = 1. / (0.5 * self.target_size)
+        stepsize = 1. / (0.10 * self.target_size)
         sampler = projected_langevin(state, self.gradient_log_likelihood, stepsize)
 
         samples = []
