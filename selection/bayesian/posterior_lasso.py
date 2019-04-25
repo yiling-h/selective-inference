@@ -45,6 +45,7 @@ def test_approx_pivot(n= 500,
 
         signs = conv.fit()
         nonzero = signs != 0
+        beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
         (observed_target,
          cov_target,
@@ -66,14 +67,37 @@ def test_approx_pivot(n= 500,
                                         conv.b_scaling)
 
         samples = posterior_inf.posterior_sampler(np.zeros(nonzero.sum()))
-        print("sample quantiles ", np.percentile(samples, 5, axis=0), np.percentile(samples, 95, axis=0))
+        lci = np.percentile(samples, 5, axis=0)
+        uci = np.percentile(samples, 95, axis=0)
+        coverage_split = np.mean((lci < beta_target) * (uci > beta_target))
+        length_split = np.mean(uci - lci)
+        #print("sample quantiles ", np.percentile(samples, 5, axis=0), np.percentile(samples, 95, axis=0))
+        #print("coverage, lengths ", coverage_split, length_split)
 
-        return samples
+        return coverage_split, length_split
 
-test_approx_pivot(n= 100,
-                  p= 500,
-                  signal_fac= 1.5,
-                  s= 10,
-                  sigma= 1.,
-                  rho= 0.40,
-                  randomizer_scale= 1.)
+
+def main(ndraw=10):
+
+    coverage_ = 0.
+    length_ = 0.
+
+    for n in range(ndraw):
+        cov, len = test_approx_pivot(n=65,
+                                     p=1000,
+                                     signal_fac=0.6,
+                                     s=10,
+                                     sigma=1.,
+                                     rho=0.40,
+                                     randomizer_scale=1.)
+
+        coverage_ += cov
+        length_ += len
+
+        print("coverage so far ", coverage_ / (n + 1.))
+        print("lengths so far ", length_ / (n + 1.))
+        print("iteration completed ", n + 1)
+
+main(ndraw=50)
+
+

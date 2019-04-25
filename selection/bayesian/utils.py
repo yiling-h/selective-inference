@@ -149,12 +149,12 @@ class inference_lasso():
             M = grad_barrier.dot(np.diag(N.T[:, j]))
             grad_jacobian[j] = np.trace(A.dot(M).dot(N.T))
 
-        return grad_lik + grad_neg_normalizer + grad_jacobian, reparam
+        return grad_lik + grad_neg_normalizer + grad_jacobian -target_parameter/100., reparam
 
     def posterior_sampler(self, initial_state, nsample= 2000, nburnin=100):
 
         state = initial_state
-        stepsize = 1. / (0.10 * self.target_size)
+        stepsize = 1. / (1.5 * self.target_size)
         sampler = projected_langevin(state, self.gradient_log_likelihood, stepsize)
 
         samples = []
