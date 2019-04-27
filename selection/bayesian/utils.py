@@ -3,6 +3,32 @@ import numpy as np, sys
 from selection.randomized.selective_MLE_utils import solve_barrier_affine as solve_barrier_affine_C
 from scipy.stats import norm as ndist
 
+from rpy2 import robjects
+import rpy2.robjects.numpy2ri
+rpy2.robjects.numpy2ri.activate()
+
+def glmnet_lasso(X, y, lambda_val):
+    robjects.r('''
+                library(glmnet)
+                glmnet_LASSO = function(X,y, lambda){
+                y = as.matrix(y)
+                X = as.matrix(X)
+                lam = as.vector(lambda)
+                n = nrow(X)
+                fit = glmnet(X, y, standardize=TRUE, intercept=FALSE, thresh=1.e-10)
+                estimate = coef(fit, s=lambda, exact=TRUE, x=X, y=y)[-1]
+                return(list(estimate = estimate))
+                }''')
+
+    lambda_R = robjects.globalenv['glmnet_LASSO']
+    n, p = X.shape
+    r_X = robjects.r.matrix(X, nrow=n, ncol=p)
+    r_y = robjects.r.matrix(y, nrow=n, ncol=1)
+    r_lam = robjects.r.matrix(lambda_val, nrow=1, ncol=1)
+
+    estimate = np.array(lambda_R(r_X, r_y, r_lam).rx2('estimate'))
+    return estimate
+
 def log_likelihood(target_parameter,
                    observed_target,
                    cov_target,
