@@ -98,8 +98,8 @@ class projected_langevin(object):
     def next(self):
         while True:
             grad_posterior = self.gradient_map(self.state)
-            candidate = (self.state + 0.5 * self.stepsize * grad_posterior[0]
-                        + self._noise.rvs(self._shape) * self._sqrt_step)
+            candidate = (self.state + self.stepsize * grad_posterior[0]
+                        + np.sqrt(2.)* self._noise.rvs(self._shape) * self._sqrt_step)
             if not np.all(np.isfinite(self.gradient_map(candidate)[0])):
                 print(candidate, self._sqrt_step)
                 self._sqrt_step *= 0.8
@@ -120,7 +120,9 @@ class inference_lasso():
                  cond_cov,
                  logdens_linear,
                  linear_part,
-                 offset):
+                 offset,
+                 ini_estimate):
+
         self.observed_target = observed_target
         self.cov_target = cov_target
         self.cov_target_score = cov_target_score
@@ -131,6 +133,34 @@ class inference_lasso():
         self.logdens_linear = logdens_linear
         self.linear_part = linear_part
         self.offset = offset
+        self.ini_estimate = ini_estimate
+
+    def det_initial_point(self, solve_args={'tol':1.e-12}):
+
+        if np.asarray(self.observed_target).shape in [(), (0,)]:
+            raise ValueError('no target specified')
+
+        observed_target = np.atleast_1d(self.observed_target)
+        prec_target = np.linalg.inv(self.cov_target)
+
+        target_lin = - self.logdens_linear.dot(self.cov_target_score.T.dot(prec_target))
+        target_offset = self.cond_mean - target_lin.dot(observed_target)
+
+        prec_opt = np.linalg.inv(self.cond_cov)
+        mean_opt = target_lin.dot(self.ini_estimate) + target_offset
+        conjugate_arg = prec_opt.dot(mean_opt)
+
+        solver = solve_barrier_affine_C
+
+        val, soln, hess = solver(conjugate_arg,
+                                 prec_opt,
+                                 self.feasible_point,
+                                 self.linear_part,
+                                 self.offset,
+                                 **solve_args)
+
+        initial_point = self.ini_estimate + self.cov_target.dot(target_lin.T.dot(prec_opt.dot(mean_opt - soln)))
+        return initial_point
 
     def gradient_log_likelihood(self, target_parameter, solve_args={'tol':1.e-12}):
 
@@ -177,10 +207,12 @@ class inference_lasso():
 
         return grad_lik + grad_neg_normalizer + grad_jacobian -target_parameter/100., reparam
 
-    def posterior_sampler(self, initial_state, nsample= 2000, nburnin=100):
+    def posterior_sampler(self, nsample= 2000, nburnin=100):
 
+        initial_state = self.det_initial_point()
         state = initial_state
-        stepsize = 1. / (1.5 * self.target_size)
+
+        stepsize = 1. / (1 * self.target_size)
         sampler = projected_langevin(state, self.gradient_log_likelihood, stepsize)
 
         samples = []
