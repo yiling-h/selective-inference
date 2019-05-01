@@ -141,7 +141,7 @@ class inference_lasso():
         initial_state = self.det_initial_point()
         state = initial_state
 
-        stepsize = 1. / (0.80 * self.target_size)
+        stepsize = 1. / (0.30 * self.target_size)
         sampler = projected_langevin(state, self.gradient_log_likelihood, stepsize)
 
         samples = []
