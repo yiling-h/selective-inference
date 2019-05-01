@@ -1,16 +1,17 @@
 import numpy as np
 from selection.randomized.lasso import lasso, selected_targets, full_targets, debiased_targets
-from selection.bayesian.generative_instance import generate_data
+from selection.bayesian.generative_instance import generate_data, generate_data_new
 from selection.bayesian.posterior_lasso import inference_lasso
 
 def test_approx_bayesian(n= 500,
                          p= 100,
                          sigma= 1.,
                          rho= 0.40,
-                         randomizer_scale= 1.):
+                         randomizer_scale= 1.,
+                         target ="selected"):
 
     while True:
-        X, y, beta, sigma, _ = generate_data(n=n, p=p, sigma=sigma, rho=rho, scale =True, center=True)
+        X, y, beta, sigma, _ = generate_data_new(n=n, p=p, sigma=sigma, rho=rho, scale =True, center=True)
         n, p = X.shape
 
         if n>p:
@@ -20,7 +21,7 @@ def test_approx_bayesian(n= 500,
             dispersion = None
             sigma_ = np.std(y)
         print("sigmas ", sigma, sigma_)
-        lam_theory = sigma_ * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
+        lam_theory = 0.8* sigma_ * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
 
         conv = lasso.gaussian(X,
                               y,
@@ -30,15 +31,27 @@ def test_approx_bayesian(n= 500,
         signs = conv.fit()
         nonzero = signs != 0
 
-        beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+        if target == "selected":
+            beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+            (observed_target,
+             cov_target,
+             cov_target_score,
+             alternatives) = selected_targets(conv.loglike,
+                                              conv._W,
+                                              nonzero,
+                                              dispersion=dispersion)
 
-        (observed_target,
-         cov_target,
-         cov_target_score,
-         alternatives) = selected_targets(conv.loglike,
-                                          conv._W,
-                                          nonzero,
-                                          dispersion=dispersion)
+        else:
+            beta_target = beta[nonzero]
+            (observed_target,
+             cov_target,
+             cov_target_score,
+             alternatives) = debiased_targets(conv.loglike,
+                                              conv._W,
+                                              nonzero,
+                                              penalty=conv.penalty,
+                                              dispersion=dispersion)
+
         initial_par, _, _, _, _, _ = conv.selective_MLE(observed_target,
                                                         cov_target,
                                                         cov_target_score,
@@ -59,6 +72,7 @@ def test_approx_bayesian(n= 500,
         samples = posterior_inf.posterior_sampler(nsample= 2000, nburnin=50)
         lci = np.percentile(samples, 5, axis=0)
         uci = np.percentile(samples, 95, axis=0)
+        print("check target ", lci, beta_target, uci)
         coverage = np.mean((lci < beta_target) * (uci > beta_target))
         length = np.mean(uci - lci)
 
@@ -75,7 +89,8 @@ def main(ndraw=10, randomizer_scale=1.):
                                         p=300,
                                         sigma=1.,
                                         rho=0.40,
-                                        randomizer_scale=randomizer_scale)
+                                        randomizer_scale=randomizer_scale,
+                                        target="debiased")
 
         coverage_ += cov
         length_ += len
@@ -84,4 +99,4 @@ def main(ndraw=10, randomizer_scale=1.):
         print("lengths so far ", length_ / (n + 1.))
         print("iteration completed ", n + 1)
 
-main(ndraw=1)
+main(ndraw=10)

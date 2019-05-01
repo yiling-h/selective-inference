@@ -1,7 +1,7 @@
 import numpy as np
 from selection.randomized.lasso import lasso, selected_targets, full_targets, debiased_targets
 from selection.bayesian.utils import glmnet_lasso, glmnet_lasso_cv1se, glmnet_lasso_cvmin, power_fdr
-from selection.bayesian.generative_instance import generate_data
+from selection.bayesian.generative_instance import generate_data, generate_data_new
 from selection.bayesian.posterior_lasso import inference_lasso
 
 def compare_inference(n= 65,
@@ -14,7 +14,7 @@ def compare_inference(n= 65,
 
 
     while True:
-        X, y, beta, sigma, scalingX = generate_data(n=n, p=p, sigma=sigma, rho=rho, scale =True, center=True)
+        X, y, beta, sigma, scalingX = generate_data_new(n=n, p=p, sigma=sigma, rho=rho, scale =True, center=True)
         n, p = X.shape
 
         true_set = np.asarray([u for u in range(p) if np.fabs(beta[u])> 1.])
@@ -30,7 +30,6 @@ def compare_inference(n= 65,
         print("sigma estimated and true ", sigma, sigma_)
 
         lam_theory = sigma_ * 0.80 * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
-        #_, lam_1se = glmnet_lasso_cv1se(np.sqrt(n-1)*X, y)
         conv = lasso.gaussian(X,
                               y,
                               np.ones(X.shape[1]) * lam_theory,
@@ -65,10 +64,8 @@ def compare_inference(n= 65,
                                                   dispersion=dispersion)
 
             active_screenset = np.asarray([r for r in range(p) if nonzero[r]])
-            print("beta ", beta, true_set, active_screenset, beta[true_set], beta[active_screenset])
-            #print("check ", active_screenset, true_signals)
+            #print("beta ", beta, true_set, active_screenset, beta[true_set], beta[active_screenset])
             true_screen, false_screen = power_fdr(active_screenset, true_signals)
-            #break
 
             power_screen = true_screen/float(true_set.sum())
             false_screen = false_screen/float(nactive)
@@ -96,10 +93,7 @@ def compare_inference(n= 65,
             coverage = np.mean((lci < beta_target) * (uci > beta_target))
             length = np.mean(uci - lci)
 
-            #posterior_probs = np.asarray([((np.fabs(samples[:, t])>0.10).sum())/1950. for t in range(nactive)])
-            #print("target ", posterior_probs, beta[nonzero])
             reportind = ~((lci < 0.) * (uci > 0.))
-            #reportind = (posterior_probs>0.90)
             reportset = np.asarray([active_screenset[a] for a in range(nactive) if reportind[a]==1])
 
             true_total, false_total = power_fdr(reportset, true_signals)

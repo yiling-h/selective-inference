@@ -13,10 +13,10 @@ def generate_data(n, p, sigma=1., rho=0., scale =True, center=True):
     beta_true = np.zeros(p)
     u = np.random.uniform(0., 1., p)
     for i in range(p):
-        if u[i] <= 0.95:
-            beta_true[i] = np.random.laplace(loc=0., scale=0.1)
+        if u[i] <= 0.90:
+            beta_true[i] = np.random.laplace(loc=0., scale=0.05)
         else:
-            beta_true[i] = np.random.laplace(loc=0., scale=1.)
+            beta_true[i] = np.random.laplace(loc=0., scale=2.)
 
     beta = beta_true
 
@@ -25,7 +25,7 @@ def generate_data(n, p, sigma=1., rho=0., scale =True, center=True):
     return X, Y, beta* sigma, sigma, scalingX
 
 
-def generate_data(n, p, sigma=1., rho=0., s= 5, scale=True, center=True):
+def generate_data_new(n, p, sigma=1., rho=0., s= 5, scale=True, center=True):
     X = (np.sqrt(1 - rho) * np.random.standard_normal((n, p)) + np.sqrt(rho) * np.random.standard_normal(n)[:, None])
 
     if center:
@@ -35,16 +35,23 @@ def generate_data(n, p, sigma=1., rho=0., s= 5, scale=True, center=True):
         X /= scalingX
 
     beta_true = np.zeros(p)
-    position = np.arange(0, p-1, s)
+    strong = []
+    null = []
     u = np.random.uniform(0., 1., p)
     for i in range(p):
-        if u[i] <= 0.95:
-            beta_true[i] = np.random.laplace(loc=0., scale=0.1)
+        if u[i] <= 0.98:
+            null.append(np.random.laplace(loc=0., scale=0.01))
         else:
-            beta_true[i] = np.random.laplace(loc=0., scale=1.)
+            strong.append(np.random.laplace(loc=0., scale=1.5))
+    strong = np.asarray(strong)
+    null = np.asarray(null)
+    position = np.linspace(0, p-1, num=strong.shape[0], dtype=np.int)
+    position_bool = np.zeros(p, np.bool)
+    position_bool[position] = 1
+    print("position", position, position_bool, strong)
+    beta_true[position_bool] = strong
+    beta_true[~position_bool] = null
 
-    beta = beta_true
+    Y = (X.dot(beta_true) + np.random.standard_normal(n)) * sigma
 
-    Y = (X.dot(beta) + np.random.standard_normal(n)) * sigma
-
-    return X, Y, beta * sigma, sigma, scalingX
+    return X, Y, beta_true * sigma, sigma, scalingX
