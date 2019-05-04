@@ -99,4 +99,4 @@ def main(ndraw=10, randomizer_scale=1.):
         print("lengths so far ", length_ / (n + 1.))
         print("iteration completed ", n + 1)
 
-main(ndraw=10)
+main(ndraw=1)

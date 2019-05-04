@@ -128,15 +128,14 @@ def coverage(intervals, target, truth):
     return np.mean((target > intervals[:, 0]) * (target < intervals[:, 1])), avg_power
 
 def power_fdr(select_set, true_set):
+
     if select_set.shape[0] > 0 and true_set.shape[0] > 0:
         diff_set = np.fabs(np.subtract.outer(select_set, true_set))
-        #print("check diff ", diff_set, diff_set.shape)
         true_discoveries = (diff_set.min(0) == 0).sum()
-        false_discoveries = select_set.shape[0] - true_discoveries
-        return true_discoveries, false_discoveries
+        return true_discoveries
 
     else:
-        return 0., 0.
+        return 0.
 
 
 
