@@ -1,6 +1,4 @@
 import numpy as np, sys
-from selection.randomized.lasso import lasso, selected_targets, full_targets, debiased_targets
-from selection.bayesian.generative_instance import generate_data
 from selection.randomized.selective_MLE_utils import solve_barrier_affine as solve_barrier_affine_C
 from scipy.stats import norm as ndist
 
@@ -9,7 +7,8 @@ class projected_langevin(object):
     def __init__(self,
                  initial_condition,
                  gradient_map,
-                 stepsize):
+                 stepsize,
+                 max_jump = 5.e+1):
 
         (self.state,
          self.gradient_map,
@@ -20,6 +19,7 @@ class projected_langevin(object):
         self._sqrt_step = np.sqrt(self.stepsize)
         self._noise = ndist(loc=0,scale=1)
         self.sample = np.copy(initial_condition)
+        self.max_jump = max_jump
 
     def __iter__(self):
         return self
@@ -29,9 +29,12 @@ class projected_langevin(object):
             grad_posterior = self.gradient_map(self.state)
             candidate = (self.state + self.stepsize * grad_posterior[0]
                         + np.sqrt(2.)* self._noise.rvs(self._shape) * self._sqrt_step)
+
             if not np.all(np.isfinite(self.gradient_map(candidate)[0])):
-                print(candidate, self._sqrt_step)
-                self._sqrt_step *= 0.8
+                print(candidate, self._sqrt_step, grad_posterior[0])
+                self.stepsize *= 0.5
+                self._sqrt_step = np.sqrt(self.stepsize)
+                break
             else:
                 self.state[:] = candidate
                 self.sample[:] = grad_posterior[1]
@@ -64,7 +67,11 @@ class inference_lasso():
         self.offset = offset
         self.ini_estimate = ini_estimate
 
-    def det_initial_point(self, solve_args={'tol':1.e-12}):
+    def gradient_prior(self, target_parameter):
+        grad_prior = -target_parameter/100.
+        return grad_prior
+
+    def det_initial_point(self, initial_soln, solve_args={'tol':1.e-12}):
 
         if np.asarray(self.observed_target).shape in [(), (0,)]:
             raise ValueError('no target specified')
@@ -76,7 +83,7 @@ class inference_lasso():
         target_offset = self.cond_mean - target_lin.dot(observed_target)
 
         prec_opt = np.linalg.inv(self.cond_cov)
-        mean_opt = target_lin.dot(self.ini_estimate) + target_offset
+        mean_opt = target_lin.dot(initial_soln) + target_offset
         conjugate_arg = prec_opt.dot(mean_opt)
 
         solver = solve_barrier_affine_C
@@ -88,10 +95,10 @@ class inference_lasso():
                                  self.offset,
                                  **solve_args)
 
-        initial_point = self.ini_estimate + self.cov_target.dot(target_lin.T.dot(prec_opt.dot(mean_opt - soln)))
+        initial_point = initial_soln + self.cov_target.dot(target_lin.T.dot(prec_opt.dot(mean_opt - soln)))
         return initial_point
 
-    def gradient_log_likelihood(self, target_parameter, solve_args={'tol':1.e-12}):
+    def gradient_log_likelihood(self, target_parameter, solve_args={'tol':1.e-15}):
 
         if np.asarray(self.observed_target).shape in [(), (0,)]:
             raise ValueError('no target specified')
@@ -134,25 +141,41 @@ class inference_lasso():
             M = grad_barrier.dot(np.diag(N.T[:, j]))
             grad_jacobian[j] = np.trace(A.dot(M).dot(N.T))
 
-        return grad_lik + grad_neg_normalizer + grad_jacobian -target_parameter/100., reparam
+        return grad_lik + grad_neg_normalizer + grad_jacobian + self.gradient_prior(target_parameter), reparam
 
-    def posterior_sampler(self, nsample= 2000, nburnin=100):
+    def posterior_sampler(self, nsample= 2000, nburnin=100, step=1., start=None):
+        if start is None and np.max(np.fabs(self.ini_estimate))<50.:
+            start = self.det_initial_point(self.ini_estimate)
+        else:
+            start = self.det_initial_point(np.zeros(self.target_size))
+        state = start
 
-        initial_state = self.det_initial_point()
-        state = initial_state
+        restart = True
+        count = 0
+        while restart == True:
+            stepsize = 1. / (step * self.target_size)
+            sampler = projected_langevin(state, self.gradient_log_likelihood, stepsize)
+            samples = np.zeros((nsample, self.target_size))
+            if count == 1:
+                raise ValueError('sampler escaping')
+            for i in range(nsample):
+                sampler.next()
+                next_sample = sampler.sample.copy()
+                if max(np.fabs(next_sample)) > 50. and i > nburnin:
+                    step /= 0.80
+                    restart = True
+                    count += 1
+                    break
+                else:
+                    restart = False
+                    samples[i, :] = sampler.sample.copy()
+                    sys.stderr.write("sample number: " + str(i) + "\n")
 
-        stepsize = 1. / (0.30 * self.target_size)
-        sampler = projected_langevin(state, self.gradient_log_likelihood, stepsize)
+        return samples[nburnin:, :], count
 
-        samples = []
 
-        for i in range(nsample):
-            sampler.next()
-            samples.append(sampler.sample.copy())
-            sys.stderr.write("sample number: " + str(i) + "\n")
 
-        samples = np.array(samples)
-        return samples[nburnin:, :]
+
 
 
 

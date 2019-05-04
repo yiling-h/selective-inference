@@ -11,17 +11,17 @@ def debiasing_matrix(X,
                      rows,
                      bound=None,
                      linesearch=True,  # do a linesearch?
-                     scaling_factor=1.5,  # multiplicative factor for linesearch
+                     scaling_factor=1.1,  # multiplicative factor for linesearch
                      max_active=None,  # how big can active set get?
-                     max_try=10,  # how many steps in linesearch?
+                     max_try=500,  # how many steps in linesearch?
                      warn_kkt=False,  # warn if KKT does not seem to be satisfied?
-                     max_iter=50,  # how many iterations for each optimization problem
+                     max_iter=500,  # how many iterations for each optimization problem
                      kkt_stop=True,  # stop based on KKT conditions?
                      parameter_stop=True,  # stop based on relative convergence of parameter?
                      objective_stop=True,  # stop based on relative decrease in objective?
-                     kkt_tol=1.e-4,  # tolerance for the KKT conditions
-                     parameter_tol=1.e-4,  # tolerance for relative convergence of parameter
-                     objective_tol=1.e-4  # tolerance for relative decrease in objective
+                     kkt_tol=1.e-12,  # tolerance for the KKT conditions
+                     parameter_tol=1.e-12,  # tolerance for relative convergence of parameter
+                     objective_tol=1.e-12  # tolerance for relative decrease in objective
                      ):
     """
     Find a row of debiasing matrix using line search of
