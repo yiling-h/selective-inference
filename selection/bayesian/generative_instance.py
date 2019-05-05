@@ -13,10 +13,10 @@ def generate_data(n, p, sigma=1., rho=0., scale =True, center=True):
     beta_true = np.zeros(p)
     u = np.random.uniform(0., 1., p)
     for i in range(p):
-        if u[i] <= 0.90:
+        if u[i] <= 0.80:
             beta_true[i] = np.random.laplace(loc=0., scale=0.05)
         else:
-            beta_true[i] = np.random.laplace(loc=0., scale=2.)
+            beta_true[i] = np.random.laplace(loc=0., scale=2.5)
 
     beta = beta_true
 
@@ -39,10 +39,10 @@ def generate_data_instance(n, p, sigma=1., rho=0., s= 30, scale=True, center=Tru
     null = []
     u = np.random.uniform(0., 1., s)
     for i in range(s):
-        if u[i] <= 0.90:
-            null.append(np.random.laplace(loc=0., scale=0.1))
+        if u[i] <= 0.80:
+            null.append(np.random.laplace(loc=0., scale=0.5))
         else:
-            strong.append(np.random.laplace(loc=0., scale=1.2))
+            strong.append(np.random.laplace(loc=0., scale=2.5))
     strong = np.asarray(strong)
     null = np.asarray(null)
     position = np.linspace(0, p-1, num=strong.shape[0], dtype=np.int)

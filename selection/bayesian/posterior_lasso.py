@@ -141,7 +141,7 @@ class inference_lasso():
             M = grad_barrier.dot(np.diag(N.T[:, j]))
             grad_jacobian[j] = np.trace(A.dot(M).dot(N.T))
 
-        return grad_lik + grad_neg_normalizer + grad_jacobian + self.gradient_prior(target_parameter), reparam
+        return grad_lik + grad_neg_normalizer + grad_jacobian + jacobian.T.dot(self.gradient_prior(reparam)), reparam
 
     def posterior_sampler(self, nsample= 2000, nburnin=100, step=1., start=None):
         if start is None and np.max(np.fabs(self.ini_estimate))<50.:
