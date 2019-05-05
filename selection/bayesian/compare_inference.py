@@ -11,14 +11,14 @@ def compare_inference(n= 65,
                       randomizer_scale= 1.,
                       split_proportion= 0.60,
                       target="selected",
-                      detection_threshold= 1.):
+                      detection_threshold= 2.):
 
 
     while True:
         X, y, beta, sigma, scalingX = generate_data_instance(n=n, p=p, sigma=sigma, rho=rho, scale =True, center=True)
         n, p = X.shape
 
-        true_set = np.asarray([u for u in range(p) if np.fabs(beta[u])>= detection_threshold + 1.e-1])
+        true_set = np.asarray([u for u in range(p) if np.fabs(beta[u])>= detection_threshold])
         diff_set = np.fabs(np.subtract.outer(np.arange(p), np.asarray(true_set)))
         if true_set.shape[0]>0:
             true_signals = np.asarray([x for x in range(p) if (min(diff_set[x, :]) <= 1).sum()>=1])
@@ -121,7 +121,7 @@ def compare_inference(n= 65,
         y_sel = y[sel_idx]
         X_sel = X[sel_idx, :]
         X_sel_scaled = np.sqrt(((subsample_size - 1.) / float(subsample_size)) * n) * X_sel
-        lam_theory_split = sigma_ * 1. * np.mean(np.fabs(np.dot(X_sel_scaled.T, np.random.standard_normal((subsample_size, 2000)))).max(0))
+        lam_theory_split = sigma_ * 0.85 * np.mean(np.fabs(np.dot(X_sel_scaled.T, np.random.standard_normal((subsample_size, 2000)))).max(0))
         glm_LASSO_split = glmnet_lasso(X_sel_scaled, y_sel, lam_theory_split / float(subsample_size))
         #glm_LASSO_split, _ = glmnet_lasso_cvmin(np.sqrt(subsample_size - 1.)*X_sel, y_sel)
         active_LASSO_split = (glm_LASSO_split != 0)
