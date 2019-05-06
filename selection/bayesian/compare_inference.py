@@ -15,7 +15,7 @@ def compare_inference(n= 65,
 
 
     while True:
-        X, y, beta, sigma, scalingX = generate_data_instance(n=n, p=p, sigma=sigma, rho=rho, scale =True, center=True)
+        X, y, beta, sigma, scalingX = generate_data(n=n, p=p, sigma=sigma, rho=rho, scale =True, center=True)
         n, p = X.shape
 
         true_set = np.asarray([u for u in range(p) if np.fabs(beta[u])>= detection_threshold])
@@ -68,7 +68,7 @@ def compare_inference(n= 65,
                                                   dispersion=dispersion)
 
             active_screenset = np.asarray([r for r in range(p) if nonzero[r]])
-            false_screenset = np.asarray([a for a in range(p) if (beta[a] == 0. and nonzero[a])])
+            false_screenset = np.asarray([a for a in range(p) if (np.fabs(beta[a]) < 0.5 and nonzero[a])])
             true_screen = power_fdr(active_screenset, true_signals)
 
             power_screen = true_screen/max(float(true_set.shape[0]), 1.)
@@ -90,7 +90,7 @@ def compare_inference(n= 65,
                                             conv.b_scaling,
                                             initial_par)
 
-            samples, count = posterior_inf.posterior_sampler(nsample=2000, nburnin=50, step=0.5, start=None)
+            samples, count = posterior_inf.posterior_sampler(nsample=2000, nburnin=50, step=0.5, start=None, Metropolis=False)
 
             lci = np.percentile(samples, 5, axis=0)
             uci = np.percentile(samples, 95, axis=0)
@@ -130,7 +130,7 @@ def compare_inference(n= 65,
         if nactive_split>0 and nactive_split<30:
             X_split = X[:, active_LASSO_split]
             active_screenset_split = np.asarray([s for s in range(p) if active_LASSO_split[s]])
-            false_split_screenset = np.asarray([b for b in range(p) if (beta[b] == 0. and active_LASSO_split[b])])
+            false_split_screenset = np.asarray([b for b in range(p) if (np.fabs(beta[b]) < 0.5 and active_LASSO_split[b])])
             true_screen_split = power_fdr(active_screenset_split, true_signals)
 
             power_screen_split = true_screen_split / max(float(true_set.shape[0]),1.)
