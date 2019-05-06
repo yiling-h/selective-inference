@@ -13,8 +13,8 @@ def generate_data(n, p, sigma=1., rho=0., scale =True, center=True):
     beta_true = np.zeros(p)
     u = np.random.uniform(0., 1., p)
     for i in range(p):
-        if u[i] <= 0.80:
-            beta_true[i] = np.random.laplace(loc=0., scale=0.05)
+        if u[i] <= 0.90:
+            beta_true[i] = np.random.laplace(loc=0., scale=0.5)
         else:
             beta_true[i] = np.random.laplace(loc=0., scale=2.5)
 

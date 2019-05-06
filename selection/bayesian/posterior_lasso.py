@@ -2,7 +2,7 @@ import numpy as np, sys
 from selection.randomized.selective_MLE_utils import solve_barrier_affine as solve_barrier_affine_C
 from scipy.stats import norm as ndist
 
-class projected_langevin(object):
+class langevin(object):
 
     def __init__(self,
                  initial_condition,
@@ -34,11 +34,59 @@ class projected_langevin(object):
                 print(candidate, self._sqrt_step, grad_posterior[0])
                 self.stepsize *= 0.5
                 self._sqrt_step = np.sqrt(self.stepsize)
-                break
             else:
                 self.state[:] = candidate
                 self.sample[:] = grad_posterior[1]
                 print(" next sample ", self.state[:], self.sample[:])
+                break
+
+class MA_langevin(object):
+
+    def __init__(self,
+                 initial_condition,
+                 gradient_map,
+                 stepsize,
+                 max_jump = 5.e+1):
+
+        (self.state,
+         self.gradient_map,
+         self.stepsize) = (np.copy(initial_condition),
+                           gradient_map,
+                           stepsize)
+        self._shape = self.state.shape[0]
+        self._sqrt_step = np.sqrt(self.stepsize)
+        self._noise = ndist(loc=0,scale=1)
+        self.sample = np.copy(initial_condition)
+        self.max_jump = max_jump
+
+        posterior_old = self.gradient_map(self.state)
+        self.gradient_old = posterior_old[0]
+        self.postvalue_old = posterior_old[2]
+        self.reparam_old = posterior_old[1]
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        while True:
+            candidate = (self.state + self.stepsize * self.gradient_old
+                        + np.sqrt(2.)* self._noise.rvs(self._shape) * self._sqrt_step)
+
+            posterior_current = self.gradient_map(candidate)
+            diff = np.linalg.norm(candidate - self.state - self.stepsize * posterior_current[0])**2. -\
+                   np.linalg.norm(self.state - candidate - self.stepsize * self.gradient_old)**2.
+            accept_reject = min(1., np.exp(((1./(4. * self.stepsize))* diff) + (posterior_current[2]-self.postvalue_old)))
+            print("check", accept_reject, ((1./(4. * self.stepsize))* diff), (posterior_current[2]-self.postvalue_old))
+
+            if np.random.uniform(0., 1.)> accept_reject:
+                continue
+            else:
+                self.state[:] = candidate
+                self.sample[:] = self.reparam_old
+                print(" next sample ", self.state[:], self.sample[:])
+                self.gradient_old[:] = posterior_current[0]
+                self.postvalue_old = posterior_current[2]
+                self.reparam_old[:] = posterior_current[1]
                 break
 
 class inference_lasso():
@@ -67,9 +115,10 @@ class inference_lasso():
         self.offset = offset
         self.ini_estimate = ini_estimate
 
-    def gradient_prior(self, target_parameter):
-        grad_prior = -target_parameter/100.
-        return grad_prior
+    def prior(self, target_parameter, prior_var=100.):
+        grad_prior = -target_parameter/prior_var
+        log_prior = -np.linalg.norm(target_parameter)/(2.*prior_var)
+        return grad_prior, log_prior
 
     def det_initial_point(self, initial_soln, solve_args={'tol':1.e-12}):
 
@@ -123,6 +172,7 @@ class inference_lasso():
                                  **solve_args)
 
         reparam = target_parameter + self.cov_target.dot(target_lin.T.dot(prec_opt.dot(mean_opt - soln)))
+        neg_normalizer = (target_parameter - reparam).T.dot(prec_target).dot(target_parameter - reparam) + val + mean_opt.T.dot(prec_opt).dot(mean_opt) / 2.
 
         grad_barrier = np.diag(2. / ((1. + soln) ** 3.) - 2. / (soln ** 3.))
 
@@ -130,6 +180,9 @@ class inference_lasso():
         N = L.dot(hess)
         jacobian = (np.identity(observed_target.shape[0]) + self.cov_target.dot(L).dot(target_lin)) - \
                    self.cov_target.dot(N).dot(L.T)
+
+        log_lik = -((observed_target - reparam).T.dot(prec_target).dot(observed_target - reparam)) / 2. + neg_normalizer \
+                  + np.log(np.linalg.det(jacobian))
 
         grad_lik = jacobian.T.dot(prec_target).dot(observed_target)
         grad_neg_normalizer = -jacobian.T.dot(prec_target).dot(target_parameter)
@@ -141,9 +194,10 @@ class inference_lasso():
             M = grad_barrier.dot(np.diag(N.T[:, j]))
             grad_jacobian[j] = np.trace(A.dot(M).dot(N.T))
 
-        return grad_lik + grad_neg_normalizer + grad_jacobian + jacobian.T.dot(self.gradient_prior(reparam)), reparam
+        prior_info = self.prior(reparam)
+        return grad_lik + grad_neg_normalizer + grad_jacobian + jacobian.T.dot(prior_info[0]), reparam, log_lik + prior_info[1]
 
-    def posterior_sampler(self, nsample= 2000, nburnin=100, step=1., start=None):
+    def posterior_sampler(self, nsample= 2000, nburnin=100, step=1., start=None, Metropolis=False):
         if start is None and np.max(np.fabs(self.ini_estimate))<50.:
             start = self.det_initial_point(self.ini_estimate)
         else:
@@ -154,7 +208,12 @@ class inference_lasso():
         count = 0
         while restart == True:
             stepsize = 1. / (step * self.target_size)
-            sampler = projected_langevin(state, self.gradient_log_likelihood, stepsize)
+            if Metropolis is False:
+                sampler = langevin(state, self.gradient_log_likelihood, stepsize)
+
+            else:
+                sampler = MA_langevin(state, self.gradient_log_likelihood, stepsize)
+
             samples = np.zeros((nsample, self.target_size))
             if count == 1:
                 raise ValueError('sampler escaping')
