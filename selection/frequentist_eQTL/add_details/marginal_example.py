@@ -15,7 +15,7 @@ class fs_selection():
         self.data_simes = data_simes
         self.X_unpruned = X_unpruned
         self.sigma_ratio = sigma_ratio
-        self.simes_randomization = 0.7
+        self.simes_randomization = 1.
         self.V = self.X_unpruned.shape[1]
         indicator = np.zeros(self.V, dtype=bool)
         indicator[self.index] = 1
@@ -167,7 +167,7 @@ class neg_log_cube_probability_fs(rr.smooth_atom):
 
 class log_fs_prob(rr.smooth_atom):
 
-    def __init__(self, t, map, randomization, randomization_scale = 0.7, coef = 1., offset= None, quadratic= None):
+    def __init__(self, t, map, randomization, randomization_scale = 1., coef = 1., offset= None, quadratic= None):
 
         self.t = t
         self.map = map
@@ -453,7 +453,7 @@ def marginal_screening(X_unpruned,
     from selection.api import randomization
 
     n, p = X.shape
-    randomization = randomization.isotropic_gaussian((p,), scale=.7)
+    randomization = randomization.isotropic_gaussian((p,), scale=1.)
 
     M_est = fs_selection(randomization, index, T_sign, data_simes, X_unpruned, sigma_ratio)
     nactive = 1
@@ -535,11 +535,11 @@ if __name__ == "__main__":
 
     for seed_n in range(10):
 
-        np.random.seed(seed_n+ 90)
+        np.random.seed(seed_n+90)
         y = np.random.standard_normal(n)
         sigma_est = 1.
 
-        t_test = (X.T.dot(y) + 0.7 * np.random.standard_normal(p)) / np.sqrt(1.5)
+        t_test = (X.T.dot(y) + 1. * np.random.standard_normal(p)) / np.sqrt(2.)
         index = np.argmax(np.abs(t_test))
         T_sign = np.sign(t_test[index])
         T_observed = (X.T.dot(y))[index]

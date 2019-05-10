@@ -772,10 +772,10 @@ def hierarchical_lasso_trial(X,
 if __name__ == "__main__":
 
     ###read input files
-    inpath = "/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/simulation_prototype/"
-    path = "/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/simulation_prototype/data_directory/"
-    outdir = "/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/simulation_prototype/inference/"
-    j = 20
+    inpath = "/Users/snigdhapanigrahi/selective-inference/selection/simulation_prototype/"
+    path = "/Users/snigdhapanigrahi/selective-inference/selection/simulation_prototype/data_directory/"
+    outdir = "/Users/snigdhapanigrahi/selective-inference/selection/simulation_prototype/inference_output/"
+    j = 15
 
     for egene0 in range(20):
         egene = j+egene0
@@ -800,7 +800,7 @@ if __name__ == "__main__":
         true_mean /= sigma_est
         print("est sigma", sigma_est)
         simes_output = np.loadtxt(os.path.join(
-            "/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/simulation_prototype/bonferroni_output/"
+            "/Users/snigdhapanigrahi/selective-inference/selection/simulation_prototype/bonferroni_output/"
             + "randomized_bon_" + gene) + ".txt")
 
         simes_level = (0.10 * content.shape[0]) / 500.

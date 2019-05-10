@@ -1,7 +1,7 @@
 import numpy as np
 import glob
 
-inf_path =r'/Users/snigdhapanigrahi/selective-inference/selection/frequentist_eQTL/simulation_prototype/inference/'
+inf_path =r'/Users/snigdhapanigrahi/selective-inference/selection/simulation_prototype/inference_output/'
 
 allFiles = glob.glob(inf_path + "/*.txt")
 metrics = np.zeros(11)
