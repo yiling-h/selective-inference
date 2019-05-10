@@ -73,8 +73,8 @@ class MA_langevin(object):
                         + np.sqrt(2.)* self._noise.rvs(self._shape) * self._sqrt_step)
 
             posterior_current = self.gradient_map(candidate)
-            diff = np.linalg.norm(candidate - self.state - self.stepsize * posterior_current[0])**2. -\
-                   np.linalg.norm(self.state - candidate - self.stepsize * self.gradient_old)**2.
+            diff = np.linalg.norm(candidate - self.state - self.stepsize * self.gradient_old)**2. -\
+                   np.linalg.norm(self.state - candidate - self.stepsize * posterior_current[0])**2.
             accept_reject = min(1., np.exp(((1./(4. * self.stepsize))* diff) + (posterior_current[2]-self.postvalue_old)))
             print("check", accept_reject, ((1./(4. * self.stepsize))* diff), (posterior_current[2]-self.postvalue_old))
 
@@ -172,7 +172,7 @@ class inference_lasso():
                                  **solve_args)
 
         reparam = target_parameter + self.cov_target.dot(target_lin.T.dot(prec_opt.dot(mean_opt - soln)))
-        neg_normalizer = (target_parameter - reparam).T.dot(prec_target).dot(target_parameter - reparam) + val + mean_opt.T.dot(prec_opt).dot(mean_opt) / 2.
+        neg_normalizer = (target_parameter - reparam).T.dot(prec_target).dot(target_parameter - reparam)/2. + val + mean_opt.T.dot(prec_opt).dot(mean_opt) / 2.
 
         grad_barrier = np.diag(2. / ((1. + soln) ** 3.) - 2. / (soln ** 3.))
 

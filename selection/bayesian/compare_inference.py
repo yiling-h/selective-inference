@@ -17,6 +17,7 @@ def compare_inference(n= 65,
     while True:
         X, y, beta, sigma, scalingX = generate_data(n=n, p=p, sigma=sigma, rho=rho, scale =True, center=True)
         n, p = X.shape
+        detection_threshold = np.sqrt(0.5 * 2 * np.log(p))
 
         true_set = np.asarray([u for u in range(p) if np.fabs(beta[u])>= detection_threshold])
         diff_set = np.fabs(np.subtract.outer(np.arange(p), np.asarray(true_set)))
@@ -36,7 +37,7 @@ def compare_inference(n= 65,
         #_, lam_1se = glmnet_lasso_cv1se(np.sqrt(n-1)*X, y)
         conv = lasso.gaussian(X,
                               y,
-                              np.ones(X.shape[1]) * lam_theory,
+                              lam_theory * np.ones(X.shape[1]),
                               randomizer_scale=randomizer_scale * sigma_)
 
         signs = conv.fit()
@@ -44,7 +45,7 @@ def compare_inference(n= 65,
         nreport = 0.
         nactive = nonzero.sum()
 
-        if nonzero.sum()>0 and nonzero.sum()<30:
+        if nonzero.sum()>0 and nonzero.sum()<45:
 
             if target == "selected":
                 beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
@@ -68,7 +69,7 @@ def compare_inference(n= 65,
                                                   dispersion=dispersion)
 
             active_screenset = np.asarray([r for r in range(p) if nonzero[r]])
-            false_screenset = np.asarray([a for a in range(p) if (np.fabs(beta[a]) < 0.5 and nonzero[a])])
+            false_screenset = np.asarray([a for a in range(p) if (np.fabs(beta[a]) < 0.1 and nonzero[a])])
             true_screen = power_fdr(active_screenset, true_signals)
 
             power_screen = true_screen/max(float(true_set.shape[0]), 1.)
@@ -105,10 +106,12 @@ def compare_inference(n= 65,
             false_total = false_reportset.shape[0]/ max(float(reportind.sum()), 1.)
             power_selective = true_dtotal / max(float(true_screen), 1.)
             fdr_selective = false_total
+            ndiscoveries = reportind.sum()
 
         else:
             nreport = 1.
-            coverage, length, power_screen, false_screen, power_total, false_total, power_selective, fdr_selective =  [0., 0., 0., 0., 0., 0., 0., 0.]
+            coverage, length, power_screen, false_screen, power_total, false_total, \
+            power_selective, fdr_selective, ndiscoveries, true_screen, true_dtotal =  [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]
 
         nreport_split = 0.
         subsample_size = int(split_proportion * n)
@@ -130,7 +133,7 @@ def compare_inference(n= 65,
         if nactive_split>0 and nactive_split<30:
             X_split = X[:, active_LASSO_split]
             active_screenset_split = np.asarray([s for s in range(p) if active_LASSO_split[s]])
-            false_split_screenset = np.asarray([b for b in range(p) if (np.fabs(beta[b]) < 0.5 and active_LASSO_split[b])])
+            false_split_screenset = np.asarray([b for b in range(p) if (np.fabs(beta[b]) < 0.1 and active_LASSO_split[b])])
             true_screen_split = power_fdr(active_screenset_split, true_signals)
 
             power_screen_split = true_screen_split / max(float(true_set.shape[0]),1.)
@@ -163,22 +166,24 @@ def compare_inference(n= 65,
 
             power_selective_split = true_dtotal_split / max(float(true_screen_split), 1.)
             fdr_selective_split = false_total_split
+            ndiscoveries_split = reportind_split.sum()
 
         else:
             nreport_split = 1.
             coverage_split, length_split, power_screen_split, false_screen_split, \
-            power_total_split, false_total_split, power_selective_split, fdr_selective_split = [0., 0., 0., 0., 0., 0., 0., 0.]
+            power_total_split, false_total_split, power_selective_split, \
+            fdr_selective_split, ndiscoveries_split, true_screen_split, true_dtotal_split = [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]
 
-        return np.vstack((coverage, length, nactive, power_screen, false_screen,
-                          power_total, false_total, power_selective, fdr_selective,
-                          coverage_split, length_split, nactive_split, power_screen_split, false_screen_split,
-                          power_total_split, false_total_split, power_selective_split, fdr_selective_split,
+        return np.vstack((coverage, length, nactive, true_screen, power_screen, false_screen,
+                          power_total, false_total, power_selective, fdr_selective, ndiscoveries, true_dtotal,
+                          coverage_split, length_split, nactive_split, true_screen_split, power_screen_split, false_screen_split,
+                          power_total_split, false_total_split, power_selective_split, fdr_selective_split, ndiscoveries_split, true_dtotal_split,
                           nreport, nreport_split))
 
 
 def main(ndraw=10, split_proportion=0.70, randomizer_scale=1.):
 
-    output = np.zeros(20)
+    output = np.zeros(26)
     exception = 0.
     for n in range(ndraw):
         try:
@@ -194,11 +199,11 @@ def main(ndraw=10, split_proportion=0.70, randomizer_scale=1.):
             pass
 
         print("iteration completed ", n + 1)
-        print("adjusted inferential metrics so far ", output[:9]/(n + 1.-output[18]-exception))
-        print("split inferential metrics so far ", output[9:18] / (n + 1.-output[19]-exception))
+        print("adjusted inferential metrics so far ", output[:12]/(n + 1.-output[24]-exception))
+        print("split inferential metrics so far ", output[12:24] / (n + 1.-output[25]-exception))
         print("exceptions ", exception)
 
-main(ndraw=50)
+main(ndraw=20)
 
 
 
