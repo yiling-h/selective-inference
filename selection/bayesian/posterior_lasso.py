@@ -198,10 +198,10 @@ class inference_lasso():
         return grad_lik + grad_neg_normalizer + grad_jacobian + jacobian.T.dot(prior_info[0]), reparam, log_lik + prior_info[1]
 
     def posterior_sampler(self, nsample= 2000, nburnin=100, step=1., start=None, Metropolis=False):
-        if start is None and np.max(np.fabs(self.ini_estimate))<50.:
-            start = self.det_initial_point(self.ini_estimate)
-        else:
-            start = self.det_initial_point(np.zeros(self.target_size))
+        #if start is None and np.max(np.fabs(self.ini_estimate))<50.:
+        start = self.det_initial_point(self.ini_estimate)
+        #else:
+        #    start = self.det_initial_point(np.zeros(self.target_size))
         state = start
 
         restart = True
@@ -215,13 +215,13 @@ class inference_lasso():
                 sampler = MA_langevin(state, self.gradient_log_likelihood, stepsize)
 
             samples = np.zeros((nsample, self.target_size))
-            if count == 1:
+            if count == 2:
                 raise ValueError('sampler escaping')
             for i in range(nsample):
                 sampler.next()
                 next_sample = sampler.sample.copy()
-                if max(np.fabs(next_sample)) > 50. and i > nburnin:
-                    step /= 0.80
+                if max(np.fabs(next_sample)) > 500. and i > nburnin:
+                    step /= 0.50
                     restart = True
                     count += 1
                     break
