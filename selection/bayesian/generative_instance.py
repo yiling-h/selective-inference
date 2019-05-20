@@ -13,7 +13,7 @@ def generate_data(n, p, sigma=1., rho=0., V= 2.5, scale =True, center=True):
     beta_true = np.zeros(p)
     u = np.random.uniform(0., 1., p)
     for i in range(p):
-        if u[i] <= 0.90:
+        if u[i] <= 0.80:
             beta_true[i] = np.random.laplace(loc=0., scale= 0.10)
         else:
             beta_true[i] = np.random.laplace(loc=0., scale= V)
@@ -25,7 +25,7 @@ def generate_data(n, p, sigma=1., rho=0., V= 2.5, scale =True, center=True):
     return X, Y, beta* sigma, sigma, scalingX
 
 
-def generate_data_instance(n, p, sigma=1., rho=0., s= 30, scale=True, center=True):
+def generate_data_instance(n, p, sigma=1., rho=0., s= 50, scale=True, center=True):
     X = (np.sqrt(1 - rho) * np.random.standard_normal((n, p)) + np.sqrt(rho) * np.random.standard_normal(n)[:, None])
 
     if center:
