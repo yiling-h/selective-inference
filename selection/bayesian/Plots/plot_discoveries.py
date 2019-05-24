@@ -9,11 +9,26 @@ def common_format(ax):
     ax.set_ylabel('', fontsize=22)
     return ax
 
-def plot_discoveries(infile, outpath):
+def compute_true(row):
+    return row['true_screen']+(row['false_screen']*row['nactive'])
 
-    df = pd.read_csv(infile)
-    cols = ["#3498db", "#FF8C00"]
-    order = ["selective", "split"]
+def plot_discoveries(infile1, infile2, infile3, outpath):
+
+    df = pd.read_csv(infile1)
+    df = df.append(pd.read_csv(infile2))
+    df = df[df['nactive'] > 0.]
+
+    method_alias = {"selective": "selective",
+                    "split": "split (70%)"}
+
+    df['method'] = df['method'].map(method_alias)
+
+    df = df.append(pd.read_csv(infile3))
+    cols = ["deepskyblue", "peachpuff", "salmon", "tomato", "firebrick", "maroon"]
+    order = ["selective", "split (50%)", "split (60%)", "split (70%)", "split (80%)", "split (90%)"]
+
+    df['ntrue'] = df.apply(compute_true, axis=1)
+
     sns.set(font_scale=1.8)  # fond size
     sns.set_style("white", {'axes.facecolor': 'white',
                             'axes.grid': True,
@@ -30,14 +45,14 @@ def plot_discoveries(infile, outpath):
 
     sns.barplot(x="snr", y="ntrue", data=df.loc[df['method'] == "selective"], ax=ax1, palette="Blues_d")
     sns.pointplot(x="snr", y="true_screen", hue_order=order, markers='o', hue="method", data=df, ax=ax2, palette=cols)
-    sns.pointplot(x="snr", y="true_total", hue_order=order, markers='o', hue="method", data=df, ax=ax3, palette=cols)
+    sns.pointplot(x="snr", y="true_dtotal", hue_order=order, markers='o', hue="method", data=df, ax=ax3, palette=cols)
 
     ax2.legend_.remove()
     ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
-    ax1.set_ylim(0, 24)
-    ax2.set_ylim(0, 8)
-    ax3.set_ylim(0, 4)
+    ax1.set_ylim(0, 7)
+    ax2.set_ylim(0, 7)
+    ax3.set_ylim(0, 7)
 
     common_format(ax1)
     common_format(ax2)
@@ -47,8 +62,11 @@ def plot_discoveries(infile, outpath):
     ax3.set_title('discovered signals', y=1.03, size=27)
 
     plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-    outfile = os.path.join(outpath, "discoveries_comparison.pdf")
+    outfile = os.path.join(outpath, "discoveries_comparison_35_real_90.pdf")
     plt.savefig(outfile, format='pdf', bbox_inches='tight')
 
-plot_discoveries(infile = "/Users/psnigdha/Research/RadioiBAG/Results/dims_65_350_inference_selected_rho_0.3.csv", outpath="/Users/psnigdha/Research/RadioiBAG/Results/")
+plot_discoveries(infile1 = "/Users/psnigdha/Research/RadioiBAG/Results/realX_inference_35_low_90_selected.csv",
+                 infile2 = "/Users/psnigdha/Research/RadioiBAG/Results/realX_inference_35_high_90_selected.csv",
+                 infile3 = "/Users/psnigdha/Research/RadioiBAG/Results/realX_inference_35_split_90_selected.csv",
+                 outpath="/Users/psnigdha/Research/RadioiBAG/Results/")
 
