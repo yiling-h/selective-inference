@@ -138,4 +138,22 @@ def power_fdr(select_set, true_set):
         return 0.
 
 
+def discoveries_count(active_set, signal_clusters, false_clusters, clusters):
 
+    true_discoveries = 0.
+    false_discoveries = 0.
+    discoveries = 0.
+    for i in range(len(signal_clusters)):
+        inter = np.intersect1d(active_set, signal_clusters[i])
+        if inter.shape[0]>0:
+            true_discoveries += 1
+    for j in range(len(clusters)):
+        inter = np.intersect1d(active_set, clusters[j])
+        if inter.shape[0]>0:
+            discoveries += 1
+    for k in range(len(false_clusters)):
+        inter = np.intersect1d(active_set, false_clusters[k])
+        if inter.shape[0] > 0:
+            false_discoveries += 1
+
+    return true_discoveries, false_discoveries, discoveries

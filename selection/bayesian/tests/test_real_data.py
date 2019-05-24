@@ -1,111 +1,17 @@
-import numpy as np, itertools
+import numpy as np
 from selection.randomized.lasso import lasso, selected_targets, full_targets, debiased_targets
-from selection.bayesian.utils import glmnet_lasso, glmnet_lasso_cv1se, glmnet_lasso_cvmin, power_fdr
-from selection.bayesian.generative_instance import generate_data, generate_data_instance
+from selection.bayesian.utils import glmnet_lasso, glmnet_lasso_cv1se, glmnet_lasso_cvmin, power_fdr, discoveries_count
 from selection.bayesian.posterior_lasso import inference_lasso
 from scipy.stats import norm as ndist
+from selection.bayesian.generative_instance import generate_signals
 
 
-def generate_signals(detection_frac = 0.44, false_frac= 0.20, sigma=1.):
-    X = np.load("/Users/psnigdha/Research/RadioiBAG/Data/X.npy")
-    n, p = X.shape
+def test_real_inference(randomizer_scale= 1.,
+                        split_proportion= 0.60,
+                        target="selected",
+                        lam_frac= 1.1):
 
-    clusters = np.load("/Users/psnigdha/Research/RadioiBAG/Data/clusters.npy").astype(int)
-    cluster_size = (np.load("/Users/psnigdha/Research/RadioiBAG/Data/cluster_size.npy")).astype(int)
-
-    X = X[:,clusters]
-    X -= X.mean(0)[None, :]
-    scalingX = (X.std(0)[None, :] * np.sqrt(n))
-    X /= scalingX
-
-    beta_true = np.zeros(p)
-    position_bool = np.zeros(p, np.bool)
-    detection_threshold = detection_frac * np.sqrt(2. * np.log(p))
-
-    strong = []
-    null = []
-    u = np.random.uniform(0., 1., p)
-    for i in range(p):
-        if u[i] <= 0.90:
-            sig = np.random.laplace(loc=0., scale=0.10)
-            if sig > detection_threshold:
-                strong.append(sig)
-            else:
-                null.append(sig)
-        else:
-            sig = np.random.laplace(loc=0., scale=6.0)
-            if sig > detection_threshold:
-                strong.append(sig)
-            else:
-                null.append(sig)
-
-    strong = np.asarray(strong)
-    null = np.asarray(null)
-
-    cluster_length = np.cumsum(cluster_size)
-    cluster_choice = np.random.choice(cluster_size.shape[0], strong.shape[0],replace=False)
-    true_clusters = []
-
-    for j in range(strong.shape[0]):
-        pos_wcluster = np.random.choice(cluster_size[cluster_choice[j]], 1)
-        if cluster_choice[j]>0:
-            beta_true[cluster_length[cluster_choice[j]-1]+pos_wcluster] = strong[j]
-            position_bool[cluster_length[cluster_choice[j]-1]+pos_wcluster] = 1
-            if strong[j]> detection_threshold:
-                true_clusters.append(cluster_length[cluster_choice[j]-1] + np.arange(cluster_size[cluster_choice[j]]))
-        else:
-            beta_true[pos_wcluster] = strong[j]
-            position_bool[pos_wcluster] = 1
-            if strong[j] > detection_threshold:
-                true_clusters.append(np.arange(cluster_size[cluster_choice[j]]))
-
-    beta_true[~position_bool] = null
-    Y = (X.dot(beta_true) + np.random.standard_normal(n)) * sigma
-
-    cluster_list = []
-    false_clusters = []
-    for k in range(cluster_size.shape[0]):
-        if k==0:
-            clust_ind = clusters[:cluster_length[k]]
-            cluster_list.append(clust_ind)
-            if max(np.abs(beta_true[clust_ind])) < false_frac:
-                false_clusters.append(clust_ind)
-        else:
-            clust_ind = clusters[cluster_length[k-1]:cluster_length[k]]
-            cluster_list.append(clust_ind)
-            if max(np.abs(beta_true[clust_ind])) < false_frac:
-                false_clusters.append(clust_ind)
-
-    return X, Y, beta_true * sigma, sigma, true_clusters, false_clusters, cluster_list, detection_threshold
-
-#generate_signals()
-
-def discoveries_count(active_set, signal_clusters, false_clusters, clusters):
-
-    true_discoveries = 0.
-    false_discoveries = 0.
-    discoveries = 0.
-    for i in range(len(signal_clusters)):
-        inter = np.intersect1d(active_set, signal_clusters[i])
-        if inter.shape[0]>0:
-            true_discoveries += 1
-    for j in range(len(clusters)):
-        inter = np.intersect1d(active_set, clusters[j])
-        if inter.shape[0]>0:
-            discoveries += 1
-    for k in range(len(false_clusters)):
-        inter = np.intersect1d(active_set, false_clusters[k])
-        if inter.shape[0] > 0:
-            false_discoveries += 1
-
-    return true_discoveries, false_discoveries, discoveries
-
-def compare_inference(randomizer_scale= 1.,
-                      split_proportion= 0.60,
-                      target="selected",
-                      lam_frac= 1.1):
-
-    X, y, beta, sigma, true_clusters, false_clusters, clusters, detection_threshold = generate_signals()
+    X, y, beta, sigma, true_clusters, false_clusters, clusters, detection_threshold = generate_signals("/Users/psnigdha/Research/RadioiBAG/Data/", V=5.5)
     n, p = X.shape
 
     if n > p:
@@ -171,7 +77,7 @@ def compare_inference(randomizer_scale= 1.,
                                         conv.b_scaling,
                                         initial_par)
 
-        samples, count = posterior_inf.posterior_sampler(nsample=2200, nburnin=200, step=1., start=None,
+        samples, count = posterior_inf.posterior_sampler(nsample=2200, nburnin=200, step=0.10, start=None,
                                                          Metropolis=False)
 
         lci = np.percentile(samples, 5, axis=0)
@@ -288,24 +194,20 @@ def compare_inference(randomizer_scale= 1.,
 def main(ndraw=10, split_proportion=0.70, randomizer_scale=1.):
     output = np.zeros(26)
     exception = 0.
-    linalg_error = 0.
     for n in range(ndraw):
         try:
-            output += np.squeeze(compare_inference(randomizer_scale=randomizer_scale,
-                                                   split_proportion=split_proportion,
-                                                   target="selected"))
+            output += np.squeeze(test_real_inference(randomizer_scale=randomizer_scale,
+                                                     split_proportion=split_proportion,
+                                                     target="selected"))
         except ValueError:
-               #"Singular matrix" in str(np.linalg.LinAlgError):
-            if ValueError:
-                exception += 1.
-            else:
-                linalg_error += 1.
+            exception += 1.
             pass
 
         print("iteration completed ", n + 1)
-        print("adjusted inferential metrics so far ", output[:12] / (n + 1. - output[24] - exception - linalg_error))
-        print("split inferential metrics so far ", output[12:24] / (n + 1. - output[25] - exception - linalg_error))
-        print("exceptions ", exception, linalg_error)
+        print("adjusted inferential metrics so far ", output[:12] / (n + 1. - output[24] - exception))
+        print("split inferential metrics so far ", output[12:24] / (n + 1. - output[25] - exception))
+        print("exceptions ", exception)
 
 
 main(ndraw=50)
+
