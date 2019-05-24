@@ -16,43 +16,8 @@ def compare_inference(n= 65,
 
 
     while True:
-        # X, y, beta, sigma, scalingX = generate_data(n=n, p=p, sigma=sigma, rho=rho, scale =True, center=True)
-        # n, p = X.shape
-
-        X = np.load("/Users/psnigdha/Research/RadioiBAG/Data/X.npy")
+        X, y, beta, sigma, scalingX = generate_data(n=n, p=p, sigma=sigma, rho=rho, scale =True, center=True)
         n, p = X.shape
-
-        X -= X.mean(0)[None, :]
-        scalingX = (X.std(0)[None, :] * np.sqrt(n))
-        X /= scalingX
-
-        beta_true = np.zeros(p)
-        strong = []
-        null = []
-        u = np.random.uniform(0., 1., p)
-        for i in range(p):
-            if u[i] <= 0.90:
-                null.append(np.random.laplace(loc=0., scale=0.10))
-            else:
-                strong.append(np.random.laplace(loc=0., scale=3.))
-        strong = np.asarray(strong)
-        null = np.asarray(null)
-        position = np.linspace(0, p - 1, num=strong.shape[0], dtype=np.int)
-        position_bool = np.zeros(p, np.bool)
-        position_bool[position] = 1
-        beta_true[position_bool] = strong
-        beta_true[~position_bool] = null
-
-        # beta_true = np.zeros(p)
-        # u = np.random.uniform(0., 1., p)
-        # for i in range(p):
-        #     if u[i] <= 0.90:
-        #         beta_true[i] = np.random.laplace(loc=0., scale=0.10)
-        #     else:
-        #         beta_true[i] = np.random.laplace(loc=0., scale=2.5)
-
-        beta = beta_true
-        y = (X.dot(beta) + np.random.standard_normal(n)) * sigma
 
         detection_threshold = 0.44 * np.sqrt(2. * np.log(p))
 
@@ -76,7 +41,6 @@ def compare_inference(n= 65,
                               y,
                               lam_theory * np.ones(X.shape[1]),
                               randomizer_scale=randomizer_scale * sigma_)
-                              #ridge_term= 0.1 * sigma_)
 
         signs = conv.fit()
         nonzero = signs != 0
@@ -136,13 +100,7 @@ def compare_inference(n= 65,
             coverage = np.mean((lci < beta_target) * (uci > beta_target))
             length = np.mean(uci - lci)
 
-
-            reportind = np.zeros(nactive, np.bool)
-            for s in range(nactive):
-                if (np.mean(samples[:, s] > detection_threshold) >0.50 or np.mean(samples[:, s] < -detection_threshold) > 0.50):
-                    reportind[s] = 1
-
-            #reportind = ~((lci < 0.) * (uci > 0.))
+            reportind = ~((lci < 0.) * (uci > 0.))
             reportset = np.asarray([active_screenset[e] for e in range(nactive) if reportind[e] == 1])
             false_reportset = np.intersect1d(false_screenset, reportset)
 
@@ -205,11 +163,8 @@ def compare_inference(n= 65,
             reportind_split = np.zeros(nactive_split, np.bool)
             posterior_mass_pos = ndist.cdf((detection_threshold - post_mean_split)/(np.sqrt(np.diag(post_var_split))))
             posterior_mass_neg = ndist.cdf((-detection_threshold - post_mean_split) / (np.sqrt(np.diag(post_var_split))))
-            for u in range(nactive_split):
-                if 1.-posterior_mass_pos[u]> 0.50 or posterior_mass_neg[u]>0.50:
-                    reportind_split[u] = 1
 
-            #reportind_split = ~((adjusted_intervals_split[0, :] < 0.) * (adjusted_intervals_split[1, :] > 0.))
+            reportind_split = ~((adjusted_intervals_split[0, :] < 0.) * (adjusted_intervals_split[1, :] > 0.))
             reportset_split = np.asarray([active_screenset_split[f] for f in range(nactive_split) if reportind_split[f] == 1])
             false_reportset_split = np.intersect1d(false_split_screenset, reportset_split)
 
