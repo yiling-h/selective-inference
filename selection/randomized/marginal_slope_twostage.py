@@ -134,7 +134,6 @@ class marginal_screening(multi_screening):
         '''
         Threshold
         '''
-
         randomized_stdev = np.sqrt(np.diag(covariance) + randomizer_scale**2)
         p = covariance.shape[0]
         randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)

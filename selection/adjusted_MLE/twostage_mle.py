@@ -1,5 +1,4 @@
 import numpy as np
-from selection.randomized.lasso import full_targets, selected_targets
 from selection.randomized.marginal_slope_twostage import marginal_screening, slope
 from selection.randomized.randomization import randomization
 from selection.randomized.query import twostage_selective_MLE
@@ -403,3 +402,5 @@ def multiple_runs_lasso(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1, snr=
 
     print MLE_inf, Naive_inf
     return np.vstack((MLE_inf, Naive_inf, nreport, nreport_nonrand))
+
+

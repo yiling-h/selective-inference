@@ -132,7 +132,6 @@ class marginal_screening(screening):
         '''
         Threshold
         '''
-
         randomized_stdev = np.sqrt(np.diag(covariance) + randomizer_scale**2)
         p = covariance.shape[0]
         randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
@@ -148,6 +147,7 @@ class marginal_screening(screening):
                                   threshold,
                                   useC=useC,
                                   perturb=perturb)
+
 # Stepup procedures like Benjamini-Hochberg
 
 def stepup_selection(Z_values, stepup_Z):
