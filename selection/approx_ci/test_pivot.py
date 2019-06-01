@@ -185,10 +185,10 @@ def test_approx_pivot_carved(n= 100,
 def EDCF_pivot(nsim=300):
     _pivot=[]
     for i in range(nsim):
-        _pivot.extend(test_approx_pivot(n= 60,
+        _pivot.extend(test_approx_pivot(n= 5000,
                                         p= 1000,
                                         signal_fac= 0.25,
-                                        s= 10,
+                                        s= 15,
                                         sigma= 1.,
                                         rho= 0.40,
                                         randomizer_scale= 1.))
