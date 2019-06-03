@@ -145,12 +145,11 @@ def test_selected_targets(n=2000,
             coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
             return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
 
-
 def main(nsim=500, full=False):
     P0, PA, cover, length_int = [], [], [], []
     from statsmodels.distributions import ECDF
 
-    n, p, s = 500, 100, 10
+    n, p, s = 100, 500, 5
 
     for i in range(nsim):
         if full:
@@ -169,8 +168,9 @@ def main(nsim=500, full=False):
         cover.extend(cover_)
         P0.extend(p0)
         PA.extend(pA)
-        print(
-            np.array(PA) < 0.1, np.mean(P0), np.std(P0), np.mean(np.array(P0) < 0.1), np.mean(np.array(PA) < 0.1), np.mean(cover),
-            np.mean(avg_length), 'null pvalue + power + length')
+        # print(
+        #     np.array(PA) < 0.1, np.mean(P0), np.std(P0), np.mean(np.array(P0) < 0.1), np.mean(np.array(PA) < 0.1), np.mean(cover),
+        #     np.mean(avg_length), 'null pvalue + power + length')
+        print(np.mean(cover), np.mean(avg_length), 'coverage + length')
 
-main(nsim=1, full=False)
+main(nsim=500, full=True)
