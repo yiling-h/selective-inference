@@ -1,127 +1,10 @@
 import numpy as np, os
 from selection.randomized.lasso import lasso, selected_targets, full_targets, debiased_targets
 from selection.bayesian.utils import glmnet_lasso, glmnet_lasso_cv1se, glmnet_lasso_cvmin, power_fdr, discoveries_count
-from selection.bayesian.posterior_lasso import inference_lasso
+from selection.bayesian.posterior_lasso import inference_lasso, inference_lasso_hierarchical
 from scipy.stats import norm as ndist
 from selection.bayesian.generative_instance import generate_signals
 import pandas as pd
-
-def sampler_inf(X,
-                y,
-                beta,
-                true_clusters,
-                false_clusters,
-                clusters,
-                detection_threshold,
-                randomizer_scale,
-                target,
-                lam_frac = 1.1):
-
-    n, p = X.shape
-    if n > p:
-        dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
-        sigma_ = np.sqrt(dispersion)
-    else:
-        dispersion = None
-        sigma_ = np.std(y)
-
-    lam_theory = sigma_ * lam_frac * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
-    conv = lasso.gaussian(X,
-                          y,
-                          lam_theory * np.ones(X.shape[1]),
-                          randomizer_scale=randomizer_scale * sigma_)
-
-    signs = conv.fit()
-    nonzero = signs != 0
-    nactive = nonzero.sum()
-
-    if nonzero.sum() > 0 and nonzero.sum() < 30:
-        try:
-            if target == "selected":
-                beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
-                (observed_target,
-                 cov_target,
-                 cov_target_score,
-                 alternatives) = selected_targets(conv.loglike,
-                                                  conv._W,
-                                                  nonzero,
-                                                  dispersion=dispersion)
-
-            else:
-                beta_target = beta[nonzero]
-                (observed_target,
-                 cov_target,
-                 cov_target_score,
-                 alternatives) = debiased_targets(conv.loglike,
-                                                  conv._W,
-                                                  nonzero,
-                                                  penalty=conv.penalty,
-                                                  dispersion=dispersion)
-
-            active_screenset = np.asarray([r for r in range(p) if nonzero[r]])
-            true_screen, false_screen, tot_screen = discoveries_count(active_screenset, true_clusters, false_clusters,
-                                                                      clusters)
-
-            power_screen = true_screen / max(float(len(true_clusters)), 1.)
-            false_screen = false_screen / float(tot_screen)
-
-            initial_par, _, _, _, _, _ = conv.selective_MLE(observed_target,
-                                                            cov_target,
-                                                            cov_target_score,
-                                                            alternatives)
-
-            posterior_inf = inference_lasso(observed_target,
-                                            cov_target,
-                                            cov_target_score,
-                                            conv.observed_opt_state,
-                                            conv.cond_mean,
-                                            conv.cond_cov,
-                                            conv.logdens_linear,
-                                            conv.A_scaling,
-                                            conv.b_scaling,
-                                            initial_par)
-
-            samples, count = posterior_inf.posterior_sampler(nsample=2200, nburnin=200, step=0.20, start=None,
-                                                             Metropolis=False)
-
-            lci = np.percentile(samples, 5, axis=0)
-            uci = np.percentile(samples, 95, axis=0)
-            coverage = (lci < beta_target) * (uci > beta_target)
-            length = uci - lci
-
-            reportind = np.zeros(nactive, np.bool)
-            for s in range(nactive):
-                if (np.mean(samples[:, s] > detection_threshold) > 0.50 or np.mean(
-                        samples[:, s] < -detection_threshold) > 0.50):
-                    reportind[s] = 1
-
-            reportset = np.asarray([active_screenset[e] for e in range(nactive) if reportind[e] == 1])
-
-            true_dtotal, false_dtotal, dtotal = discoveries_count(reportset, true_clusters, false_clusters, clusters)
-            power_total = true_dtotal / max(float(len(true_clusters)), 1.)
-            false_total = false_dtotal / max(float(dtotal), 1.)
-
-            power_selective = true_dtotal / max(float(true_screen), 1.)
-            ndiscoveries = reportind.sum()
-
-            return np.vstack((coverage,
-                              length,
-                              nactive * np.ones(nactive),
-                              true_screen * np.ones(nactive),
-                              power_screen * np.ones(nactive),
-                              false_screen * np.ones(nactive),
-                              power_total * np.ones(nactive),
-                              false_total * np.ones(nactive),
-                              power_selective * np.ones(nactive),
-                              ndiscoveries * np.ones(nactive),
-                              true_dtotal * np.ones(nactive)))
-
-        except np.linalg.LinAlgError as e:
-            if 'Singular matrix' in str(e):
-                return np.zeros(11)
-
-    else:
-        return np.zeros(11)
 
 
 def split_inf(X,
@@ -228,7 +111,127 @@ def split_inf(X,
     else:
         return np.zeros(11)
 
-def create_output(V_values=np.array([5.5, 6.5]),
+def sampler_inf(X,
+                y,
+                beta,
+                true_clusters,
+                false_clusters,
+                clusters,
+                detection_threshold,
+                randomizer_scale,
+                target,
+                lam_frac = 1.1):
+
+    n, p = X.shape
+    if n > p:
+        dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
+        sigma_ = np.sqrt(dispersion)
+    else:
+        dispersion = None
+        sigma_ = np.std(y)
+
+    lam_theory = sigma_ * lam_frac * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
+    conv = lasso.gaussian(X,
+                          y,
+                          lam_theory * np.ones(X.shape[1]),
+                          randomizer_scale=randomizer_scale * sigma_)
+
+    signs = conv.fit()
+    nonzero = signs != 0
+    nactive = nonzero.sum()
+
+    if nonzero.sum() > 0 and nonzero.sum() < 30:
+        try:
+            if target == "selected":
+                beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+                (observed_target,
+                 cov_target,
+                 cov_target_score,
+                 alternatives) = selected_targets(conv.loglike,
+                                                  conv._W,
+                                                  nonzero,
+                                                  dispersion=dispersion)
+
+            else:
+                beta_target = beta[nonzero]
+                (observed_target,
+                 cov_target,
+                 cov_target_score,
+                 alternatives) = debiased_targets(conv.loglike,
+                                                  conv._W,
+                                                  nonzero,
+                                                  penalty=conv.penalty,
+                                                  dispersion=dispersion)
+
+            active_screenset = np.asarray([r for r in range(p) if nonzero[r]])
+            true_screen, false_screen, tot_screen = discoveries_count(active_screenset, true_clusters, false_clusters,
+                                                                      clusters)
+
+            power_screen = true_screen / max(float(len(true_clusters)), 1.)
+            false_screen = false_screen / float(tot_screen)
+
+            initial_par, _, _, _, _, _ = conv.selective_MLE(observed_target,
+                                                            cov_target,
+                                                            cov_target_score,
+                                                            alternatives)
+
+            posterior_inf = inference_lasso_hierarchical(observed_target,
+                                                         cov_target,
+                                                         cov_target_score,
+                                                         conv.observed_opt_state,
+                                                         conv.cond_mean,
+                                                         conv.cond_cov,
+                                                         conv.logdens_linear,
+                                                         conv.A_scaling,
+                                                         conv.b_scaling,
+                                                         initial_par)
+
+            samples, count = posterior_inf.posterior_sampler(nsample=2200, nburnin=200, step=0.10, start=None,
+                                                             Metropolis=False)
+
+            samples = samples[:, :nactive]
+
+            lci = np.percentile(samples, 5, axis=0)
+            uci = np.percentile(samples, 95, axis=0)
+            coverage = (lci < beta_target) * (uci > beta_target)
+            length = uci - lci
+
+            reportind = np.zeros(nactive, np.bool)
+            for s in range(nactive):
+                if (np.mean(samples[:, s] > detection_threshold) > 0.50 or np.mean(
+                        samples[:, s] < -detection_threshold) > 0.50):
+                    reportind[s] = 1
+
+            reportset = np.asarray([active_screenset[e] for e in range(nactive) if reportind[e] == 1])
+
+            true_dtotal, false_dtotal, dtotal = discoveries_count(reportset, true_clusters, false_clusters, clusters)
+            power_total = true_dtotal / max(float(len(true_clusters)), 1.)
+            false_total = false_dtotal / max(float(dtotal), 1.)
+
+            power_selective = true_dtotal / max(float(true_screen), 1.)
+            ndiscoveries = reportind.sum()
+
+            return np.vstack((coverage,
+                              length,
+                              nactive * np.ones(nactive),
+                              true_screen * np.ones(nactive),
+                              power_screen * np.ones(nactive),
+                              false_screen * np.ones(nactive),
+                              power_total * np.ones(nactive),
+                              false_total * np.ones(nactive),
+                              power_selective * np.ones(nactive),
+                              ndiscoveries * np.ones(nactive),
+                              true_dtotal * np.ones(nactive)))
+
+        except np.linalg.LinAlgError as e:
+            if 'Singular matrix' in str(e):
+                return np.zeros(11)
+
+    else:
+        return np.zeros(11)
+
+
+def create_output(V_values=np.array([4.5, 5.5, 6.5]),
                   randomizer_scale=1.,
                   split_proportion=0.70,
                   target="selected",
@@ -299,7 +302,7 @@ def create_output(V_values=np.array([5.5, 6.5]),
     df_master.to_csv(outfile_inf_csv, index=False)
     df_master.to_html(outfile_inf_html)
 
-create_output(nsim=50, outpath = "/Users/psnigdha/Research/RadioiBAG/Results/")
+create_output(nsim=50, outpath = "/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/")
 
 def create_split_output(V_values=np.array([1.5, 2.5, 3.5, 4.5, 5.5, 6.5]),
                         target="selected",

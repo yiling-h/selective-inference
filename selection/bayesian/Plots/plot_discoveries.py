@@ -50,9 +50,9 @@ def plot_discoveries(infile1, infile2, infile3, outpath):
     ax2.legend_.remove()
     ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
-    ax1.set_ylim(0, 7)
-    ax2.set_ylim(0, 7)
-    ax3.set_ylim(0, 7)
+    ax1.set_ylim(0, 8)
+    ax2.set_ylim(0, 8)
+    ax3.set_ylim(0, 8)
 
     common_format(ax1)
     common_format(ax2)
@@ -65,8 +65,8 @@ def plot_discoveries(infile1, infile2, infile3, outpath):
     outfile = os.path.join(outpath, "discoveries_comparison_35_real_90.pdf")
     plt.savefig(outfile, format='pdf', bbox_inches='tight')
 
-plot_discoveries(infile1 = "/Users/psnigdha/Research/RadioiBAG/Results/realX_inference_35_low_90_selected.csv",
-                 infile2 = "/Users/psnigdha/Research/RadioiBAG/Results/realX_inference_35_high_90_selected.csv",
-                 infile3 = "/Users/psnigdha/Research/RadioiBAG/Results/realX_inference_35_split_90_selected.csv",
-                 outpath="/Users/psnigdha/Research/RadioiBAG/Results/")
+plot_discoveries(infile1 = "/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/realX_inference_35_low_90_selected.csv",
+                 infile2 = "/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/realX_inference_35_high_90_selected.csv",
+                 infile3 = "/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/realX_inference_35_split_90_selected.csv",
+                 outpath="/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/")
 

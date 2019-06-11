@@ -66,9 +66,9 @@ def plot_selective_metrics(infile1, infile2, infile3, outpath):
     outfile = os.path.join(outpath, "selective_comparison_35_real_90.pdf")
     plt.savefig(outfile, format='pdf', bbox_inches='tight')
 
-plot_selective_metrics(infile1 = "/Users/psnigdha/Research/RadioiBAG/Results/realX_inference_35_low_90_selected.csv",
-                       infile2 = "/Users/psnigdha/Research/RadioiBAG/Results/realX_inference_35_high_90_selected.csv",
-                       infile3 = "/Users/psnigdha/Research/RadioiBAG/Results/realX_inference_35_split_90_selected.csv",
-                       outpath="/Users/psnigdha/Research/RadioiBAG/Results/")
+plot_selective_metrics(infile1 = "/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/realX_inference_35_low_90_selected.csv",
+                       infile2 = "/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/realX_inference_35_high_90_selected.csv",
+                       infile3 = "/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/realX_inference_35_split_90_selected.csv",
+                       outpath="/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/")
 
 

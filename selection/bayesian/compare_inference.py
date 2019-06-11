@@ -2,7 +2,7 @@ import numpy as np
 from selection.randomized.lasso import lasso, selected_targets, full_targets, debiased_targets
 from selection.bayesian.utils import glmnet_lasso, glmnet_lasso_cv1se, glmnet_lasso_cvmin, power_fdr
 from selection.bayesian.generative_instance import generate_data, generate_data_instance
-from selection.bayesian.posterior_lasso import inference_lasso
+from selection.bayesian.posterior_lasso import inference_lasso, inference_lasso_hierarchical
 from scipy.stats import norm as ndist
 
 
@@ -82,21 +82,22 @@ def compare_inference(n= 65,
                                                             cov_target_score,
                                                             alternatives)
 
-            posterior_inf = inference_lasso(observed_target,
-                                            cov_target,
-                                            cov_target_score,
-                                            conv.observed_opt_state,
-                                            conv.cond_mean,
-                                            conv.cond_cov,
-                                            conv.logdens_linear,
-                                            conv.A_scaling,
-                                            conv.b_scaling,
-                                            initial_par)
+            posterior_inf = inference_lasso_hierarchical(observed_target,
+                                                         cov_target,
+                                                         cov_target_score,
+                                                         conv.observed_opt_state,
+                                                         conv.cond_mean,
+                                                         conv.cond_cov,
+                                                         conv.logdens_linear,
+                                                         conv.A_scaling,
+                                                         conv.b_scaling,
+                                                         initial_par)
 
             samples, count = posterior_inf.posterior_sampler(nsample=2000, nburnin=50, step=0.5, start=None, Metropolis=False)
+            target_samples = samples[:, :nonzero.sum()]
+            lci = np.percentile(target_samples, 5, axis=0)
+            uci = np.percentile(target_samples, 95, axis=0)
 
-            lci = np.percentile(samples, 5, axis=0)
-            uci = np.percentile(samples, 95, axis=0)
             coverage = np.mean((lci < beta_target) * (uci > beta_target))
             length = np.mean(uci - lci)
 
@@ -211,7 +212,7 @@ def main(ndraw=10, split_proportion=0.70, randomizer_scale=1.):
         print("split inferential metrics so far ", output[12:24] / (n + 1.-output[25]-exception))
         print("exceptions ", exception)
 
-main(ndraw=50)
+main(ndraw=20)
 
 
 
