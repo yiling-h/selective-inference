@@ -5,6 +5,7 @@ from selection.bayesian.posterior_lasso import inference_lasso, inference_lasso_
 from scipy.stats import norm as ndist
 from selection.bayesian.generative_instance import generate_signals
 import pandas as pd
+from selection.algorithms.lasso import lasso_full
 
 
 def split_inf(X,
@@ -15,16 +16,11 @@ def split_inf(X,
               clusters,
               detection_threshold,
               split_proportion,
-              target,
-              lam_frac = 1.1):
+              lam_theory,
+              sigma_,
+              model_size = 50):
 
     n, p = X.shape
-    if n > p:
-        dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
-        sigma_ = np.sqrt(dispersion)
-    else:
-        sigma_ = np.std(y)
-
     subsample_size = int(split_proportion * n)
     sel_idx = np.zeros(n, np.bool)
     sel_idx[:subsample_size] = 1
@@ -34,82 +30,92 @@ def split_inf(X,
     X_inf = X[inf_idx, :]
     y_sel = y[sel_idx]
     X_sel = X[sel_idx, :]
-    X_sel_scaled = np.sqrt(((subsample_size - 1.) / float(subsample_size)) * n) * X_sel
-    lam_theory_split = sigma_ * lam_frac * np.mean(np.fabs(np.dot(X_sel_scaled.T, np.random.standard_normal((subsample_size, 2000)))).max(0))
-    glm_LASSO_split = glmnet_lasso(X_sel_scaled, y_sel, lam_theory_split / float(subsample_size))
-    active_LASSO_split = (glm_LASSO_split != 0)
-    nactive_split = active_LASSO_split.sum()
-
-    if nactive_split > 0 and nactive_split < 30:
-
-        X_split = X[:, active_LASSO_split]
-        active_screenset_split = np.asarray([s for s in range(p) if active_LASSO_split[s]])
-
-        true_screen_split, false_screen_split, tot_screen_split = discoveries_count(active_screenset_split,
-                                                                                    true_clusters,
-                                                                                    false_clusters, clusters)
-
-        power_screen_split = true_screen_split / max(float(len(true_clusters)), 1.)
-        false_screen_split = false_screen_split / float(tot_screen_split)
-
-        noise_variance = sigma_ ** 2.
-        prior_variance = 100.
-        active_LASSO_split = (glm_LASSO_split != 0)
+    # X_sel_scaled = np.sqrt(((subsample_size - 1.) / float(subsample_size)) * n) * X_sel
+    # lam_theory_split = sigma_ * lam_frac * np.mean(np.fabs(np.dot(X_sel_scaled.T, np.random.standard_normal((subsample_size, 2000)))).max(0))
+    # glm_LASSO_split = glmnet_lasso(X_sel_scaled, y_sel, lam_theory_split / float(subsample_size))
+    try:
+        lasso = lasso_full.gaussian(X_sel, y_sel, lam_theory)
+        LASSO_split = lasso.fit()
+        active_LASSO_split = (LASSO_split != 0)
         nactive_split = active_LASSO_split.sum()
-        X_inf_split = X_inf[:, active_LASSO_split]
-        try:
-            projection_active_split = X_inf_split.dot(np.linalg.inv(X_inf_split.T.dot(X_inf_split)))
-            true_val_split = np.linalg.pinv(X_split).dot(X.dot(beta))
+        print("check ", nactive_split)
 
-            est_split = projection_active_split.T.dot(y_inf)
-            M_split = np.linalg.inv(prior_variance * np.identity(nactive_split) + noise_variance * np.linalg.inv(
-                X_inf_split.T.dot(X_inf_split)))
-            post_mean_split = prior_variance * (M_split).dot(est_split)
-            post_var_split = prior_variance * np.identity(nactive_split) - (prior_variance ** 2.) * (M_split)
-            adjusted_intervals_split = np.vstack([post_mean_split - 1.65 * (np.sqrt(np.diag(post_var_split))),
-                                                  post_mean_split + 1.65 * (np.sqrt(np.diag(post_var_split)))])
+        if nactive_split > 0 and nactive_split < model_size:
 
-            coverage_split = (true_val_split > adjusted_intervals_split[0, :]) * (
+            X_split = X[:, active_LASSO_split]
+            active_screenset_split = np.asarray([s for s in range(p) if active_LASSO_split[s]])
+
+            true_screen_split, false_screen_split, tot_screen_split = discoveries_count(active_screenset_split,
+                                                                                        true_clusters,
+                                                                                        false_clusters,
+                                                                                        clusters)
+
+            power_screen_split = true_screen_split / max(float(len(true_clusters)), 1.)
+            false_screen_split = false_screen_split / float(tot_screen_split)
+
+            noise_variance = sigma_ ** 2.
+            prior_variance = 100.
+            active_LASSO_split = (LASSO_split != 0)
+            nactive_split = active_LASSO_split.sum()
+            X_inf_split = X_inf[:, active_LASSO_split]
+            try:
+                projection_active_split = X_inf_split.dot(np.linalg.inv(X_inf_split.T.dot(X_inf_split)))
+                true_val_split = np.linalg.pinv(X_split).dot(X.dot(beta))
+
+                est_split = projection_active_split.T.dot(y_inf)
+                M_split = np.linalg.inv(prior_variance * np.identity(nactive_split) + noise_variance * np.linalg.inv(
+                    X_inf_split.T.dot(X_inf_split)))
+                post_mean_split = prior_variance * (M_split).dot(est_split)
+                post_var_split = prior_variance * np.identity(nactive_split) - (prior_variance ** 2.) * (M_split)
+                adjusted_intervals_split = np.vstack([post_mean_split - 1.65 * (np.sqrt(np.diag(post_var_split))),
+                                                      post_mean_split + 1.65 * (np.sqrt(np.diag(post_var_split)))])
+
+                coverage_split = (true_val_split > adjusted_intervals_split[0, :]) * (
                         true_val_split < adjusted_intervals_split[1, :])
-            length_split = adjusted_intervals_split[1, :] - adjusted_intervals_split[0, :]
+                length_split = adjusted_intervals_split[1, :] - adjusted_intervals_split[0, :]
 
-            reportind_split = np.zeros(nactive_split, np.bool)
-            posterior_mass_pos = ndist.cdf((detection_threshold - post_mean_split) / (np.sqrt(np.diag(post_var_split))))
-            posterior_mass_neg = ndist.cdf(
-                (-detection_threshold - post_mean_split) / (np.sqrt(np.diag(post_var_split))))
-            for u in range(nactive_split):
-                if 1. - posterior_mass_pos[u] > 0.50 or posterior_mass_neg[u] > 0.50:
-                    reportind_split[u] = 1
+                reportind_split = np.zeros(nactive_split, np.bool)
+                posterior_mass_pos = ndist.cdf(
+                    (detection_threshold - post_mean_split) / (np.sqrt(np.diag(post_var_split))))
+                posterior_mass_neg = ndist.cdf(
+                    (-detection_threshold - post_mean_split) / (np.sqrt(np.diag(post_var_split))))
+                for u in range(nactive_split):
+                    if 1. - posterior_mass_pos[u] > 0.50 or posterior_mass_neg[u] > 0.50:
+                        reportind_split[u] = 1
 
-            reportset_split = np.asarray(
-                [active_screenset_split[f] for f in range(nactive_split) if reportind_split[f] == 1])
+                reportset_split = np.asarray(
+                    [active_screenset_split[f] for f in range(nactive_split) if reportind_split[f] == 1])
 
-            true_dtotal_split, false_dtotal_split, dtotal_split = discoveries_count(reportset_split, true_clusters,
-                                                                                    false_clusters, clusters)
-            power_total_split = true_dtotal_split / max(float(len(true_clusters)), 1.)
-            false_total_split = false_dtotal_split / max(float(dtotal_split), 1.)
+                true_dtotal_split, false_dtotal_split, dtotal_split = discoveries_count(reportset_split, true_clusters,
+                                                                                        false_clusters, clusters)
+                power_total_split = true_dtotal_split / max(float(len(true_clusters)), 1.)
+                false_total_split = false_dtotal_split / max(float(dtotal_split), 1.)
 
-            power_selective_split = true_dtotal_split / max(float(true_screen_split), 1.)
-            ndiscoveries_split = reportind_split.sum()
+                power_selective_split = true_dtotal_split / max(float(true_screen_split), 1.)
+                ndiscoveries_split = reportind_split.sum()
 
-            return np.vstack((coverage_split,
-                              length_split,
-                              nactive_split * np.ones(nactive_split),
-                              true_screen_split * np.ones(nactive_split),
-                              power_screen_split * np.ones(nactive_split),
-                              false_screen_split * np.ones(nactive_split),
-                              power_total_split * np.ones(nactive_split),
-                              false_total_split * np.ones(nactive_split),
-                              power_selective_split * np.ones(nactive_split),
-                              ndiscoveries_split * np.ones(nactive_split),
-                              true_dtotal_split * np.ones(nactive_split)))
+                return np.vstack((coverage_split,
+                                  length_split,
+                                  nactive_split * np.ones(nactive_split),
+                                  true_screen_split * np.ones(nactive_split),
+                                  power_screen_split * np.ones(nactive_split),
+                                  false_screen_split * np.ones(nactive_split),
+                                  power_total_split * np.ones(nactive_split),
+                                  false_total_split * np.ones(nactive_split),
+                                  power_selective_split * np.ones(nactive_split),
+                                  ndiscoveries_split * np.ones(nactive_split),
+                                  true_dtotal_split * np.ones(nactive_split)))
 
-        except np.linalg.LinAlgError as e:
-            if 'Singular matrix' in str(e):
-                return np.zeros(11)
+            except np.linalg.LinAlgError as e:
+                if 'Singular matrix' in str(e):
+                    return np.zeros((11, 1))
 
-    else:
-        return np.zeros(11)
+        else:
+            return np.zeros((11,1))
+
+    except np.linalg.LinAlgError as e:
+        if 'Singular matrix' in str(e):
+            return np.zeros((11, 1))
 
 def sampler_inf(X,
                 y,
@@ -120,17 +126,14 @@ def sampler_inf(X,
                 detection_threshold,
                 randomizer_scale,
                 target,
-                lam_frac = 1.1):
+                lam_theory,
+                sigma_,
+                dispersion = None,
+                step_size =1.,
+                model_size = 50):
 
     n, p = X.shape
-    if n > p:
-        dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
-        sigma_ = np.sqrt(dispersion)
-    else:
-        dispersion = None
-        sigma_ = np.std(y)
 
-    lam_theory = sigma_ * lam_frac * np.mean(np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
     conv = lasso.gaussian(X,
                           y,
                           lam_theory * np.ones(X.shape[1]),
@@ -139,8 +142,8 @@ def sampler_inf(X,
     signs = conv.fit()
     nonzero = signs != 0
     nactive = nonzero.sum()
-
-    if nonzero.sum() > 0 and nonzero.sum() < 30:
+    
+    if nonzero.sum() > 0 and nonzero.sum() < model_size:
         try:
             if target == "selected":
                 beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
@@ -186,7 +189,7 @@ def sampler_inf(X,
                                                          conv.b_scaling,
                                                          initial_par)
 
-            samples, count = posterior_inf.posterior_sampler(nsample=2200, nburnin=200, step=0.10, start=None,
+            samples, count = posterior_inf.posterior_sampler(nsample=2200, nburnin=200, step=step_size, start=None,
                                                              Metropolis=False)
 
             samples = samples[:, :nactive]
@@ -231,63 +234,62 @@ def sampler_inf(X,
         return np.zeros(11)
 
 
-def create_output(V_values=np.array([4.5, 5.5, 6.5]),
+def create_output(V_values,
+                  nsim,
+                  inpath,
+                  null_prob_values,
+                  lam_frac_values,
+                  step_size_values,
                   randomizer_scale=1.,
-                  split_proportion=0.70,
                   target="selected",
-                  nsim = 100,
-                  inpath = "/Users/psnigdha/Research/RadioiBAG/Data/",
                   outpath = None):
 
     df_master = pd.DataFrame()
 
-    for V in V_values:
+    for j in range(V_values.shape[0]):
         for ndraw in range(nsim):
+            V = V_values[j]
+            null_prob = null_prob_values[j]
+            X, y, beta, sigma, true_clusters, false_clusters, clusters, detection_threshold = generate_signals(inpath,
+                                                                                                               V=V,
+                                                                                                               null_prob=null_prob)
 
-            X, y, beta, sigma, true_clusters, false_clusters, clusters, detection_threshold = generate_signals(inpath, V=V)
+            n, p = X.shape
+
+            if n > 2 * p:
+                dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
+                sigma_ = np.sqrt(dispersion)
+            else:
+                sigma_ = np.std(y)
+
+            lam_theory = sigma_ * lam_frac_values[j] * np.mean(
+                np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
 
             try:
-                output_selective = (sampler_inf(X = X,
-                                                y = y,
-                                                beta = beta,
-                                                true_clusters = true_clusters,
-                                                false_clusters = false_clusters,
-                                                clusters = clusters,
-                                                detection_threshold = detection_threshold,
-                                                randomizer_scale = randomizer_scale,
-                                                target=target)).T
+                output_selective = (sampler_inf(X=X,
+                                                y=y,
+                                                beta=beta,
+                                                true_clusters=true_clusters,
+                                                false_clusters=false_clusters,
+                                                clusters=clusters,
+                                                detection_threshold=detection_threshold,
+                                                randomizer_scale=randomizer_scale,
+                                                target=target,
+                                                lam_theory=lam_theory,
+                                                sigma_=sigma_,
+                                                step_size=step_size_values[j])).T
 
                 df_sel = pd.DataFrame(data=output_selective, columns=['coverage', 'length', 'nactive',
-                                                                    'true_screen', 'power_screen', 'false_screen',
-                                                                    'power_total', 'false_total', 'power_selective',
-                                                                    'ndiscoveries', 'true_dtotal'])
+                                                                      'true_screen', 'power_screen', 'false_screen',
+                                                                      'power_total', 'false_total', 'power_selective',
+                                                                      'ndiscoveries', 'true_dtotal'])
 
-                df_sel = df_sel.assign(simulation = ndraw,
-                                       method = "selective",
-                                       snr = V)
-
-                output_split = (split_inf(X = X,
-                                          y = y,
-                                          beta = beta,
-                                          true_clusters = true_clusters,
-                                          false_clusters = false_clusters,
-                                          clusters = clusters,
-                                          detection_threshold = detection_threshold,
-                                          split_proportion = split_proportion,
-                                          target=target)).T
-
-                df_split = pd.DataFrame(data=output_split, columns=['coverage', 'length', 'nactive',
-                                                                    'true_screen', 'power_screen', 'false_screen',
-                                                                    'power_total', 'false_total', 'power_selective',
-                                                                    'ndiscoveries', 'true_dtotal'])
-
-                df_split = df_split.assign(simulation = ndraw,
-                                           method = "split",
-                                           snr = V)
+                df_sel = df_sel.assign(simulation=ndraw,
+                                       method="selective",
+                                       snr=V,
+                                       null_probab=null_prob)
 
                 df_master = df_master.append(df_sel, ignore_index=True)
-                df_master = df_master.append(df_split, ignore_index=True)
-
 
             except ValueError:
                 pass
@@ -297,111 +299,148 @@ def create_output(V_values=np.array([4.5, 5.5, 6.5]),
     if outpath is None:
         outpath = os.path.dirname(__file__)
 
-    outfile_inf_csv = os.path.join(outpath, "realX" + "_inference_35_high_90_" + target + ".csv")
-    outfile_inf_html = os.path.join(outpath, "realX" + "_inference_35_high_90_" + target + ".html")
+    outfile_inf_csv = os.path.join(outpath, "realX" + "_inference_35_90_" + target + ".csv")
+    outfile_inf_html = os.path.join(outpath, "realX" + "_inference_35_90_" + target + ".html")
     df_master.to_csv(outfile_inf_csv, index=False)
     df_master.to_html(outfile_inf_html)
 
-create_output(nsim=50, outpath = "/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/")
-
-def create_split_output(V_values=np.array([1.5, 2.5, 3.5, 4.5, 5.5, 6.5]),
+def create_split_output(V_values,
+                        nsim,
+                        inpath,
+                        null_prob_values,
+                        lam_frac_values,
                         target="selected",
-                        nsim = 100,
-                        inpath = "/Users/psnigdha/Research/RadioiBAG/Data/",
                         outpath = None):
 
     df_master = pd.DataFrame()
 
-    for V in V_values:
+    for j in range(V_values.shape[0]):
         for ndraw in range(nsim):
+            V = V_values[j]
+            null_prob = null_prob_values[j]
+            X, y, beta, sigma, true_clusters, false_clusters, clusters, detection_threshold = generate_signals(inpath, V=V, null_prob =null_prob)
 
-            X, y, beta, sigma, true_clusters, false_clusters, clusters, detection_threshold = generate_signals(inpath, V=V)
+            n, p = X.shape
 
-            try:
+            if n > 2 * p:
+                dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
+                sigma_ = np.sqrt(dispersion)
+            else:
+                sigma_ = np.std(y)
 
-                output_split = (split_inf(X = X,
-                                          y = y,
-                                          beta = beta,
-                                          true_clusters = true_clusters,
-                                          false_clusters = false_clusters,
-                                          clusters = clusters,
-                                          detection_threshold = detection_threshold,
-                                          split_proportion = 0.50,
-                                          target=target)).T
+            lam_theory = sigma_ * lam_frac_values[j] * np.mean(
+                np.fabs(np.dot(X.T, np.random.standard_normal((n, 2000)))).max(0))
 
-                df_split_1 = pd.DataFrame(data=output_split, columns=['coverage', 'length', 'nactive',
-                                                                      'true_screen', 'power_screen', 'false_screen',
-                                                                      'power_total', 'false_total', 'power_selective',
-                                                                      'ndiscoveries', 'true_dtotal'])
+            output_split = (split_inf(X=X,
+                                      y=y,
+                                      beta=beta,
+                                      true_clusters=true_clusters,
+                                      false_clusters=false_clusters,
+                                      clusters=clusters,
+                                      detection_threshold=detection_threshold,
+                                      split_proportion=0.50,
+                                      lam_theory=lam_theory,
+                                      sigma_=sigma_)).T
 
-                df_split_1 = df_split_1.assign(simulation = ndraw,
-                                               method = "split (50%)",
-                                               snr = V)
+            df_split_1 = pd.DataFrame(data=output_split, columns=['coverage', 'length', 'nactive',
+                                                                  'true_screen', 'power_screen', 'false_screen',
+                                                                  'power_total', 'false_total', 'power_selective',
+                                                                  'ndiscoveries', 'true_dtotal'])
 
-                output_split = (split_inf(X=X,
-                                          y=y,
-                                          beta=beta,
-                                          true_clusters=true_clusters,
-                                          false_clusters=false_clusters,
-                                          clusters=clusters,
-                                          detection_threshold=detection_threshold,
-                                          split_proportion=0.60,
-                                          target=target)).T
+            df_split_1 = df_split_1.assign(simulation=ndraw,
+                                           method="split (50%)",
+                                           snr=V,
+                                           null_probab=null_prob)
 
-                df_split_2 = pd.DataFrame(data=output_split, columns=['coverage', 'length', 'nactive',
-                                                                      'true_screen', 'power_screen', 'false_screen',
-                                                                      'power_total', 'false_total', 'power_selective',
-                                                                      'ndiscoveries', 'true_dtotal'])
+            output_split = (split_inf(X=X,
+                                      y=y,
+                                      beta=beta,
+                                      true_clusters=true_clusters,
+                                      false_clusters=false_clusters,
+                                      clusters=clusters,
+                                      detection_threshold=detection_threshold,
+                                      split_proportion=0.60,
+                                      lam_theory=lam_theory,
+                                      sigma_=sigma_)).T
 
-                df_split_2 = df_split_2.assign(simulation=ndraw,
-                                               method="split (60%)",
-                                               snr=V)
+            df_split_2 = pd.DataFrame(data=output_split, columns=['coverage', 'length', 'nactive',
+                                                                  'true_screen', 'power_screen', 'false_screen',
+                                                                  'power_total', 'false_total', 'power_selective',
+                                                                  'ndiscoveries', 'true_dtotal'])
 
-                output_split = (split_inf(X=X,
-                                          y=y,
-                                          beta=beta,
-                                          true_clusters=true_clusters,
-                                          false_clusters=false_clusters,
-                                          clusters=clusters,
-                                          detection_threshold=detection_threshold,
-                                          split_proportion=0.80,
-                                          target=target)).T
+            df_split_2 = df_split_2.assign(simulation=ndraw,
+                                           method="split (60%)",
+                                           snr=V,
+                                           null_probab=null_prob)
 
-                df_split_3 = pd.DataFrame(data=output_split, columns=['coverage', 'length', 'nactive',
-                                                                      'true_screen', 'power_screen', 'false_screen',
-                                                                      'power_total', 'false_total', 'power_selective',
-                                                                      'ndiscoveries', 'true_dtotal'])
+            output_split = (split_inf(X=X,
+                                      y=y,
+                                      beta=beta,
+                                      true_clusters=true_clusters,
+                                      false_clusters=false_clusters,
+                                      clusters=clusters,
+                                      detection_threshold=detection_threshold,
+                                      split_proportion=0.70,
+                                      lam_theory=lam_theory,
+                                      sigma_=sigma_)).T
 
-                df_split_3 = df_split_3.assign(simulation=ndraw,
-                                               method="split (80%)",
-                                               snr=V)
+            df_split_3 = pd.DataFrame(data=output_split, columns=['coverage', 'length', 'nactive',
+                                                                  'true_screen', 'power_screen', 'false_screen',
+                                                                  'power_total', 'false_total', 'power_selective',
+                                                                  'ndiscoveries', 'true_dtotal'])
 
-                output_split = (split_inf(X=X,
-                                          y=y,
-                                          beta=beta,
-                                          true_clusters=true_clusters,
-                                          false_clusters=false_clusters,
-                                          clusters=clusters,
-                                          detection_threshold=detection_threshold,
-                                          split_proportion=0.90,
-                                          target=target)).T
+            df_split_3 = df_split_3.assign(simulation=ndraw,
+                                           method="split (70%)",
+                                           snr=V,
+                                           null_probab=null_prob)
 
-                df_split_4 = pd.DataFrame(data=output_split, columns=['coverage', 'length', 'nactive',
-                                                                      'true_screen', 'power_screen', 'false_screen',
-                                                                      'power_total', 'false_total', 'power_selective',
-                                                                      'ndiscoveries', 'true_dtotal'])
+            output_split = (split_inf(X=X,
+                                      y=y,
+                                      beta=beta,
+                                      true_clusters=true_clusters,
+                                      false_clusters=false_clusters,
+                                      clusters=clusters,
+                                      detection_threshold=detection_threshold,
+                                      split_proportion=0.80,
+                                      lam_theory=lam_theory,
+                                      sigma_=sigma_)).T
 
-                df_split_4 = df_split_4.assign(simulation=ndraw,
-                                               method="split (90%)",
-                                               snr=V)
+            df_split_4 = pd.DataFrame(data=output_split, columns=['coverage', 'length', 'nactive',
+                                                                  'true_screen', 'power_screen', 'false_screen',
+                                                                  'power_total', 'false_total', 'power_selective',
+                                                                  'ndiscoveries', 'true_dtotal'])
 
-                df_master = df_master.append(df_split_1, ignore_index=True)
-                df_master = df_master.append(df_split_2, ignore_index=True)
-                df_master = df_master.append(df_split_3, ignore_index=True)
-                df_master = df_master.append(df_split_4, ignore_index=True)
+            df_split_4 = df_split_4.assign(simulation=ndraw,
+                                           method="split (80%)",
+                                           snr=V,
+                                           null_probab=null_prob)
 
-            except ValueError:
-                pass
+            output_split = (split_inf(X=X,
+                                      y=y,
+                                      beta=beta,
+                                      true_clusters=true_clusters,
+                                      false_clusters=false_clusters,
+                                      clusters=clusters,
+                                      detection_threshold=detection_threshold,
+                                      split_proportion=0.90,
+                                      lam_theory=lam_theory,
+                                      sigma_=sigma_)).T
+
+            df_split_5 = pd.DataFrame(data=output_split, columns=['coverage', 'length', 'nactive',
+                                                                  'true_screen', 'power_screen', 'false_screen',
+                                                                  'power_total', 'false_total', 'power_selective',
+                                                                  'ndiscoveries', 'true_dtotal'])
+
+            df_split_5 = df_split_5.assign(simulation=ndraw,
+                                           method="split (90%)",
+                                           snr=V,
+                                           null_probab=null_prob)
+
+            df_master = df_master.append(df_split_1, ignore_index=True)
+            df_master = df_master.append(df_split_2, ignore_index=True)
+            df_master = df_master.append(df_split_3, ignore_index=True)
+            df_master = df_master.append(df_split_4, ignore_index=True)
+            df_master = df_master.append(df_split_5, ignore_index=True)
 
             print("iteration completed ", ndraw + 1)
 
@@ -413,4 +452,3 @@ def create_split_output(V_values=np.array([1.5, 2.5, 3.5, 4.5, 5.5, 6.5]),
     df_master.to_csv(outfile_inf_csv, index=False)
     df_master.to_html(outfile_inf_html)
 
-#create_split_output(nsim=50, outpath = "/Users/psnigdha/Research/RadioiBAG/Results/")

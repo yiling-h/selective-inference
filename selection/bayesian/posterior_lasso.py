@@ -342,7 +342,7 @@ class inference_lasso_hierarchical():
             M = grad_barrier.dot(np.diag(N.T[:, j]))
             grad_jacobian[j] = np.trace(A.dot(M).dot(N.T))
 
-        prior_info = self.hierarchical_prior(reparam, var_parameter, lam=0.001)
+        prior_info = self.hierarchical_prior(reparam, var_parameter, lam=0.01)
         return np.append(grad_lik + grad_neg_normalizer + grad_jacobian + jacobian.T.dot(prior_info[0]), prior_info[1]),\
                np.append(reparam, var_parameter), log_lik + prior_info[2]
 
