@@ -9,18 +9,11 @@ def common_format(ax):
     ax.set_ylabel('', fontsize=22)
     return ax
 
-def plot_discoveries(infile1, infile2, infile3, outpath):
+def plot_discoveries(infile1, infile2, outpath):
 
     df = pd.read_csv(infile1)
     df = df.append(pd.read_csv(infile2))
-    df = df[df['nactive'] > 0.]
 
-    method_alias = {"selective": "selective",
-                    "split": "split (70%)"}
-
-    df['method'] = df['method'].map(method_alias)
-
-    df = df.append(pd.read_csv(infile3))
     cols = ["deepskyblue", "peachpuff", "salmon", "tomato", "firebrick", "maroon"]
     order = ["selective", "split (50%)", "split (60%)", "split (70%)", "split (80%)", "split (90%)"]
 
@@ -39,10 +32,10 @@ def plot_discoveries(infile1, infile2, infile3, outpath):
     ax2 = fig.add_subplot(222)
     ax1 = fig.add_subplot(221)
 
-    sns.pointplot(x="snr", y="power_screen", hue_order=order, markers='o', hue="method", data=df, ax=ax1, palette=cols)
-    sns.pointplot(x="snr", y="power_total", hue_order=order, markers='o', hue="method", data=df, ax=ax2, palette=cols)
-    sns.pointplot(x="snr", y="false_screen", hue_order=order, markers='o', hue="method", data=df, ax=ax3, palette=cols)
-    sns.pointplot(x="snr", y="false_total", hue_order=order, markers='o', hue="method", data=df, ax=ax4, palette=cols)
+    sns.barplot(x="snr", y="power_screen", hue_order=order,  hue="method", data=df, ax=ax1, palette=cols)
+    sns.barplot(x="snr", y="power_total", hue_order=order, hue="method", data=df, ax=ax2, palette=cols)
+    sns.barplot(x="snr", y="false_screen", hue_order=order, hue="method", data=df, ax=ax3, palette=cols)
+    sns.barplot(x="snr", y="false_total", hue_order=order, hue="method", data=df, ax=ax4, palette=cols)
 
     ax1.legend_.remove()
     ax2.legend_.remove()
@@ -67,7 +60,3 @@ def plot_discoveries(infile1, infile2, infile3, outpath):
     outfile = os.path.join(outpath, "powerfdr_comparison_35_real_90.pdf")
     plt.savefig(outfile, format='pdf', bbox_inches='tight')
 
-plot_discoveries(infile1 = "/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/realX_inference_35_low_90_selected.csv",
-                 infile2 = "/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/realX_inference_35_high_90_selected.csv",
-                 infile3 = "/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/realX_inference_35_split_90_selected.csv",
-                 outpath="/Users/psnigdha/Research/RadioiBAG/Hierarchical_Results/")
