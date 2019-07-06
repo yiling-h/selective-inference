@@ -5,8 +5,8 @@ import seaborn as sns
 
 def common_format(ax):
     ax.grid(True, which='both')
-    ax.set_xlabel('signal regimes', fontsize=22)
-    ax.set_ylabel('', fontsize=22)
+    ax.set_xlabel('signal regimes', fontsize=18)
+    ax.set_ylabel('', fontsize=20)
     return ax
 
 def plot_selective_metrics(infile1, infile2, outpath):
@@ -27,6 +27,7 @@ def plot_selective_metrics(infile1, infile2, outpath):
                           })
 
     fig = plt.figure(figsize=(12, 4))
+    #ax3 = fig.add_subplot(133)
     ax2 = fig.add_subplot(132)
     ax1 = fig.add_subplot(131)
 
@@ -35,8 +36,9 @@ def plot_selective_metrics(infile1, infile2, outpath):
     #sns.barplot(x="snr", y="power_selective", hue_order=order, hue="method", data=df, ax=ax3, palette=cols)
 
     ax1.legend_.remove()
-    #ax2.legend_.remove()
-    ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    #ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    ax2.legend_.remove()
+    #ax3.legend_.remove()
 
     ax1.set_ylim(0, 1.12)
     ax2.set_ylim(0, 35.)
@@ -45,14 +47,14 @@ def plot_selective_metrics(infile1, infile2, outpath):
     common_format(ax1)
     common_format(ax2)
     #common_format(ax3)
-    ax1.set_title('coverage', y=1.03, size=27)
-    ax2.set_title('length', y=1.03, size=27)
+    ax1.set_title('p/n=0.5: coverage', y=1.03, size=21)
+    ax2.set_title('p/n=0.5: length', y=1.03, size=21)
     #ax3.set_title('power', y=1.03, size=27)
 
     ax1.axhline(y=0.9, color='k', linestyle='--', linewidth=2)
 
     plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
-    outfile = os.path.join(outpath, "selective_comparison_35_real_90.pdf")
+    outfile = os.path.join(outpath, "selective_comparison_power_35_real_90.pdf")
     plt.savefig(outfile, format='pdf', bbox_inches='tight')
 
 
