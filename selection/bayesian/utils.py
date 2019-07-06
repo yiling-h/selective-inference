@@ -138,7 +138,7 @@ def power_fdr(select_set, true_set):
         return 0.
 
 
-def discoveries_count(active_set, signal_clusters, false_clusters, clusters):
+def discoveries_count_clusters(active_set, signal_clusters, false_clusters, clusters):
 
     true_discoveries = 0.
     false_discoveries = 0.
@@ -155,5 +155,24 @@ def discoveries_count(active_set, signal_clusters, false_clusters, clusters):
         inter = np.intersect1d(active_set, false_clusters[k])
         if inter.shape[0] > 0:
             false_discoveries += 1
+
+    return true_discoveries, false_discoveries, discoveries
+
+from scipy.stats.stats import pearsonr
+
+def discoveries_count(active_set, true_signals, false_signals, X):
+
+    true_discoveries = 0.
+    false_discoveries = 0.
+    discoveries = active_set.shape[0]
+    for h in range(discoveries):
+        corr_true = np.zeros(true_signals.shape[0])
+        for i in range(true_signals.shape[0]):
+            corr_true[i] = pearsonr(X[:, active_set[h]], X[:, true_signals[i]])[0]
+        if np.any(corr_true >= 0.55):
+            true_discoveries += 1.
+        else:
+            if np.min(np.fabs(false_signals-active_set[h])) == 0:
+                false_discoveries += 1.
 
     return true_discoveries, false_discoveries, discoveries
