@@ -29,7 +29,7 @@ def generate_data(beta,
 
     return A, Y, beta * sigma, sigma
 
-def bandit(A_0, Y_0, d, beta, sigma=0.5, randomizer_scale=0.5):
+def bandit(A_0, Y_0, d, beta, sigma=1., randomizer_scale=0.5):
 
     p = beta.shape[0]
     K = p - d
@@ -79,25 +79,25 @@ def bandit(A_0, Y_0, d, beta, sigma=0.5, randomizer_scale=0.5):
 
 def test(beta = np.array([0., 0., 2., 1.5, 1.]), rho=0., equicorrelated=False, T=1000, sigma=1.):
 
-    X_0, _ = _design(n=1, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
+    X_0, _ = _design(n=2, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
     D_0, y_0, _, _ = generate_data(beta,
                                    X_0,
                                    K_ch=0,
-                                   n=1,
+                                   n=2,
                                    sigma=sigma)
 
-    X_1, _ = _design(n=1, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
+    X_1, _ = _design(n=2, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
     D_1, y_1, _, _ = generate_data(beta,
                                    X_1,
                                    K_ch=1,
-                                   n=1,
+                                   n=2,
                                    sigma=sigma)
 
-    X_2, _ = _design(n=1, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
+    X_2, _ = _design(n=2, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
     D_2, y_2, _, _ = generate_data(beta,
                                    X_2,
                                    K_ch=2,
-                                   n=1,
+                                   n=2,
                                    sigma=sigma)
 
     A_0 = np.vstack((np.vstack((D_0, D_1)), D_2))
@@ -112,7 +112,7 @@ def test(beta = np.array([0., 0., 2., 1.5, 1.]), rho=0., equicorrelated=False, T
 
     return cov, bias
 
-T = 50
+T = 500
 cov = np.zeros((T,5))
 bias = np.zeros((T, 5))
 for i in range(300):
@@ -120,7 +120,7 @@ for i in range(300):
     cov += result[0]
     bias += result[1]
     print("iteration comp ", i + 1)
-print("coverage so far ", i + 1, cov/float(i+1), 10*bias/float(i+1))
+print("coverage so far ", i + 1, cov/float(i+1), bias/float(i+1))
 
 
 
