@@ -1643,9 +1643,9 @@ def solve_barrier_affine_py(conjugate_arg,
                             con_linear,
                             con_offset,
                             step=1,
-                            nstep=2000,
+                            nstep=1000,
                             min_its=500,
-                            tol=1.e-12):
+                            tol=1.e-15):
 
     scaling = np.sqrt(np.diag(con_linear.dot(precision).dot(con_linear.T)))
 
