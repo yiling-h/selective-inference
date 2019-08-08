@@ -58,7 +58,6 @@ def plot_discoveries(infile1, infile2,
     sns.barplot(x="snr", y="true_dtotal", hue_order=order, hue="method", data=df4, ax=ax4, palette=cols)
 
     ax1.legend_.remove()
-    #ax2.legend_.remove()
     ax3.legend_.remove()
     ax4.legend_.remove()
     ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
@@ -73,7 +72,6 @@ def plot_discoveries(infile1, infile2,
     common_format(ax3)
     common_format(ax4)
 
-    #ax1.set_title('signals', y=1.03, size=27)
     ax1.set_title('p/n=5', y=1.03, size=21)
     ax2.set_title('p/n=2', y=1.03, size=21)
     ax3.set_title('p/n=1', y=1.03, size=21)

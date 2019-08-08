@@ -252,8 +252,12 @@ class two_stage_gaussian_query(query):
                      opt_linear,
                      opt_offset):
 
-        if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
+        n_penalized = len(self.observed_opt_state) - self._unpenalized.sum()
+        if not np.all((A_scaling.dot(self.observed_opt_state) - b_scaling)[:n_penalized] <= 0):
             raise ValueError('constraints not satisfied')
+
+        #if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
+        #    raise ValueError('constraints not satisfied')
 
         cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian(opt_linear, opt_offset)
 
@@ -353,8 +357,11 @@ class gaussian_query(query):
                      opt_linear,
                      opt_offset):
 
-        if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
+        n_penalized = len(self.observed_opt_state) - self._unpenalized.sum()
+        if not np.all((A_scaling.dot(self.observed_opt_state) - b_scaling)[:n_penalized] <= 0):
             raise ValueError('constraints not satisfied')
+        # if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
+        #     raise ValueError('constraints not satisfied')
 
         cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian(opt_linear, opt_offset)
 

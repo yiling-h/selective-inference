@@ -133,7 +133,7 @@ def generate_signals_clusters(inpath, V, null_prob, detection_frac = 1., false_f
 
     return X, Y, beta_true * sigma, sigma, true_clusters, false_clusters, cluster_list, detection_threshold
 
-def generate_signals(inpath, V, null_prob, detection_frac = 1., false_frac= 0.05, sigma=1.):
+def generate_signals(inpath, V, null_prob, detection_frac = 0.75 , false_frac= 0.05, sigma=1.):
 
     X = np.load(os.path.join(inpath + "X.npy"))
     n, p = X.shape
