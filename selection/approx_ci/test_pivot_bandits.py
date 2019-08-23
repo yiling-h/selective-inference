@@ -77,7 +77,7 @@ def bandit(A_0, Y_0, d, beta, sigma=1., randomizer_scale=1.):
 
     return ((lower < beta)*(beta < upper)), A_1, Y_1, (target_1-beta)
 
-def greedy_bandit(A_0, Y_0, d, beta, sigma=1., randomizer_scale=1.):
+def greedy_bandit(A_0, Y_0, d, beta, sigma=1., randomizer_scale=0.5):
 
     p = beta.shape[0]
     K = p - d
@@ -122,82 +122,65 @@ def greedy_bandit(A_0, Y_0, d, beta, sigma=1., randomizer_scale=1.):
     sd = sigma * np.sqrt(np.diag(cov_1))
     lower = target_1[d:] - (1.96 * sd[d:])
     upper = target_1[d:] + (1.96 * sd[d:])
-    #print("check ", lower, upper, beta[d+cht], target_1[d+cht], sigma)
 
     return ((lower < beta[d:])*(beta[d:] < upper)), A_1, Y_1, (target_1-beta)[d:]
 
-# def test(beta = np.array([0., 0., 2., 1.5, 1.]), rho=0., equicorrelated=False, T=1000, sigma=1.):
-#
-#     X_0, _ = _design(n=2, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
-#     D_0, y_0, _, _ = generate_data(beta,
-#                                    X_0,
-#                                    K_ch=0,
-#                                    n=2,
-#                                    sigma=sigma)
-#
-#     X_1, _ = _design(n=2, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
-#     D_1, y_1, _, _ = generate_data(beta,
-#                                    X_1,
-#                                    K_ch=1,
-#                                    n=2,
-#                                    sigma=sigma)
-#
-#     X_2, _ = _design(n=2, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
-#     D_2, y_2, _, _ = generate_data(beta,
-#                                    X_2,
-#                                    K_ch=2,
-#                                    n=2,
-#                                    sigma=sigma)
-#
-#     A_0 = np.vstack((np.vstack((D_0, D_1)), D_2))
-#     Y_0 = np.append(np.append(y_0, y_1), y_2)
-#
-#     cov = np.zeros((T, 5))
-#     bias = np.zeros((T, 5))
-#     for t in range(T):
-#         cov[t,:], A_1, Y_1, bias[t, :] = bandit(A_0, Y_0, d=2, beta=beta, sigma=sigma)
-#         A_0 = A_1
-#         Y_0 = Y_1
-#
-#     return cov, bias
+def test(rho=0., equicorrelated=False, T=1000, sigma=1.):
 
-def test(beta = np.array([0., 0., 3.5, 3., 3.2, 1.]), rho=0., equicorrelated=False, T=1000, sigma=1.):
+    narms = 20
+    beta = np.append(np.append(np.array([0., 0.]), 1.8*np.ones(narms/2)), 1.8*np.ones(narms/2))
+    D_list = []
+    Y_0 = []
+    for k in range(narms):
+        X_0, _ = _design(n=30, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
+        D_0, y_0, _, _ = generate_data(beta,
+                                       X_0,
+                                       K_ch=k,
+                                       n=30,
+                                       sigma=sigma)
 
-    X_0, _ = _design(n=10, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
-    D_0, y_0, _, _ = generate_data(beta,
-                                   X_0,
-                                   K_ch=0,
-                                   n=10,
-                                   sigma=sigma)
+        D_list.append(D_0)
+        Y_0.append(y_0)
 
-    X_1, _ = _design(n=10, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
-    D_1, y_1, _, _ = generate_data(beta,
-                                   X_1,
-                                   K_ch=1,
-                                   n=10,
-                                   sigma=sigma)
+    A_0 = np.vstack(D_list)
+    Y_0 = np.asarray(Y_0).ravel()
+    print("check shape ", A_0.shape, Y_0.shape)
 
-    X_2, _ = _design(n=10, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
-    D_2, y_2, _, _ = generate_data(beta,
-                                   X_2,
-                                   K_ch=2,
-                                   n=10,
-                                   sigma=sigma)
+    # X_0, _ = _design(n=3, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
+    # D_0, y_0, _, _ = generate_data(beta,
+    #                                X_0,
+    #                                K_ch=0,
+    #                                n=3,
+    #                                sigma=sigma)
+    #
+    # X_1, _ = _design(n=10, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
+    # D_1, y_1, _, _ = generate_data(beta,
+    #                                X_1,
+    #                                K_ch=1,
+    #                                n=10,
+    #                                sigma=sigma)
+    #
+    # X_2, _ = _design(n=10, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
+    # D_2, y_2, _, _ = generate_data(beta,
+    #                                X_2,
+    #                                K_ch=2,
+    #                                n=10,
+    #                                sigma=sigma)
+    #
+    # X_3, _ = _design(n=3, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
+    # D_3, y_3, _, _ = generate_data(beta,
+    #                                X_3,
+    #                                K_ch=3,
+    #                                n=3,
+    #                                sigma=sigma)
 
-    X_3, _ = _design(n=10, p=2, rho=rho, equicorrelated=equicorrelated)[:2]
-    D_3, y_3, _, _ = generate_data(beta,
-                                   X_2,
-                                   K_ch=3,
-                                   n=10,
-                                   sigma=sigma)
+    # A_0 = np.vstack((np.vstack((D_0, D_1)), D_2))
+    # A_0 = np.vstack((A_0, D_3))
+    # Y_0 = np.append(np.append(y_0, y_1), y_2)
+    # Y_0 = np.append(Y_0, y_3)
 
-    A_0 = np.vstack((np.vstack((D_0, D_1)), D_2))
-    A_0 = np.vstack((A_0, D_3))
-    Y_0 = np.append(np.append(y_0, y_1), y_2)
-    Y_0 = np.append(Y_0, y_3)
-
-    cov = np.zeros((T, 4))
-    bias = np.zeros((T, 4))
+    cov = np.zeros((T, narms))
+    bias = np.zeros((T, narms))
     for t in range(T):
         cov[t,:], A_1, Y_1, bias[t, :] = greedy_bandit(A_0, Y_0, d=2, beta=beta, sigma=sigma)
         A_0 = A_1
@@ -205,15 +188,18 @@ def test(beta = np.array([0., 0., 3.5, 3., 3.2, 1.]), rho=0., equicorrelated=Fal
 
     return cov, bias
 
-T = 200
-cov = np.zeros((T,4))
-bias = np.zeros((T, 4))
+T = 70
+narms = 20
+cov = np.zeros((T, narms))
+bias = np.zeros((T, narms))
 for i in range(300):
     result = test(T=T)
     cov += result[0]
     bias += result[1]
     print("iteration comp ", i + 1)
-print("coverage so far ", i + 1, cov/float(i+1), bias/float(i+1))
+print("coverage so far ", i + 1, (cov/float(i+1)).tolist(), np.min(cov)/float(i+1))
+#(bias/float(i+1)).tolist())
+
 
 
 
