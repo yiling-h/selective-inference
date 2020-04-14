@@ -7,7 +7,8 @@ import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
 
 import matplotlib.pyplot as plt
-from selection.approx_ci.approx_reference import approx_reference, approx_density
+from selection.approx_ci.approx_reference import approx_reference, approx_density, \
+    approx_reference_adaptive, approx_adaptive_density
 from statsmodels.distributions.empirical_distribution import ECDF
 
 def test_approx_pivot(n= 500,
@@ -90,6 +91,8 @@ def test_approx_pivot(n= 500,
                                       mean_parameter,
                                       cov_target_uni,
                                       approx_log_ref)
+
+            print("check ", area_cum)
 
             pivot.append(1. - area_cum[grid_indx_obs])
             print("variable completed ", m+1)
@@ -178,6 +181,7 @@ def test_approx_pivot_carved(n= 100,
                                       cov_target_uni,
                                       approx_log_ref)
 
+
             pivot.append(1. - area_cum[grid_indx_obs])
             print("variable completed ", m + 1)
         return pivot
@@ -185,10 +189,10 @@ def test_approx_pivot_carved(n= 100,
 def EDCF_pivot(nsim=300):
     _pivot=[]
     for i in range(nsim):
-        _pivot.extend(test_approx_pivot(n= 5000,
-                                        p= 1000,
+        _pivot.extend(test_approx_pivot(n= 300,
+                                        p= 50,
                                         signal_fac= 0.25,
-                                        s= 15,
+                                        s= 5,
                                         sigma= 1.,
                                         rho= 0.40,
                                         randomizer_scale= 1.))
@@ -200,7 +204,7 @@ def EDCF_pivot(nsim=300):
     plt.plot(grid, grid, 'k--')
     plt.show()
 
-EDCF_pivot(nsim=300)
+#EDCF_pivot(nsim=300)
 
 from rpy2 import robjects
 import rpy2.robjects.numpy2ri
@@ -291,3 +295,4 @@ def compare_pivots_highD(nsim=200):
     plotPivot_randomization(np.asarray(_carved_pivot), np.asarray(_randomized_pivot))
 
 #compare_pivots_highD(nsim=250)
+

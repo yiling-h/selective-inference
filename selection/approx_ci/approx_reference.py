@@ -45,6 +45,7 @@ def approx_reference(grid,
 
     return np.asarray(ref_hat)
 
+
 def approx_density(grid,
                    mean_parameter,
                    cov_target,
@@ -76,7 +77,6 @@ def approx_ci(param_grid,
         return np.nanmin(region), np.nanmax(region)
     else:
         return 0., 0.
-
 
 
 
