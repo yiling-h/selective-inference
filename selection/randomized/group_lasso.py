@@ -16,21 +16,21 @@ class group_lasso(query):
                  randomizer,
                  perturb=None):
 
-        ## log likleihood : quadratic loss
+        # log likleihood : quadratic loss
         self.loglike = loglike
         self.nfeature = p = self.loglike.shape[0]
 
-        ## ridge parameter
+        # ridge parameter
         self.ridge_term = ridge_term
 
-        ## group lasso penalty
+        # group lasso penalty
         self.penalty = rr.group_lasso(groups,
                                       weights=weights,
                                       lagrange=1.)
 
         self._initial_omega = perturb
 
-        ## gaussian randomization
+        # gaussian randomization
         self.randomizer = randomizer
 
 
@@ -38,7 +38,7 @@ class group_lasso(query):
             solve_args={'tol': 1.e-12, 'min_its': 50},
             perturb=None):
 
-        ##solve the randomized version of group lasso
+        # solve the randomized version of group lasso
         (self.initial_soln,
          self.initial_subgrad) = self._solve_randomized_problem(perturb=perturb,
                                                                 solve_args=solve_args)
@@ -55,7 +55,7 @@ class group_lasso(query):
 
         tol = 1.e-6
 
-        ##now we are collecting the directions and norms of the active groups
+        # now we are collecting the directions and norms of the active groups
         for g in sorted(np.unique(self.penalty.groups)):
 
             group = self.penalty.groups == g
@@ -65,7 +65,7 @@ class group_lasso(query):
 
                 ordered_groups.append(g)
 
-                ##variables in active group
+                # variables in active group
                 ordered_vars.extend(np.nonzero(group)[0])
 
                 if self.penalty.weights[g] == 0:
