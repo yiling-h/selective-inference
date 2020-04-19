@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[24]:
-
-
 from __future__ import print_function
 import numpy as np
 import regreg.api as rr
