@@ -7,9 +7,121 @@ import rpy2.robjects.numpy2ri
 rpy2.robjects.numpy2ri.activate()
 
 import matplotlib.pyplot as plt
-from selection.approx_ci.approx_reference import approx_reference, approx_density, \
-    approx_reference_adaptive, approx_adaptive_density
+from selection.approx_ci.approx_reference import approx_reference, approx_density, approx_reference_adaptive
 from statsmodels.distributions.empirical_distribution import ECDF
+
+
+def test_approx_pivot_adaptive(n=200,
+                               p=50,
+                               signal_fac=1.2,
+                               s=5,
+                               sigma=1.,
+                               rho=0.40,
+                               randomizer_scale=1.):
+    inst = gaussian_instance
+    signal = np.sqrt(signal_fac * 2. * np.log(p))
+
+    while True:
+        X, y, beta = inst(n=n,
+                          p=p,
+                          signal=signal,
+                          s=s,
+                          equicorrelated=False,
+                          rho=rho,
+                          sigma=sigma,
+                          random_signs=True)[:3]
+
+        n, p = X.shape
+        idx = np.arange(p)
+        sigmaX = rho ** np.abs(np.subtract.outer(idx, idx))
+        print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
+
+        if n > p:
+            dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
+            sigma_ = np.sqrt(dispersion)
+        else:
+            dispersion = None
+            sigma_ = np.std(y)
+
+        scaling = np.linalg.inv(X.T.dot(X))/(2.* sigma_)
+        W = 1./np.abs(scaling.dot(X.T.dot(y)))
+
+        conv = lasso.gaussian(X,
+                              y,
+                              W,
+                              randomizer_scale=randomizer_scale * sigma_)
+
+        signs = conv.fit()
+        nonzero = signs != 0
+        print("number selected ", nonzero.sum())
+
+        (observed_target,
+         cov_target,
+         cov_target_score,
+         alternatives) = selected_targets(conv.loglike,
+                                          conv._W,
+                                          nonzero,
+                                          dispersion=dispersion)
+
+        grid_num = 501
+        beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+        pivot = []
+
+        for m in range(nonzero.sum()):
+            observed_target_uni = (observed_target[m]).reshape((1,))
+            cov_target_uni = (np.diag(cov_target)[m]).reshape((1, 1))
+            cov_target_score_uni = cov_target_score[m, :].reshape((1, p))
+            mean_parameter = beta_target[m]
+            grid = np.linspace(- 20., 20., num=grid_num)
+            grid_indx_obs = np.argmin(np.abs(grid - observed_target_uni))
+
+            approx_log_ref = approx_reference_adaptive(grid,
+                                                       observed_target_uni,
+                                                       cov_target_uni,
+                                                       cov_target_score_uni,
+                                                       conv.observed_opt_state,
+                                                       conv.cond_mean,
+                                                       conv.cond_cov,
+                                                       conv.logdens_linear,
+                                                       conv.A_scaling,
+                                                       conv.b_scaling,
+                                                       conv.initial_subgrad,
+                                                       conv.feature_weights,
+                                                       conv.observed_score_state,
+                                                       nonzero,
+                                                       scaling)
+
+            area_cum = approx_density(grid,
+                                      mean_parameter,
+                                      cov_target_uni,
+                                      approx_log_ref)
+
+            pivot.append(1. - area_cum[grid_indx_obs])
+            print("variable completed ", m + 1)
+
+        return pivot
+
+
+def EDCF_pivot(nsim=300):
+    _pivot=[]
+    for i in range(nsim):
+        _pivot.extend(test_approx_pivot_adaptive(n= 100,
+                                                 p= 50,
+                                                 signal_fac= 1.0,
+                                                 s= 5,
+                                                 sigma= 1.,
+                                                 rho= 0.20,
+                                                 randomizer_scale= 1.))
+        print("iteration completed ", i)
+    plt.clf()
+    ecdf_MLE = ECDF(np.asarray(_pivot))
+    grid = np.linspace(0, 1, 101)
+    plt.plot(grid, ecdf_MLE(grid), c='blue', marker='^')
+    plt.plot(grid, grid, 'k--')
+    plt.show()
+
+EDCF_pivot(nsim=50)
+
 
 def test_approx_pivot(n= 500,
                       p= 100,
@@ -92,7 +204,6 @@ def test_approx_pivot(n= 500,
                                       cov_target_uni,
                                       approx_log_ref)
 
-            print("check ", area_cum)
 
             pivot.append(1. - area_cum[grid_indx_obs])
             print("variable completed ", m+1)
@@ -185,26 +296,6 @@ def test_approx_pivot_carved(n= 100,
             pivot.append(1. - area_cum[grid_indx_obs])
             print("variable completed ", m + 1)
         return pivot
-
-def EDCF_pivot(nsim=300):
-    _pivot=[]
-    for i in range(nsim):
-        _pivot.extend(test_approx_pivot(n= 300,
-                                        p= 50,
-                                        signal_fac= 0.25,
-                                        s= 5,
-                                        sigma= 1.,
-                                        rho= 0.40,
-                                        randomizer_scale= 1.))
-        print("iteration completed ", i)
-    plt.clf()
-    ecdf_MLE = ECDF(np.asarray(_pivot))
-    grid = np.linspace(0, 1, 101)
-    plt.plot(grid, ecdf_MLE(grid), c='blue', marker='^')
-    plt.plot(grid, grid, 'k--')
-    plt.show()
-
-#EDCF_pivot(nsim=300)
 
 from rpy2 import robjects
 import rpy2.robjects.numpy2ri
