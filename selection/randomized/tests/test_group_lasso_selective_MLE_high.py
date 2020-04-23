@@ -139,7 +139,7 @@ def test_selected_targets(n=2000,
 
 
 def main(nsim=500, full=False):
-    P0, PA, cover, length_int = [], [], [], []
+    P0, PA, cover = [], [], []
 
     n, p, s = 500, 100, 10
 
