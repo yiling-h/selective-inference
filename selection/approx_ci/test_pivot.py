@@ -45,7 +45,7 @@ def test_approx_pivot_adaptive(n=200,
 
         scaling = np.linalg.inv(X.T.dot(X))/(2.* sigma_)
         W = 1./np.abs(scaling.dot(X.T.dot(y)))
-
+       
         conv = lasso.gaussian(X,
                               y,
                               W,
@@ -120,7 +120,7 @@ def EDCF_pivot(nsim=300):
     plt.plot(grid, grid, 'k--')
     plt.show()
 
-EDCF_pivot(nsim=50)
+EDCF_pivot(nsim=100)
 
 
 def test_approx_pivot(n= 500,
