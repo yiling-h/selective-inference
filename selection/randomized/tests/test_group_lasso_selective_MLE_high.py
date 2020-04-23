@@ -17,7 +17,8 @@ def test_full_targets(n=200,
     Compare to R randomized lasso
     """
 
-    inst, const = gaussian_instance, lasso.gaussian
+    inst = gaussian_instance
+    const = lasso.gaussian
     while True:
         signal = np.sqrt(signal_fac * 2 * np.log(p))
         X, Y, beta = inst(n=n,
