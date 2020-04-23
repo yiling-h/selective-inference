@@ -1,5 +1,4 @@
 import numpy as np
-import nose.tools as nt
 
 from selection.randomized.lasso import lasso, full_targets, selected_targets, \
     debiased_targets
@@ -141,7 +140,6 @@ def test_selected_targets(n=2000,
 
 def main(nsim=500, full=False):
     P0, PA, cover, length_int = [], [], [], []
-    from statsmodels.distributions import ECDF
 
     n, p, s = 500, 100, 10
 
