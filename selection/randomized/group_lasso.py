@@ -33,7 +33,6 @@ class group_lasso(query):
         # gaussian randomization
         self.randomizer = randomizer
 
-
     def fit(self,
             solve_args={'tol': 1.e-12, 'min_its': 50},
             perturb=None):
