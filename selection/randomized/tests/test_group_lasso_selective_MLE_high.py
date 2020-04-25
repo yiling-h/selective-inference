@@ -5,7 +5,7 @@ from selection.randomized.group_lasso import gaussian_group_instance
 def test_selected_targets(n=2000,
                           p=200,
                           signal_fac=1.,
-                          s=5,
+                          sgroup=5,
                           sigma=3,
                           rho=0.4,
                           randomizer_scale=1,
@@ -20,7 +20,7 @@ def test_selected_targets(n=2000,
         X, Y, beta = inst(n=n,
                           p=p,
                           signal=signal,
-                          s=s,
+                          sgroup=sgroup,
                           equicorrelated=False,
                           rho=rho,
                           sigma=sigma,
@@ -66,7 +66,7 @@ def test_selected_targets(n=2000,
 def main(nsim=500, full=False):
     P0, PA, cover = [], [], []
 
-    n, p, s = 500, 100, 10
+    n, p, sgroup = 500, 100, 10
 
     for i in range(nsim):
         if full:
@@ -75,12 +75,12 @@ def main(nsim=500, full=False):
             else:
                 full_dispersion = False
             p0, pA, cover_, intervals = test_full_targets(
-                n=n, p=p, s=s, full_dispersion=full_dispersion)
+                n=n, p=p, s=sgroup, full_dispersion=full_dispersion)
             avg_length = intervals[:, 1] - intervals[:, 0]
         else:
             full_dispersion = True
             p0, pA, cover_, intervals = test_selected_targets(
-                n=n, p=p, s=s, full_dispersion=full_dispersion)
+                n=n, p=p, sgroup=sgroup, full_dispersion=full_dispersion)
             avg_length = intervals[:, 1] - intervals[:, 0]
 
         cover.extend(cover_)
