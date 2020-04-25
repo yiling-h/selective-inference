@@ -15,8 +15,7 @@ def test_selected_targets(n=2000,
     """
     Compare to R randomized lasso
     """
-
-    inst, const = gaussian_instance, lasso.gaussian
+    inst, const = gaussian_instance, group_lasso.gaussian
     signal = np.sqrt(signal_fac * 2 * np.log(p))
 
     while True:
