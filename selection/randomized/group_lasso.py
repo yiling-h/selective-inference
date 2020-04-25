@@ -370,7 +370,7 @@ def test_group_lasso(n=200,
                                 weights,
                                 randomizer_scale=randomizer_scale * sigma_)
 
-    signs = conv.fit()
+    signs = conv.fit()          # fit doesn't actually return anything
     nonzero = conv.selection_variable['directions'].keys()
     print("check ", nonzero)
 
