@@ -339,7 +339,8 @@ def gaussian_group_instance(n=100, p=200, sgroup=7, sigma=5, rho=0., signal=7,
 def test_group_lasso(n=200,
                      p=50,
                      signal_fac=3,
-                     s=5,
+                     sgroup=1,
+                     groups=np.arange(5).repeat(10),
                      sigma=3,
                      target='selected',
                      rho=0.4,
@@ -351,18 +352,17 @@ def test_group_lasso(n=200,
     X, Y, beta = inst(n=n,
                       p=p,
                       signal=signal,
-                      s=s,
+                      sgroup=sgroup,
+                      groups=groups,
                       equicorrelated=False,
                       rho=rho,
                       sigma=sigma,
                       random_signs=True)[:3]
 
-
     n, p = X.shape
 
     sigma_ = np.std(Y)
 
-    groups = np.floor(np.arange(p)/3).astype(np.int)
     weights = dict([(i, sigma_ * 2 * np.sqrt(2)) for i in np.unique(groups)])
     conv = group_lasso.gaussian(X,
                                 Y,
