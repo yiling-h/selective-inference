@@ -374,11 +374,5 @@ def test_group_lasso(n=200,
     nonzero = conv.selection_variable['directions'].keys()
     print("check ", nonzero)
 
-test_group_lasso(n=200,
-                 p=50,
-                 signal_fac=3,
-                 s=3,
-                 sigma=1.,
-                 target='selected',
-                 rho=0.4,
-                 randomizer_scale= 1.)
+
+test_group_lasso()
