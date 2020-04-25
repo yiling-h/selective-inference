@@ -1,7 +1,7 @@
 import numpy as np
 
 from selection.randomized.group_lasso import group_lasso, selected_targets
-from selection.tests.instance import gaussian_instance
+from selection.randomized.group_lasso import gaussian_group_instance
 
 
 def test_selected_targets(n=2000,
@@ -15,7 +15,7 @@ def test_selected_targets(n=2000,
     """
     Compare to R randomized lasso
     """
-    inst, const = gaussian_instance, group_lasso.gaussian
+    inst, const = gaussian_group_instance, group_lasso.gaussian
     signal = np.sqrt(signal_fac * 2 * np.log(p))
 
     while True:
