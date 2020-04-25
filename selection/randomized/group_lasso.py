@@ -108,6 +108,8 @@ class group_lasso(query):
         print("CHECK K.K.T. MAP", np.allclose(self._initial_omega,
                                            self.observed_score_state + opt_linear.dot(self.initial_soln[ordered_vars])
                                            + opt_offset))
+        active_signs = np.sign(self.initial_soln)
+        return active_signs
 
 
     def _solve_randomized_problem(self,
