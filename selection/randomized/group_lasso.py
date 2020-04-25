@@ -345,7 +345,7 @@ def test_group_lasso(n=200,
                      rho=0.4,
                      randomizer_scale=1.):
 
-    inst = gaussian_instance
+    inst = gaussian_group_instance
     signal = np.sqrt(signal_fac * np.log(p))
 
     X, Y, beta = inst(n=n,
