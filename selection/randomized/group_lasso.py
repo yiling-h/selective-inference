@@ -315,7 +315,7 @@ def gaussian_group_instance(n=100, p=200, sgroup=7, sigma=5, rho=0., signal=7,
     else:
         beta[active] = np.linspace(signal[0], signal[1], active)
     if random_signs:
-        beta[active] *= (2 * np.random.binomial(1, 0.5, size=(active,)) - 1.)
+        beta[active] *= (2 * np.random.binomial(1, 0.5, size=(active.sum(),)) - 1.)
     beta /= np.sqrt(n)
 
     if scale:
