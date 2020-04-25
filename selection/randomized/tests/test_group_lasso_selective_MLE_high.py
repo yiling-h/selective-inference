@@ -1,7 +1,6 @@
 import numpy as np
 
-from selection.randomized.lasso import lasso, full_targets, selected_targets, \
-    debiased_targets
+from selection.randomized.group_lasso import group_lasso, selected_targets
 from selection.tests.instance import gaussian_instance
 
 
