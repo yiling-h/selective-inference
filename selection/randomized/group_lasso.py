@@ -343,8 +343,7 @@ def test_group_lasso(n=200,
                      sigma=3,
                      target='selected',
                      rho=0.4,
-                     randomizer_scale= 1.):
-
+                     randomizer_scale=1.):
 
     inst = gaussian_instance
     signal = np.sqrt(signal_fac * np.log(p))
