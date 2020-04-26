@@ -2,6 +2,8 @@ import numpy as np
 
 from selection.randomized.group_lasso import group_lasso, selected_targets
 from selection.randomized.group_lasso import gaussian_group_instance
+
+
 def test_selected_targets(n=2000,
                           p=200,
                           signal_fac=1.,
