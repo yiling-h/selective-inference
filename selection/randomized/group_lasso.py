@@ -186,6 +186,93 @@ class group_lasso(query):
                            ridge_term,
                            randomizer)
 
+    def selective_MLE(self,
+                      observed_target,
+                      cov_target,
+                      cov_target_score,
+                      init_soln,  # initial (observed) value of optimization variables -- used as a feasible point. # precise value used only for independent estimator
+                      cond_mean,
+                      cond_cov,
+                      logdens_linear,
+                      linear_part,
+                      offset,
+                      solve_args={'tol': 1.e-12},
+                      level=0.9,
+                      useC=False):
+        """Do selective_MLE for group_lasso
+
+        Note: this masks the selective_MLE inherited from query
+        because that is not adapted for the group_lasso. Also, assumes
+        you have already run the fit method since this uses results
+        from that method.
+
+        Parameters
+        ----------
+
+        observed_target: from selected_targets
+        cov_target: from selected_targets
+        cov_target_score: from selected_targets
+        init_soln:  initial (observed) value of optimization variables
+        cond_mean:
+        cond_cov:
+        logdens_linear:
+        linear_part:
+        offset:
+        solve_args: passed on to solver
+        level: level of confidence intervals
+        useC: whether to use python or C solver
+        """
+
+
+        if np.asarray(observed_target).shape in [(), (0,)]:
+            raise ValueError('no target specified')
+
+        observed_target = np.atleast_1d(observed_target)
+        prec_target = np.linalg.inv(cov_target)
+
+        # target_lin determines how the conditional mean of optimization variables
+        # vary with target
+        # logdens_linear determines how the argument of the optimization density
+        # depends on the score, not how the mean depends on score, hence the minus sign
+
+        target_lin = - logdens_linear.dot(cov_target_score.T.dot(prec_target))
+        target_offset = cond_mean - target_lin.dot(observed_target)
+
+        prec_opt = np.linalg.inv(cond_cov)
+
+        conjugate_arg = prec_opt.dot(cond_mean)
+
+        if useC:
+            print("using C")
+            solver = solve_barrier_affine_jacobian_C  # not yet implemented
+        else:
+            print("not using C")
+            solver = solve_barrier_affine_jacobian_py
+
+        val, soln, hess = solver(conjugate_arg,
+                                 prec_opt,
+                                 init_soln,
+                                 linear_part,
+                                 offset,
+                                 **solve_args)
+
+        final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
+        ind_unbiased_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean
+                                                                                                - init_soln)))
+        L = target_lin.T.dot(prec_opt)
+        observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
+        observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
+
+        Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
+        pvalues = ndist.cdf(Z_scores)
+        pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
+
+        alpha = 1. - level
+        quantile = ndist.ppf(1 - alpha / 2.)
+        intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
+                               final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
+
+        return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
 
 
 def selected_targets(loglike,
