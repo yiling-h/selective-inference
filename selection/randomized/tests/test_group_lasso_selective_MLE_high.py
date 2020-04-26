@@ -38,9 +38,10 @@ def test_selected_targets(n=2000,
         n, p = X.shape
 
         sigma_ = np.std(Y)
+        weights = dict([(i, sigma_ * 2 * np.sqrt(2)) for i in np.unique(groups)])
         W = np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
 
-        conv = const(X, Y, W, randomizer_scale=randomizer_scale * sigma_)
+        conv = const(X, Y, groups,  weights, randomizer_scale=randomizer_scale * sigma_)
 
         signs = conv.fit()
         nonzero = signs != 0
