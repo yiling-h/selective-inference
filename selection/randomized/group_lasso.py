@@ -48,7 +48,6 @@ class group_lasso(query):
         unpenalized = []
         overall = np.ones(self.nfeature, np.bool)
 
-
         ordered_groups = []
         ordered_opt = []
         ordered_vars = []
@@ -80,7 +79,7 @@ class group_lasso(query):
                 overall[group] = False
 
         self.selection_variable = {'directions': active_dirs,
-                                   'active_groups':active}
+                                   'active_groups': active}
 
         self._ordered_groups = ordered_groups
 
@@ -107,8 +106,8 @@ class group_lasso(query):
         self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
 
         print("CHECK K.K.T. MAP", np.allclose(self._initial_omega,
-                                           self.observed_score_state + opt_linear.dot(self.initial_soln[ordered_vars])
-                                           + opt_offset))
+                                              self.observed_score_state + opt_linear.dot(self.initial_soln[ordered_vars])
+                                              + opt_offset))
         active_signs = np.sign(self.initial_soln)
         active = np.flatnonzero(active_signs)
 
@@ -133,7 +132,6 @@ class group_lasso(query):
         QI = np.linalg.inv(Q)
         self.C = V.T.dot(QI).dot(L).dot(V)
         return active_signs
-
 
     def _solve_randomized_problem(self,
                                   perturb=None,
