@@ -110,6 +110,7 @@ class group_lasso(query):
                                               + opt_offset))
         active_signs = np.sign(self.initial_soln)
         active = np.flatnonzero(active_signs)
+        self.active = active
 
         def compute_Vg(ug):
             pg = ug.size        # figure out size of g'th group
