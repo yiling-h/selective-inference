@@ -72,7 +72,7 @@ def test_selected_targets(n=2000,
 def main(nsim=500, full=False):
     P0, PA, cover = [], [], []
 
-    n, p, sgroup = 500, 100, 10
+    n, p, sgroup = 500, 200, 10
 
     for i in range(nsim):
         if full:
