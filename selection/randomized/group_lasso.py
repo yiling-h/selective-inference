@@ -4,6 +4,7 @@ import regreg.api as rr
 from selection.randomized.randomization import randomization
 from selection.base import restricted_estimator
 from selection.randomized.query import query
+from scipy.linalg import block_diag
 
 
 class group_lasso(query):
@@ -109,6 +110,28 @@ class group_lasso(query):
                                            self.observed_score_state + opt_linear.dot(self.initial_soln[ordered_vars])
                                            + opt_offset))
         active_signs = np.sign(self.initial_soln)
+        active = np.flatnonzero(active_signs)
+
+        def compute_Vg(ug):
+            pg = ug.size        # figure out size of g'th group
+            Z = np.column_stack((ug, np.eye(pg, pg-1)))
+            Q, _ = np.linalg.qr(Z)
+            Vg = Q[:, 1:]       # drop the first column
+            return Vg
+
+        def compute_Lg(g):
+            pg = active_dirs[g].size
+            Lg = self.penalty.weights[g] * np.eye(pg)
+            return Lg
+
+        Vs = [compute_Vg(ug) for ug in active_dirs.values()]
+        V = block_diag(*Vs)     # unpack the list
+        Ls = [compute_Lg(g) for g in active_dirs]
+        L = block_diag(*Ls)     # unpack the list
+        XE = X[:, active]
+        Q = XE.T.dot(XE)
+        QI = np.linalg.inv(Q)
+        self.C = V.T.dot(QI).dot(L).dot(V)
         return active_signs
 
 
