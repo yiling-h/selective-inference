@@ -398,4 +398,8 @@ def test_group_lasso(n=200,
     print("check ", nonzero)
 
 
+def solve_barrier_affine_jacobian_py(arg):
+    pass
+
+
 test_group_lasso()
