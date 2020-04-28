@@ -7,7 +7,7 @@ from selection.randomized.query import query
 from scipy.linalg import block_diag
 
 
-class group_lasso(query):
+class group_lasso(object):
 
     def __init__(self,
                  loglike,
