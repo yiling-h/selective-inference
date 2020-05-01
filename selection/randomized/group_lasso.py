@@ -282,6 +282,9 @@ class group_lasso(object):
             print("not using C")
             solver = solve_barrier_affine_jacobian_py
 
+        linear_part = -np.eye(prec_opt.shape[0])
+        offset = np.zeros(prec_opt.shape[0])
+
         val, soln, hess = solver(conjugate_arg,
                                  prec_opt,
                                  init_soln,
