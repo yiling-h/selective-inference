@@ -94,19 +94,19 @@ class group_lasso(object):
         self._beta_full = beta_bar
 
         X, y = self.loglike.data
-        W = self._W = self.loglike.saturated_loss.hessian(X.dot(beta_bar))
-        opt_linear = np.dot(X.T, X[:, ordered_vars] * W[:, None])
+        W = self._W = self.loglike.saturated_loss.hessian(X.dot(beta_bar))  # all 1's for LS
+        opt_linearNoU = np.dot(X.T, X[:, ordered_vars] * W[:, np.newaxis])
 
         for i, var in enumerate(ordered_vars):
-            opt_linear[var, i] += self.ridge_term
+            opt_linearNoU[var, i] += self.ridge_term
 
         opt_offset = self.initial_subgrad
 
-        self.observed_score_state = -opt_linear.dot(_beta_unpenalized)
+        self.observed_score_state = -opt_linearNoU.dot(_beta_unpenalized)
         self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
 
         print("CHECK K.K.T. MAP", np.allclose(self._initial_omega,
-                                              self.observed_score_state + opt_linear.dot(self.initial_soln[ordered_vars])
+                                              self.observed_score_state + opt_linearNoU.dot(self.initial_soln[ordered_vars])
                                               + opt_offset))
         active_signs = np.sign(self.initial_soln)
         active = np.flatnonzero(active_signs)
