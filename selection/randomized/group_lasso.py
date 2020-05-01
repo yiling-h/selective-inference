@@ -249,6 +249,13 @@ class group_lasso(object):
         JacobianPieces: (use self.C defined in fitting)
         """
 
+        self._setup_implied_gaussian()
+        (observed_target, cov_target, cov_target_score) = self.selected_targets(dispersion)
+
+        init_soln = self.initial_soln
+        cond_mean = self.cond_mean
+        cond_cov = self.cond_cov
+        logdens_linear = self.logdens_linear
 
         if np.asarray(observed_target).shape in [(), (0,)]:
             raise ValueError('no target specified')
