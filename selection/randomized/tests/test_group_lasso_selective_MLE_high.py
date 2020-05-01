@@ -52,7 +52,7 @@ def test_selected_targets(n=2000,
                 dispersion = np.linalg.norm(
                     Y - X.dot(np.linalg.pinv(X).dot(Y)))**2 / (n - p)
 
-            (observed_target, cov_target, cov_target_score,
+            (observed_target, group_assignments, cov_target, cov_target_score,
              alternatives) = selected_targets(conv.loglike,
                                               conv._W,
                                               nonzero,
