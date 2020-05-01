@@ -24,7 +24,7 @@ class group_lasso(object):
         # ridge parameter
         self.ridge_term = ridge_term
 
-        # group lasso penalty
+        # group lasso penalty (from regreg)
         self.penalty = rr.group_lasso(groups,
                                       weights=weights,
                                       lagrange=1.)
@@ -43,22 +43,22 @@ class group_lasso(object):
          self.initial_subgrad) = self._solve_randomized_problem(perturb=perturb,
                                                                 solve_args=solve_args)
 
-        active = []
-        active_dirs = {}
-        unpenalized = []
-        overall = np.ones(self.nfeature, np.bool)
-
-        ordered_groups = []
-        ordered_opt = []
-        ordered_vars = []
+        # initialize variables
+        active = []             # active group labels
+        active_dirs = {}        # dictionary: keys are group labels, values are unit-norm coefficients
+        unpenalized = []        # selected groups with no penalty
+        overall = np.ones(self.nfeature, np.bool)  # mask of active features
+        ordered_groups = []     # active group labels sorted by label
+        ordered_opt = []        # gamma's ordered by group labels
+        ordered_vars = []       # indices "ordered" by sorting group labels
 
         tol = 1.e-6
 
         # now we are collecting the directions and norms of the active groups
-        for g in sorted(np.unique(self.penalty.groups)):
+        for g in sorted(np.unique(self.penalty.groups)):  # g is group label
 
             group = self.penalty.groups == g
-            soln = self.initial_soln
+            soln = self.initial_soln  # do not need to keep setting this
 
             if np.linalg.norm(soln[group]) * tol * np.linalg.norm(soln):
 
@@ -79,18 +79,18 @@ class group_lasso(object):
                 overall[group] = False
 
         self.selection_variable = {'directions': active_dirs,
-                                   'active_groups': active}
+                                   'active_groups': active}  # kind of redundant with keys of active_dirs
 
         self._ordered_groups = ordered_groups
 
-        self.observed_opt_state = np.hstack(ordered_opt)
+        self.observed_opt_state = np.hstack(ordered_opt)  # gammas as array
 
-        _beta_unpenalized = restricted_estimator(self.loglike,
+        _beta_unpenalized = restricted_estimator(self.loglike,  # refit OLS on E
                                                  overall,
                                                  solve_args=solve_args)
 
         beta_bar = np.zeros(self.nfeature)
-        beta_bar[overall] = _beta_unpenalized
+        beta_bar[overall] = _beta_unpenalized  # refit OLS beta with zeros
         self._beta_full = beta_bar
 
         X, y = self.loglike.data
@@ -212,15 +212,16 @@ class group_lasso(object):
         observed_target: from selected_targets
         cov_target: from selected_targets
         cov_target_score: from selected_targets
-        init_soln:  initial (observed) value of optimization variables
-        cond_mean:
-        cond_cov:
-        logdens_linear:
-        linear_part:
-        offset:
+        init_soln:  (opt_state) initial (observed) value of optimization variables
+        cond_mean: conditional mean of optimization variables (model on _setup_implied_gaussian)
+        cond_cov: conditional variance of optimization variables (model on _setup_implied_gaussian)
+        logdens_linear: (model on _setup_implied_gaussian)
+        linear_part: like A_scaling (from lasso)
+        offset: like b_scaling (from lasso)
         solve_args: passed on to solver
         level: level of confidence intervals
         useC: whether to use python or C solver
+        JacobianPieces: (use self.C defined in fitting)
         """
 
 
