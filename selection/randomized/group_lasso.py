@@ -290,6 +290,8 @@ class group_lasso(object):
                                  init_soln,
                                  linear_part,
                                  offset,
+                                 self.C,
+                                 self.active_dirs,
                                  **solve_args)
 
         final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
