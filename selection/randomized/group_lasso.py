@@ -271,7 +271,7 @@ class group_lasso(object):
         target_lin = - logdens_linear.dot(cov_target_score.T.dot(prec_target))
         target_offset = cond_mean - target_lin.dot(observed_target)
 
-        prec_opt = np.linalg.inv(cond_cov)
+        prec_opt = self.cond_precision
 
         conjugate_arg = prec_opt.dot(cond_mean)
 
