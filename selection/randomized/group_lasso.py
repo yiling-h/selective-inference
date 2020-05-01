@@ -19,7 +19,7 @@ class group_lasso(object):
 
         # log likleihood : quadratic loss
         self.loglike = loglike
-        self.nfeature = p = self.loglike.shape[0]
+        self.nfeature = self.loglike.shape[0]
 
         # ridge parameter
         self.ridge_term = ridge_term
