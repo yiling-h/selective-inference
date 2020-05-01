@@ -129,7 +129,7 @@ class group_lasso(object):
         Ls = [compute_Lg(g) for g in active_dirs]
         L = block_diag(*Ls)     # unpack the list
         XE = X[:, active]
-        Q = XE.T.dot(XE)
+        Q = XE.T.dot(self._W[:, None] * XE)
         QI = np.linalg.inv(Q)
         self.C = V.T.dot(QI).dot(L).dot(V)
         return active_signs
