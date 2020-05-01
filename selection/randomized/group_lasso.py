@@ -598,3 +598,33 @@ def solve_barrier_affine_jacobian_py(conjugate_arg,
 
 
 test_group_lasso()
+
+
+# Jacobian calculations
+def calc_GammaMinus_PM(gamma,active_dirs):
+    """Calculate Gamma^minus (as a function of gamma vector, active directions)
+    """
+    to_diag = [[g]*(ug.size-1) for (g, ug) in zip(gamma,active_dirs.values())]
+    return block_diag(*[i for gp in to_diag for i in gp])
+
+def jacobian_grad_hess(gamma,C,active_dirs):
+    """ Calculate the log-Jacobian (scalar), gradient (gamma.size vector) and hessian (gamma.size square matrix)
+    """
+    GammaMinus = calc_GammaMinus_PM(gamma,active_dirs)
+    # eigendecomposition
+    evalues,evectors = np.linalg.eig(GammaMinus + C)
+    # log Jacobian
+    J = np.log(evalues).sum()
+    # inverse
+    GpC_inv = evectors.dot(np.diag(1/evalues).dot(evectors.T))
+    # summing matrix (gamma.size by C.shape[0])
+    S = block_diag(*[np.ones(ug.size-1) for ug in active_dirs.values()])
+    # gradient
+    grad_J = S.dot(GpC_inv.diagonal())
+    # hessian
+    hess_J = -S.dot(np.multiply(GpC_inv,GpC_inv.T).dot(S.T))
+    # return all the objects
+    return J,grad_J,hess_J
+    
+    
+    
