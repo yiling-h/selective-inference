@@ -131,7 +131,8 @@ class group_lasso(object):
         XE = X[:, active]
         Q = XE.T.dot(self._W[:, None] * XE)
         QI = np.linalg.inv(Q)
-        self.C = V.T.dot(QI).dot(L).dot(V)
+        C = V.T.dot(QI).dot(L).dot(V)
+        self.C = C
         return active_signs
 
     def _solve_randomized_problem(self,
