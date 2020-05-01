@@ -313,60 +313,30 @@ class group_lasso(object):
         return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
 
 
-def selected_targets(loglike,
-                     W,
-                     active_groups,
-                     penalty,
-                     sign_info={},
-                     dispersion=None,
-                     solve_args={'tol': 1.e-12, 'min_its': 50}):
+    def selected_targets(self,
+                         dispersion=None,
+                         solve_args={'tol': 1.e-12, 'min_its': 50}):
 
-    X, y = loglike.data
-    n, p = X.shape
-    features = []
+        X, y = self.loglike.data
+        n, p = X.shape
 
-    group_assignments = []
-    for group in active_groups:
-        group_idx = penalty.groups == group
-        features.extend(np.nonzero(group_idx)[0])
-        group_assignments.extend([group] * group_idx.sum())
+        XE = self.XE
+        Q = self.Q
+        observed_target = restricted_estimator(self.loglike, self.active, solve_args=solve_args)
+        _score_linear = -XE.T.dot(self._W[:, None] * X).T
+        alternatives = ['twosided'] * len(self.active)
 
-    Xfeat = X[:, features]
-    Qfeat = Xfeat.T.dot(W[:, None] * Xfeat)
-    observed_target = restricted_estimator(loglike, features, solve_args=solve_args)
-    cov_target = np.linalg.inv(Qfeat)
-    _score_linear = -Xfeat.T.dot(W[:, None] * X).T
-    crosscov_target_score = _score_linear.dot(cov_target)
-    alternatives = ['twosided'] * len(features)
+        if dispersion is None:  # use Pearson's X^2
+            dispersion = ((y - self.loglike.saturated_loss.mean_function(
+                XE.dot(observed_target))) ** 2 / self._W).sum() / (n - XE.shape[1])
 
-    if dispersion is None:  # use Pearson's X^2
-        dispersion = ((y - loglike.saturated_loss.mean_function(
-            Xfeat.dot(observed_target))) ** 2 / W).sum() / (n - Xfeat.shape[1])
+        cov_target = self.QI * dispersion
+        crosscov_target_score = _score_linear.dot(self.QI).T * dispersion
 
-    return (observed_target,
-            group_assignments,
-            cov_target * dispersion,
-            crosscov_target_score.T * dispersion,
-            alternatives)
-
-
-def form_targets(target,
-                 loglike,
-                 W,
-                 active_groups,
-                 penalty,
-                 **kwargs):
-
-    _target = {'full':full_targets,
-               'selected':selected_targets,
-               'debiased':debiased_targets}[target]
-    return _target(loglike,
-                   W,
-                   features,
-                   penalty,
-                   **kwargs)
-
-
+        return (observed_target,
+                cov_target,
+                crosscov_target_score,
+                alternatives)
 
 from selection.tests.instance import gaussian_instance
 
