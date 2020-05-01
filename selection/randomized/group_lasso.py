@@ -132,7 +132,17 @@ class group_lasso(object):
         Q = XE.T.dot(self._W[:, None] * XE)
         QI = np.linalg.inv(Q)
         C = V.T.dot(QI).dot(L).dot(V)
+
+        self.XE = XE
+        self.Q = Q
+        self.QI = QI
         self.C = C
+
+        U = block_diag(*[ug for ug in active_dirs.values()]).T
+
+        self.opt_linear = opt_linearNoU.dot(U)
+        self.active_dirs = active_dirs
+        self.opt_offset = opt_offset
         return active_signs
 
     def _solve_randomized_problem(self,
