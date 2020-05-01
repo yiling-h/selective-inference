@@ -57,26 +57,26 @@ class group_lasso(object):
         # now we are collecting the directions and norms of the active groups
         for g in sorted(np.unique(self.penalty.groups)):  # g is group label
 
-            group = self.penalty.groups == g
+            group_mask = self.penalty.groups == g
             soln = self.initial_soln  # do not need to keep setting this
 
-            if np.linalg.norm(soln[group]) * tol * np.linalg.norm(soln):
+            if np.linalg.norm(soln[group_mask]) * tol * np.linalg.norm(soln):  # is group nonzero?
 
                 ordered_groups.append(g)
 
                 # variables in active group
-                ordered_vars.extend(np.nonzero(group)[0])
+                ordered_vars.extend(np.flatnonzero(group_mask))
 
                 if self.penalty.weights[g] == 0:
                     unpenalized.append(g)
 
                 else:
                     active.append(g)
-                    active_dirs[g] = soln[group] / np.linalg.norm(soln[group])
+                    active_dirs[g] = soln[group_mask] / np.linalg.norm(soln[group_mask])
 
-                ordered_opt.append(np.linalg.norm(soln[group]))
+                ordered_opt.append(np.linalg.norm(soln[group_mask]))
             else:
-                overall[group] = False
+                overall[group_mask] = False
 
         self.selection_variable = {'directions': active_dirs,
                                    'active_groups': active}  # kind of redundant with keys of active_dirs
