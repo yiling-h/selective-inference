@@ -197,19 +197,33 @@ class group_lasso(object):
                            ridge_term,
                            randomizer)
 
+
+    def _setup_implied_gaussian(self):
+
+        _, prec = self.randomizer.cov_prec
+
+        if np.asarray(prec).shape in [(), (0,)]:
+            cond_precision = self.opt_linear.T.dot(self.opt_linear) * prec
+            cond_cov = np.linalg.inv(cond_precision)
+            logdens_linear = cond_cov.dot(self.opt_linear.T) * prec
+        else:
+            cond_precision = self.opt_linear.T.dot(prec.dot(self.opt_linear))
+            cond_cov = np.linalg.inv(cond_precision)
+            logdens_linear = cond_cov.dot(self.opt_linear.T).dot(prec)
+
+        cond_mean = -logdens_linear.dot(self.observed_score_state + self.opt_offset)
+        self.cond_mean = cond_mean
+        self.cond_cov = cond_cov
+        self.cond_precision = cond_precision
+        self.logdens_linear = logdens_linear
+        return cond_mean, cond_cov, cond_precision, logdens_linear
+
+
     def selective_MLE(self,
-                      observed_target,
-                      cov_target,
-                      cov_target_score,
-                      init_soln,  # initial (observed) value of optimization variables -- used as a feasible point. # precise value used only for independent estimator
-                      cond_mean,
-                      cond_cov,
-                      logdens_linear,
-                      linear_part,
-                      offset,
                       solve_args={'tol': 1.e-12},
                       level=0.9,
-                      useC=False):
+                      useC=False,
+                      dispersion=None):
         """Do selective_MLE for group_lasso
 
         Note: this masks the selective_MLE inherited from query
