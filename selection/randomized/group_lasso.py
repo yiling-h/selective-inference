@@ -60,8 +60,7 @@ class group_lasso(object):
             group_mask = self.penalty.groups == g
             soln = self.initial_soln  # do not need to keep setting this
 
-            if np.linalg.norm(soln[group_mask]) * tol * np.linalg.norm(soln):  # is group nonzero?
-
+            if np.linalg.norm(soln[group_mask]) > tol * np.linalg.norm(soln):  # is group g appreciably nonzero
                 ordered_groups.append(g)
 
                 # variables in active group
