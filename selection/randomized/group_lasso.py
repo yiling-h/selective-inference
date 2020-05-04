@@ -624,6 +624,3 @@ def jacobian_grad_hess(gamma,C,active_dirs):
     hess_J = -S.dot(np.multiply(GpC_inv,GpC_inv.T).dot(S.T))
     # return all the objects
     return J,grad_J,hess_J
-    
-    
-    
