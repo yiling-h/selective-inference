@@ -217,7 +217,6 @@ class group_lasso(object):
         self.logdens_linear = logdens_linear
         return cond_mean, cond_cov, cond_precision, logdens_linear
 
-
     def selective_MLE(self,
                       solve_args={'tol': 1.e-12},
                       level=0.9,
