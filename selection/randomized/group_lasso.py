@@ -522,11 +522,6 @@ def solve_barrier_affine_jacobian_py(conjugate_arg,
     if feasible_point is None:
         feasible_point = 1. / scaling
 
-    def calc_GammaMinus(gs):
-        """Calculate Gamma^minus (as a function of gamma vector gs)
-        """
-        return block_diag(*[g for (g, ug) in zip(gs,active_dirs.values())])
-
     def objective(u):
         p1 = -u.T.dot(conjugate_arg)
         p2 = u.T.dot(precision).dot(u)/2.
