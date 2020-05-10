@@ -1,6 +1,6 @@
 import numpy as np
 
-from selection.randomized.group_lasso import group_lasso, selected_targets
+from selection.randomized.group_lasso import group_lasso
 from selection.randomized.group_lasso import gaussian_group_instance
 
 
@@ -53,10 +53,7 @@ def test_selected_targets(n=2000,
                     Y - X.dot(np.linalg.pinv(X).dot(Y)))**2 / (n - p)
 
             (observed_target, group_assignments, cov_target, cov_target_score,
-             alternatives) = selected_targets(conv.loglike,
-                                              conv._W,
-                                              nonzero,
-                                              dispersion=dispersion)
+             alternatives) = conv.selected_targets(dispersion=dispersion)
 
             estimate, _, _, pval, intervals, _ = conv.selective_MLE(
                 observed_target, cov_target, cov_target_score, alternatives)
