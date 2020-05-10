@@ -129,7 +129,7 @@ class group_lasso(object):
         V = block_diag(*Vs)     # unpack the list
         Ls = [compute_Lg(g) for g in active_dirs]
         L = block_diag(*Ls)     # unpack the list
-        XE = X[:, active]
+        XE = X[:, active]       # check if this should be ordered_vars
         Q = XE.T.dot(self._W[:, None] * XE)
         QI = inv(Q)
         C = V.T.dot(QI).dot(L).dot(V)
@@ -249,7 +249,7 @@ class group_lasso(object):
         JacobianPieces: (use self.C defined in fitting)
         """
 
-        self._setup_implied_gaussian()
+        self._setup_implied_gaussian()  # Calculate useful quantities
         (observed_target, cov_target, cov_target_score) = self.selected_targets(dispersion)
 
         init_soln = self.initial_soln
@@ -507,6 +507,15 @@ def solve_barrier_affine_jacobian_py(conjugate_arg,
                                      tol=1.e-12):
     """
     This needs to be updated to actually use the Jacobian information (in self.C)
+
+    arguments
+    conjugate_arg: \\bar{\\Sigma}^{-1} \bar{\\mu}
+    precision:  \\bar{\\Sigma}^{-1}
+    feasible_point: gamma's from fitting
+    con_linear: linear part of affine constraint used for barrier function
+    con_offset: offset part of affine constraint used for barrier function
+    C: V^T Q^{-1} \\Lambda V
+    active_dirs:
     """
     scaling = np.sqrt(np.diag(con_linear.dot(precision).dot(con_linear.T)))
 
