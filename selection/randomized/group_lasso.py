@@ -252,7 +252,7 @@ class group_lasso(object):
         self._setup_implied_gaussian()  # Calculate useful quantities
         (observed_target, cov_target, cov_target_score, alternatives) = self.selected_targets(dispersion)
 
-        init_soln = self.initial_soln
+        init_soln = self.observed_opt_state  # just the gammas
         cond_mean = self.cond_mean
         cond_cov = self.cond_cov
         logdens_linear = self.logdens_linear
