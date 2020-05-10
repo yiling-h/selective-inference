@@ -250,7 +250,7 @@ class group_lasso(object):
         """
 
         self._setup_implied_gaussian()  # Calculate useful quantities
-        (observed_target, cov_target, cov_target_score) = self.selected_targets(dispersion)
+        (observed_target, cov_target, cov_target_score, alternatives) = self.selected_targets(dispersion)
 
         init_soln = self.initial_soln
         cond_mean = self.cond_mean

@@ -52,11 +52,11 @@ def test_selected_targets(n=2000,
                 dispersion = np.linalg.norm(
                     Y - X.dot(np.linalg.pinv(X).dot(Y)))**2 / (n - p)
 
-            (observed_target, group_assignments, cov_target, cov_target_score,
+            (observed_target, cov_target, cov_target_score,
              alternatives) = conv.selected_targets(dispersion=dispersion)
 
-            estimate, _, _, pval, intervals, _ = conv.selective_MLE(
-                observed_target, cov_target, cov_target_score, alternatives)
+            estimate, _, _, pval, intervals, _ = conv.selective_MLE(dispersion=dispersion)
+
 
             beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
