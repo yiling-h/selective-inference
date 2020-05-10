@@ -7,6 +7,7 @@ from selection.randomized.query import query
 from scipy.linalg import block_diag
 from numpy import log, sqrt
 from numpy.linalg import det, norm, qr, inv, eig
+from scipy.stats import norm as ndist
 
 
 class group_lasso(object):
