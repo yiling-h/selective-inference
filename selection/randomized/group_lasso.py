@@ -5,6 +5,8 @@ from selection.randomized.randomization import randomization
 from selection.base import restricted_estimator
 from selection.randomized.query import query
 from scipy.linalg import block_diag
+from numpy import log, sqrt
+from numpy.linalg import det, norm, qr, inv, eig
 
 
 class group_lasso(object):
@@ -60,7 +62,7 @@ class group_lasso(object):
             group_mask = self.penalty.groups == g
             soln = self.initial_soln  # do not need to keep setting this
 
-            if np.linalg.norm(soln[group_mask]) > tol * np.linalg.norm(soln):  # is group g appreciably nonzero
+            if norm(soln[group_mask]) > tol * norm(soln):  # is group g appreciably nonzero
                 ordered_groups.append(g)
 
                 # variables in active group
@@ -71,9 +73,9 @@ class group_lasso(object):
 
                 else:
                     active.append(g)
-                    active_dirs[g] = soln[group_mask] / np.linalg.norm(soln[group_mask])
+                    active_dirs[g] = soln[group_mask] / norm(soln[group_mask])
 
-                ordered_opt.append(np.linalg.norm(soln[group_mask]))
+                ordered_opt.append(norm(soln[group_mask]))
             else:
                 overall[group_mask] = False
 
@@ -114,7 +116,7 @@ class group_lasso(object):
         def compute_Vg(ug):
             pg = ug.size        # figure out size of g'th group
             Z = np.column_stack((ug, np.eye(pg, pg-1)))
-            Q, _ = np.linalg.qr(Z)
+            Q, _ = qr(Z)
             Vg = Q[:, 1:]       # drop the first column
             return Vg
 
@@ -129,7 +131,7 @@ class group_lasso(object):
         L = block_diag(*Ls)     # unpack the list
         XE = X[:, active]
         Q = XE.T.dot(self._W[:, None] * XE)
-        QI = np.linalg.inv(Q)
+        QI = inv(Q)
         C = V.T.dot(QI).dot(L).dot(V)
 
         self.XE = XE
@@ -203,11 +205,11 @@ class group_lasso(object):
 
         if np.asarray(prec).shape in [(), (0,)]:
             cond_precision = self.opt_linear.T.dot(self.opt_linear) * prec
-            cond_cov = np.linalg.inv(cond_precision)
+            cond_cov = inv(cond_precision)
             logdens_linear = cond_cov.dot(self.opt_linear.T) * prec
         else:
             cond_precision = self.opt_linear.T.dot(prec.dot(self.opt_linear))
-            cond_cov = np.linalg.inv(cond_precision)
+            cond_cov = inv(cond_precision)
             logdens_linear = cond_cov.dot(self.opt_linear.T).dot(prec)
 
         cond_mean = -logdens_linear.dot(self.observed_score_state + self.opt_offset)
@@ -259,7 +261,7 @@ class group_lasso(object):
             raise ValueError('no target specified')
 
         observed_target = np.atleast_1d(observed_target)
-        prec_target = np.linalg.inv(cov_target)
+        prec_target = inv(cov_target)
 
         # target_lin determines how the conditional mean of optimization variables
         # vary with target
@@ -464,7 +466,7 @@ def test_group_lasso(n=200,
                      randomizer_scale=1.):
 
     inst = gaussian_group_instance
-    signal = np.sqrt(signal_fac * np.log(p))
+    signal = np.sqrt(signal_fac * log(p))
 
     X, Y, beta = inst(n=n,
                       p=p,
@@ -591,7 +593,7 @@ def solve_barrier_affine_jacobian_py(conjugate_arg,
         if itercount % 4 == 0:
             step *= 2
 
-    hess = np.linalg.inv(precision + barrier_hessian(current))
+    hess = inv(precision + barrier_hessian(current))
     return current_value, current, hess
 
 
@@ -610,9 +612,9 @@ def jacobian_grad_hess(gamma,C,active_dirs):
     """
     GammaMinus = calc_GammaMinus_PM(gamma,active_dirs)
     # eigendecomposition
-    evalues,evectors = np.linalg.eig(GammaMinus + C)
+    evalues,evectors = eig(GammaMinus + C)
     # log Jacobian
-    J = np.log(evalues).sum()
+    J = log(evalues).sum()
     # inverse
     GpC_inv = evectors.dot(np.diag(1/evalues).dot(evectors.T))
     # summing matrix (gamma.size by C.shape[0])
