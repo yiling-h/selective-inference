@@ -601,13 +601,13 @@ test_group_lasso()
 
 
 # Jacobian calculations
-def calc_GammaMinus_PM(gamma,active_dirs):
+def calc_GammaMinus_PM(gamma, active_dirs):
     """Calculate Gamma^minus (as a function of gamma vector, active directions)
     """
     to_diag = [[g]*(ug.size-1) for (g, ug) in zip(gamma,active_dirs.values())]
     return block_diag(*[i for gp in to_diag for i in gp])
 
-def jacobian_grad_hess(gamma,C,active_dirs):
+def jacobian_grad_hess(gamma, C, active_dirs):
     """ Calculate the log-Jacobian (scalar), gradient (gamma.size vector) and hessian (gamma.size square matrix)
     """
     GammaMinus = calc_GammaMinus_PM(gamma,active_dirs)
