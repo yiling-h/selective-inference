@@ -115,10 +115,13 @@ class group_lasso(object):
         self.active = active
 
         def compute_Vg(ug):
-            pg = ug.size        # figure out size of g'th group
-            Z = np.column_stack((ug, np.eye(pg, pg-1)))
-            Q, _ = qr(Z)
-            Vg = Q[:, 1:]       # drop the first column
+            pg = ug.size    # figure out size of g'th group
+            if pg>1:
+                Z = np.column_stack((ug, np.eye(pg, pg-1)))
+                Q, _ = qr(Z)
+                Vg = Q[:, 1:]       # drop the first column
+            else:
+                Vg = np.zeros((1,0)) # if the group is size one, the orthogonal complement is empty
             return Vg
 
         def compute_Lg(g):
@@ -598,7 +601,7 @@ test_group_lasso()
 
 
 # Jacobian calculations
-def calc_GammaMinus_PM(gamma, active_dirs):
+def calc_GammaMinus(gamma, active_dirs):
     """Calculate Gamma^minus (as a function of gamma vector, active directions)
     """
     to_diag = [[g]*(ug.size-1) for (g, ug) in zip(gamma,active_dirs.values())]
@@ -607,18 +610,21 @@ def calc_GammaMinus_PM(gamma, active_dirs):
 def jacobian_grad_hess(gamma, C, active_dirs):
     """ Calculate the log-Jacobian (scalar), gradient (gamma.size vector) and hessian (gamma.size square matrix)
     """
-    GammaMinus = calc_GammaMinus_PM(gamma,active_dirs)
-    # eigendecomposition
-    evalues,evectors = eig(GammaMinus + C)
-    # log Jacobian
-    J = log(evalues).sum()
-    # inverse
-    GpC_inv = evectors.dot(np.diag(1/evalues).dot(evectors.T))
-    # summing matrix (gamma.size by C.shape[0])
-    S = block_diag(*[np.ones(ug.size-1) for ug in active_dirs.values()])
-    # gradient
-    grad_J = S.dot(GpC_inv.diagonal())
-    # hessian
-    hess_J = -S.dot(np.multiply(GpC_inv,GpC_inv.T).dot(S.T))
-    # return all the objects
-    return J,grad_J,hess_J
+    if C.shape==(0,0): # when all groups are size one, C will be an empty array
+        return 0,0,0
+    else:
+        GammaMinus = calc_GammaMinus(gamma,active_dirs)
+        # eigendecomposition
+        evalues,evectors = eig(GammaMinus + C)
+        # log Jacobian
+        J = log(evalues).sum()
+        # inverse
+        GpC_inv = evectors.dot(np.diag(1/evalues).dot(evectors.T))
+        # summing matrix (gamma.size by C.shape[0])
+        S = block_diag(*[np.ones((1,ug.size-1)) for ug in active_dirs.values()])
+        # gradient
+        grad_J = S.dot(GpC_inv.diagonal())
+        # hessian
+        hess_J = -S.dot(np.multiply(GpC_inv,GpC_inv.T).dot(S.T))
+        # return all the objects
+        return J,grad_J,hess_J
