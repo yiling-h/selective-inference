@@ -20,6 +20,8 @@ class group_lasso(object):
                  randomizer,
                  perturb=None):
 
+        _check_groups(groups)   # make sure groups looks sensible
+
         # log likleihood : quadratic loss
         self.loglike = loglike
         self.nfeature = self.loglike.shape[0]
@@ -628,3 +630,43 @@ def jacobian_grad_hess(gamma, C, active_dirs):
         hess_J = -S.dot(np.multiply(GpC_inv,GpC_inv.T).dot(S.T))
         # return all the objects
         return J,grad_J,hess_J
+
+def _check_groups(groups):
+    """Make sure that the user-specific groups are ok
+
+    There are a number of assumptions that group_lasso makes about
+    how groups are specified. Specifically, we assume that
+    `groups` is a 1-d array_like of integers that are sorted in
+    increasing order, start at 0, and have no gaps (e.g., if there
+    is a group 2 and a group 4, there must also be at least one
+    feature in group 3).
+
+    This function checks the user-specified group scheme and
+    raises an exception if it finds any problems.
+
+    Sorting feature groups is potentially tedious for the user and
+    in future we might do this for them.
+    """
+
+    # check array_like
+    agroups = np.array(groups)
+
+    # check dimension
+    if len(agroups.shape) != 1:
+        raise ValueError("Groups are not a 1D array_like")
+
+    # check sorted
+    if np.any(agroups[:-1] > agroups[1:]) < 0:
+        raise ValueError("Groups are not sorted")
+
+    # check integers
+    if not np.issubdtype(agroups, np.integer):
+        raise TypeError("Groups are not integers")
+
+    # check starts with 0
+    if not np.amin(agroups) == 0:
+        raise ValueError("First group is not 0")
+
+    # check for no skipped groups
+    if not np.diff(np.unique(agroups)) == 1:
+        raise ValueError("Some group is skipped")
