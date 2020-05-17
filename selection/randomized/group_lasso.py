@@ -386,7 +386,7 @@ def test_group_lasso(n=200,
 
     signs = conv.fit()          # fit doesn't actually return anything
     nonzero = conv.selection_variable['directions'].keys()
-    print("check ", nonzero)
+
 
 
 def solve_barrier_affine_jacobian_py(conjugate_arg,

@@ -6,7 +6,7 @@ from selection.tests.instance import gaussian_group_instance, gaussian_instance
 
 def test_selected_targets(n=500,
                           p=200,
-                          signal_fac=2.,
+                          signal_fac=1.5,
                           sgroup=3,
                           s =10,
                           groups=np.arange(50).repeat(4),
@@ -76,10 +76,7 @@ def main(nsim=500):
         cover.extend(cover_)
         P0.extend(p0)
         PA.extend(pA)
-        print(
-            np.array(PA) < 0.1, np.mean(P0), np.std(P0),
-            np.mean(np.array(P0) < 0.1), np.mean(np.array(PA) < 0.1),
-            np.mean(cover), np.mean(avg_length),
-            'null pvalue + power + length')
+        print(np.mean(cover), np.mean(avg_length),
+            'coverage + length so far')
 
 main(nsim=100)
