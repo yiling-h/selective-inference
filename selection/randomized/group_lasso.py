@@ -660,7 +660,7 @@ def _check_groups(groups):
         raise ValueError("Groups are not sorted")
 
     # check integers
-    if not np.issubdtype(agroups, np.integer):
+    if not np.issubdtype(agroups.dtype, np.integer):
         raise TypeError("Groups are not integers")
 
     # check starts with 0
