@@ -61,19 +61,8 @@ def main(nsim=500, full=False):
     n, p, sgroup = 500, 200, 5
 
     for i in range(nsim):
-        if full:
-            if n > p:
-                full_dispersion = True
-            else:
-                full_dispersion = False
-            p0, pA, cover_, intervals = test_full_targets(
-                n=n, p=p, s=sgroup, full_dispersion=full_dispersion)
-            avg_length = intervals[:, 1] - intervals[:, 0]
-        else:
-            full_dispersion = True
-            p0, pA, cover_, intervals = test_selected_targets(
-                n=n, p=p, sgroup=sgroup, full_dispersion=full_dispersion)
-            avg_length = intervals[:, 1] - intervals[:, 0]
+        p0, pA, cover_, intervals = test_selected_targets(n=n, p=p, sgroup=sgroup)
+        avg_length = intervals[:, 1] - intervals[:, 0]
 
         cover.extend(cover_)
         P0.extend(p0)
