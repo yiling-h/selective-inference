@@ -598,10 +598,6 @@ def solve_barrier_affine_jacobian_py(conjugate_arg,
     hess = inv(precision + barrier_hessian(current))
     return current_value, current, hess
 
-
-test_group_lasso()
-
-
 # Jacobian calculations
 def calc_GammaMinus(gamma, active_dirs):
     """Calculate Gamma^minus (as a function of gamma vector, active directions)
@@ -630,6 +626,7 @@ def jacobian_grad_hess(gamma, C, active_dirs):
         hess_J = -S.dot(np.multiply(GpC_inv,GpC_inv.T).dot(S.T))
         # return all the objects
         return J,grad_J,hess_J
+
 
 def _check_groups(groups):
     """Make sure that the user-specific groups are ok
@@ -670,3 +667,6 @@ def _check_groups(groups):
     # check for no skipped groups
     if not np.diff(np.unique(agroups)) == 1:
         raise ValueError("Some group is skipped")
+
+
+test_group_lasso()
