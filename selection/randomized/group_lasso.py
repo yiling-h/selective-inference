@@ -7,6 +7,7 @@ from scipy.linalg import block_diag
 from numpy import log
 from numpy.linalg import norm, qr, inv, eig
 from scipy.stats import norm as ndist
+import collections
 
 
 class group_lasso(object):
@@ -21,7 +22,7 @@ class group_lasso(object):
 
         #_check_groups(groups)   # make sure groups looks sensible
 
-        # log likleihood : quadratic loss
+        # log likelihood : quadratic loss
         self.loglike = loglike
         self.nfeature = self.loglike.shape[0]
 
@@ -48,7 +49,7 @@ class group_lasso(object):
                                                                 solve_args=solve_args)
 
         # initialize variables
-        active = []             # active group labels
+        active_groups = []      # active group labels
         active_dirs = {}        # dictionary: keys are group labels, values are unit-norm coefficients
         unpenalized = []        # selected groups with no penalty
         overall = np.ones(self.nfeature, np.bool)  # mask of active features
@@ -56,7 +57,7 @@ class group_lasso(object):
         ordered_opt = []        # gamma's ordered by group labels
         ordered_vars = []       # indices "ordered" by sorting group labels
 
-        tol = 1.e-6
+        tol = 1.e-20
 
         # now we are collecting the directions and norms of the active groups
         for g in sorted(np.unique(self.penalty.groups)):  # g is group label
@@ -74,7 +75,7 @@ class group_lasso(object):
                     unpenalized.append(g)
 
                 else:
-                    active.append(g)
+                    active_groups.append(g)
                     active_dirs[g] = soln[group_mask] / norm(soln[group_mask])
 
                 ordered_opt.append(norm(soln[group_mask]))
@@ -82,7 +83,7 @@ class group_lasso(object):
                 overall[group_mask] = False
 
         self.selection_variable = {'directions': active_dirs,
-                                   'active_groups': active}  # kind of redundant with keys of active_dirs
+                                   'active_groups': active_groups}  # kind of redundant with keys of active_dirs
 
         self._ordered_groups = ordered_groups
 
@@ -108,9 +109,6 @@ class group_lasso(object):
         self.observed_score_state = -opt_linearNoU.dot(_beta_unpenalized)
         self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
 
-        print("CHECK K.K.T. MAP", np.allclose(self._initial_omega,
-                                              self.observed_score_state + opt_linearNoU.dot(self.initial_soln[ordered_vars])
-                                              + opt_offset))
         active_signs = np.sign(self.initial_soln)
         active = np.flatnonzero(active_signs)
         self.active = active
@@ -144,16 +142,21 @@ class group_lasso(object):
         self.QI = QI
         self.C = C
 
+        sorted_active_dirs = collections.OrderedDict(sorted(active_dirs.items()))
         U = block_diag(*[ug for ug in active_dirs.values()]).T
+        U_sorted = block_diag(*[ug for ug in sorted_active_dirs.values()]).T
 
-        self.opt_linear = opt_linearNoU.dot(U)
+        self.opt_linear = opt_linearNoU.dot(U_sorted)
         self.active_dirs = active_dirs
         self.opt_offset = opt_offset
+
+        print("K.K.T. map", np.allclose(self._initial_omega, self.observed_score_state + self.opt_linear.dot(self.observed_opt_state)
+                                        + self.opt_offset, rtol=1e-03))
         return active_signs
 
     def _solve_randomized_problem(self,
                                   perturb=None,
-                                  solve_args={'tol': 1.e-12, 'min_its': 50}):
+                                  solve_args={'tol': 1.e-15, 'min_its': 100}):
 
         # take a new perturbation if supplied
         if perturb is not None:

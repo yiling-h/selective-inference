@@ -6,7 +6,7 @@ from selection.tests.instance import gaussian_group_instance, gaussian_instance
 
 def test_selected_targets(n=500,
                           p=200,
-                          signal_fac=1.5,
+                          signal_fac=2.,
                           sgroup=3,
                           s =10,
                           groups=np.arange(50).repeat(4),
@@ -29,11 +29,20 @@ def test_selected_targets(n=500,
                       sigma=sigma,
                       random_signs=True)[:3]
 
+    # X, Y, beta = inst(n=n,
+    #                   p=p,
+    #                   signal=signal,
+    #                   sgroup=sgroup,
+    #                   groups=groups,
+    #                   equicorrelated=False,
+    #                   rho=rho,
+    #                   sigma=sigma,
+    #                   random_signs=True)[:3]
+
     n, p = X.shape
 
     sigma_ = np.std(Y)
     weights = dict([(i, weight_frac * sigma_ * 2 * np.sqrt(2)) for i in np.unique(groups)])
-
     conv = const(X, Y, groups, weights, randomizer_scale=randomizer_scale * sigma_)
     signs = conv.fit()
     nonzero = signs != 0
@@ -55,7 +64,7 @@ def test_selected_targets(n=500,
             beta[nonzero] != 0], coverage, intervals
 
 
-def main(nsim=500, full=False):
+def main(nsim=500):
     P0, PA, cover = [], [], []
 
     n, p, sgroup = 500, 200, 5
@@ -73,4 +82,4 @@ def main(nsim=500, full=False):
             np.mean(cover), np.mean(avg_length),
             'null pvalue + power + length')
 
-main(nsim=1, full=False)
+main(nsim=100)
