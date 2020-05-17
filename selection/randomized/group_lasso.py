@@ -665,7 +665,7 @@ def _check_groups(groups):
         raise ValueError("First group is not 0")
 
     # check for no skipped groups
-    if not np.diff(np.unique(agroups)) == 1:
+    if not np.all(np.diff(np.unique(agroups)) == 1):
         raise ValueError("Some group is skipped")
 
 
