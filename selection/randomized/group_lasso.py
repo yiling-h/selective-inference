@@ -128,11 +128,13 @@ class group_lasso(object):
             Lg = self.penalty.weights[g] * np.eye(pg)
             return Lg
 
-        Vs = [compute_Vg(ug) for ug in active_dirs.values()]
+        sorted_active_dirs = collections.OrderedDict(sorted(active_dirs.items()))
+
+        Vs = [compute_Vg(ug) for ug in sorted_active_dirs.values()]
         V = block_diag(*Vs)     # unpack the list
-        Ls = [compute_Lg(g) for g in active_dirs]
+        Ls = [compute_Lg(g) for g in sorted_active_dirs]
         L = block_diag(*Ls)     # unpack the list
-        XE = X[:, active]       # check if this should be ordered_vars
+        XE = X[:, ordered_vars]       # changed to ordered_vars
         Q = XE.T.dot(self._W[:, None] * XE)
         QI = inv(Q)
         C = V.T.dot(QI).dot(L).dot(V)
@@ -142,7 +144,6 @@ class group_lasso(object):
         self.QI = QI
         self.C = C
 
-        sorted_active_dirs = collections.OrderedDict(sorted(active_dirs.items()))
         U = block_diag(*[ug for ug in active_dirs.values()]).T
         U_sorted = block_diag(*[ug for ug in sorted_active_dirs.values()]).T
 
