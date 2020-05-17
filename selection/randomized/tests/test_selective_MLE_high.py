@@ -147,7 +147,7 @@ def test_selected_targets(n=2000,
 
 def main(nsim=500, full=False):
     P0, PA, cover, length_int = [], [], [], []
-    from statsmodels.distributions import ECDF
+    # from statsmodels.distributions import ECDF
 
     n, p, s = 100, 500, 5
 

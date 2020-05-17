@@ -31,3 +31,4 @@ build
 .idea/*
 */.idea/*
 */*/.idea/*
+/selection.egg-info/
