@@ -1,75 +1,64 @@
 import numpy as np
 
 from selection.randomized.group_lasso import group_lasso
-from selection.randomized.group_lasso import gaussian_group_instance
+from selection.tests.instance import gaussian_group_instance, gaussian_instance
 
 
-def test_selected_targets(n=2000,
+def test_selected_targets(n=500,
                           p=200,
-                          signal_fac=1.,
-                          sgroup=5,
-                          groups=np.arange(20).repeat(10),
-                          sigma=3,
+                          signal_fac=1.5,
+                          sgroup=3,
+                          s =10,
+                          groups=np.arange(50).repeat(4),
+                          sigma=2,
                           rho=0.4,
                           randomizer_scale=1,
-                          full_dispersion=True):
-    """
-    Compare to R randomized lasso
-    """
-    inst = gaussian_group_instance
+                          weight_frac=1.5):
+
+    #inst = gaussian_group_instance
+    inst = gaussian_instance
     const = group_lasso.gaussian
     signal = np.sqrt(signal_fac * 2 * np.log(p))
 
-    while True:
-        X, Y, beta = inst(n=n,
-                          p=p,
-                          signal=signal,
-                          sgroup=sgroup,
-                          groups=groups,
-                          equicorrelated=False,
-                          rho=rho,
-                          sigma=sigma,
-                          random_signs=True)[:3]
+    X, Y, beta = inst(n=n,
+                      p=p,
+                      signal=signal,
+                      s=s,
+                      equicorrelated=False,
+                      rho=rho,
+                      sigma=sigma,
+                      random_signs=True)[:3]
 
-        idx = np.arange(p)
-        sigmaX = rho**np.abs(np.subtract.outer(idx, idx))
-        print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma**2.) * n))
+    n, p = X.shape
 
-        n, p = X.shape
+    sigma_ = np.std(Y)
+    weights = dict([(i, weight_frac * sigma_ * 2 * np.sqrt(2)) for i in np.unique(groups)])
 
-        sigma_ = np.std(Y)
-        weights = dict([(i, sigma_ * 2 * np.sqrt(2)) for i in np.unique(groups)])
-        W = np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
+    conv = const(X, Y, groups, weights, randomizer_scale=randomizer_scale * sigma_)
+    signs = conv.fit()
+    nonzero = signs != 0
+    print("check dimensions of selected set ", nonzero.sum())
 
-        conv = const(X, Y, groups,  weights, randomizer_scale=randomizer_scale * sigma_)
+    if nonzero.sum() > 0:
+        if n>p:
+            dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+        else:
+            dispersion = sigma_ ** 2
 
-        signs = conv.fit()
-        nonzero = signs != 0
+        estimate, _, _, pval, intervals, _ = conv.selective_MLE(dispersion=dispersion)
 
-        if nonzero.sum() > 0:
-            dispersion = None
-            if full_dispersion:
-                dispersion = np.linalg.norm(
-                    Y - X.dot(np.linalg.pinv(X).dot(Y)))**2 / (n - p)
+        beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
-            (observed_target, cov_target, cov_target_score,
-             alternatives) = conv.selected_targets(dispersion=dispersion)
-
-            estimate, _, _, pval, intervals, _ = conv.selective_MLE(dispersion=dispersion)
-
-
-            beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
-
-            coverage = (beta_target > intervals[:, 0]) * (beta_target <
-                                                          intervals[:, 1])
-            return pval[beta[nonzero] == 0], pval[
-                beta[nonzero] != 0], coverage, intervals
+        coverage = (beta_target > intervals[:, 0]) * (beta_target <
+                                                      intervals[:, 1])
+        return pval[beta[nonzero] == 0], pval[
+            beta[nonzero] != 0], coverage, intervals
 
 
 def main(nsim=500, full=False):
     P0, PA, cover = [], [], []
 
-    n, p, sgroup = 500, 200, 10
+    n, p, sgroup = 500, 200, 5
 
     for i in range(nsim):
         if full:
@@ -94,6 +83,5 @@ def main(nsim=500, full=False):
             np.mean(np.array(P0) < 0.1), np.mean(np.array(PA) < 0.1),
             np.mean(cover), np.mean(avg_length),
             'null pvalue + power + length')
-
 
 main(nsim=1, full=False)
