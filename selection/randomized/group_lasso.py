@@ -20,7 +20,7 @@ class group_lasso(object):
                  randomizer,
                  perturb=None):
 
-        #_check_groups(groups)   # make sure groups looks sensible
+        _check_groups(groups)   # make sure groups looks sensible
 
         # log likelihood : quadratic loss
         self.loglike = loglike
