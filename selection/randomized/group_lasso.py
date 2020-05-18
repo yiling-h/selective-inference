@@ -348,6 +348,7 @@ class group_lasso(object):
                 alternatives)
 
 from selection.tests.instance import gaussian_instance
+from selection.tests.instance import gaussian_group_instance
 
 
 def test_group_lasso(n=200,
