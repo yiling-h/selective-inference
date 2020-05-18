@@ -3,11 +3,11 @@ import numpy as np
 import regreg.api as rr
 from selection.randomized.randomization import randomization
 from selection.base import restricted_estimator
-from selection.randomized.query import query
 from scipy.linalg import block_diag
-from numpy import log, sqrt
-from numpy.linalg import det, norm, qr, inv, eig
+from numpy import log
+from numpy.linalg import norm, qr, inv, eig
 from scipy.stats import norm as ndist
+import collections
 
 
 class group_lasso(object):
@@ -20,9 +20,9 @@ class group_lasso(object):
                  randomizer,
                  perturb=None):
 
-        _check_groups(groups)   # make sure groups looks sensible
+        #_check_groups(groups)   # make sure groups looks sensible
 
-        # log likleihood : quadratic loss
+        # log likelihood : quadratic loss
         self.loglike = loglike
         self.nfeature = self.loglike.shape[0]
 
@@ -49,7 +49,7 @@ class group_lasso(object):
                                                                 solve_args=solve_args)
 
         # initialize variables
-        active = []             # active group labels
+        active_groups = []      # active group labels
         active_dirs = {}        # dictionary: keys are group labels, values are unit-norm coefficients
         unpenalized = []        # selected groups with no penalty
         overall = np.ones(self.nfeature, np.bool)  # mask of active features
@@ -57,7 +57,7 @@ class group_lasso(object):
         ordered_opt = []        # gamma's ordered by group labels
         ordered_vars = []       # indices "ordered" by sorting group labels
 
-        tol = 1.e-6
+        tol = 1.e-20
 
         # now we are collecting the directions and norms of the active groups
         for g in sorted(np.unique(self.penalty.groups)):  # g is group label
@@ -75,7 +75,7 @@ class group_lasso(object):
                     unpenalized.append(g)
 
                 else:
-                    active.append(g)
+                    active_groups.append(g)
                     active_dirs[g] = soln[group_mask] / norm(soln[group_mask])
 
                 ordered_opt.append(norm(soln[group_mask]))
@@ -83,7 +83,7 @@ class group_lasso(object):
                 overall[group_mask] = False
 
         self.selection_variable = {'directions': active_dirs,
-                                   'active_groups': active}  # kind of redundant with keys of active_dirs
+                                   'active_groups': active_groups}  # kind of redundant with keys of active_dirs
 
         self._ordered_groups = ordered_groups
 
@@ -109,9 +109,6 @@ class group_lasso(object):
         self.observed_score_state = -opt_linearNoU.dot(_beta_unpenalized)
         self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
 
-        print("CHECK K.K.T. MAP", np.allclose(self._initial_omega,
-                                              self.observed_score_state + opt_linearNoU.dot(self.initial_soln[ordered_vars])
-                                              + opt_offset))
         active_signs = np.sign(self.initial_soln)
         active = np.flatnonzero(active_signs)
         self.active = active
@@ -131,11 +128,13 @@ class group_lasso(object):
             Lg = self.penalty.weights[g] * np.eye(pg)
             return Lg
 
-        Vs = [compute_Vg(ug) for ug in active_dirs.values()]
+        sorted_active_dirs = collections.OrderedDict(sorted(active_dirs.items()))
+
+        Vs = [compute_Vg(ug) for ug in sorted_active_dirs.values()]
         V = block_diag(*Vs)     # unpack the list
-        Ls = [compute_Lg(g) for g in active_dirs]
+        Ls = [compute_Lg(g) for g in sorted_active_dirs]
         L = block_diag(*Ls)     # unpack the list
-        XE = X[:, active]       # check if this should be ordered_vars
+        XE = X[:, ordered_vars]       # changed to ordered_vars
         Q = XE.T.dot(self._W[:, None] * XE)
         QI = inv(Q)
         C = V.T.dot(QI).dot(L).dot(V)
@@ -146,15 +145,19 @@ class group_lasso(object):
         self.C = C
 
         U = block_diag(*[ug for ug in active_dirs.values()]).T
+        U_sorted = block_diag(*[ug for ug in sorted_active_dirs.values()]).T
 
-        self.opt_linear = opt_linearNoU.dot(U)
+        self.opt_linear = opt_linearNoU.dot(U_sorted)
         self.active_dirs = active_dirs
         self.opt_offset = opt_offset
+
+        print("K.K.T. map", np.allclose(self._initial_omega, self.observed_score_state + self.opt_linear.dot(self.observed_opt_state)
+                                        + self.opt_offset, rtol=1e-03))
         return active_signs
 
     def _solve_randomized_problem(self,
                                   perturb=None,
-                                  solve_args={'tol': 1.e-12, 'min_its': 50}):
+                                  solve_args={'tol': 1.e-15, 'min_its': 100}):
 
         # take a new perturbation if supplied
         if perturb is not None:
@@ -347,120 +350,6 @@ class group_lasso(object):
 from selection.tests.instance import gaussian_instance
 
 
-def gaussian_group_instance(n=100, p=200, sgroup=7, sigma=5, rho=0., signal=7,
-                            random_signs=False, df=np.inf,
-                            scale=True, center=True,
-                            groups=np.arange(20).repeat(10),
-                            equicorrelated=True):
-    """A testing instance for the group LASSO.
-
-
-    If equicorrelated is True design is equi-correlated in the population,
-    normalized to have columns of norm 1.
-    If equicorrelated is False design is auto-regressive.
-    For the default settings, a $\\lambda$ of around 13.5
-    corresponds to the theoretical $E(\\|X^T\\epsilon\\|_{\\infty})$
-    with $\\epsilon \\sim N(0, \\sigma^2 I)$.
-
-    Parameters
-    ----------
-
-    n : int
-        Sample size
-
-    p : int
-        Number of features
-
-    sgroup : int
-        True sparsity (number of active groups)
-
-    groups : array_like (1d, size == p)
-        Assignment of features to (non-overlapping) groups
-
-    sigma : float
-        Noise level
-
-    rho : float
-        Equicorrelation value (must be in interval [0,1])
-
-    signal : float or (float, float)
-        Sizes for the coefficients. If a tuple -- then coefficients
-        are equally spaced between these values using np.linspace.
-        Note: the size of signal is for a "normalized" design, where np.diag(X.T.dot(X)) == np.ones(p).
-        If scale=False, this signal is divided by np.sqrt(n), otherwise it is unchanged.
-
-    random_signs : bool
-        If true, assign random signs to coefficients.
-        Else they are all positive.
-
-    df : int
-        Degrees of freedom for noise (from T distribution).
-
-    equicorrelated: bool
-        If true, design in equi-correlated,
-        Else design is AR.
-
-    Returns
-    -------
-
-    X : np.float((n,p))
-        Design matrix.
-
-    y : np.float(n)
-        Response vector.
-
-    beta : np.float(p)
-        True coefficients.
-
-    active : np.int(s)
-        Non-zero pattern.
-
-    sigma : float
-        Noise level.
-
-    sigmaX : np.ndarray((p,p))
-        Row covariance.
-    """
-    from selection.tests.instance import _design
-    X, sigmaX = _design(n, p, rho, equicorrelated)[:2]
-
-    if center:
-        X -= X.mean(0)[None, :]
-
-    beta = np.zeros(p)
-    signal = np.atleast_1d(signal)
-
-    group_labels = np.unique(groups)
-    group_active = np.random.choice(group_labels, sgroup, replace=False)
-
-    active = np.isin(groups, group_active)
-
-    if signal.shape == (1,):
-        beta[active] = signal[0]
-    else:
-        beta[active] = np.linspace(signal[0], signal[1], active)
-    if random_signs:
-        beta[active] *= (2 * np.random.binomial(1, 0.5, size=(active.sum(),)) - 1.)
-    beta /= np.sqrt(n)
-
-    if scale:
-        scaling = X.std(0) * np.sqrt(n)
-        X /= scaling[None, :]
-        beta *= np.sqrt(n)
-        sigmaX = sigmaX / np.multiply.outer(scaling, scaling)
-
-    # noise model
-    def _noise(n, df=np.inf):
-        if df == np.inf:
-            return np.random.standard_normal(n)
-        else:
-            sd_t = np.std(tdist.rvs(df, size=50000))
-        return tdist.rvs(df, size=n) / sd_t
-
-    Y = (X.dot(beta) + _noise(n, df)) * sigma
-    return X, Y, beta * sigma, np.nonzero(active)[0], sigma, sigmaX
-
-
 def test_group_lasso(n=200,
                      p=50,
                      signal_fac=3,
@@ -497,7 +386,7 @@ def test_group_lasso(n=200,
 
     signs = conv.fit()          # fit doesn't actually return anything
     nonzero = conv.selection_variable['directions'].keys()
-    print("check ", nonzero)
+
 
 
 def solve_barrier_affine_jacobian_py(conjugate_arg,
@@ -597,6 +486,7 @@ def solve_barrier_affine_jacobian_py(conjugate_arg,
 
     hess = inv(precision + barrier_hessian(current))
     return current_value, current, hess
+
 
 # Jacobian calculations
 def calc_GammaMinus(gamma, active_dirs):
