@@ -149,6 +149,7 @@ class group_lasso(object):
         self.opt_linear = opt_linearNoU.dot(U)
         self.active_dirs = active_dirs
         self.opt_offset = opt_offset
+        self.ordered_vars = ordered_vars
 
         print("K.K.T. map", np.allclose(self._initial_omega, self.observed_score_state + self.opt_linear.dot(self.observed_opt_state)
                                         + self.opt_offset, rtol=1e-03))
@@ -330,7 +331,7 @@ class group_lasso(object):
 
         XE = self.XE
         Q = self.Q
-        observed_target = restricted_estimator(self.loglike, self.active, solve_args=solve_args)
+        observed_target = restricted_estimator(self.loglike, self.ordered_vars, solve_args=solve_args)
         _score_linear = -XE.T.dot(self._W[:, None] * X).T
         alternatives = ['twosided'] * len(self.active)
 
