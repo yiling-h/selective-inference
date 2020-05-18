@@ -144,10 +144,9 @@ class group_lasso(object):
         self.QI = QI
         self.C = C
 
-        U = block_diag(*[ug for ug in active_dirs.values()]).T
-        U_sorted = block_diag(*[ug for ug in sorted_active_dirs.values()]).T
+        U = block_diag(*[ug for ug in sorted_active_dirs.values()]).T
 
-        self.opt_linear = opt_linearNoU.dot(U_sorted)
+        self.opt_linear = opt_linearNoU.dot(U)
         self.active_dirs = active_dirs
         self.opt_offset = opt_offset
 
