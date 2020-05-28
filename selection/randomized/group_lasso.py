@@ -18,6 +18,7 @@ class group_lasso(object):
                  weights,
                  ridge_term,
                  randomizer,
+                 use_lasso=True, # should lasso solver be used where applicable - defaults to True
                  perturb=None):
 
         _check_groups(groups)   # make sure groups looks sensible
@@ -30,9 +31,19 @@ class group_lasso(object):
         self.ridge_term = ridge_term
 
         # group lasso penalty (from regreg)
-        self.penalty = rr.group_lasso(groups,
+        # use regular lasso penalty if all groups are size 1
+        if use_lasso and groups.size==np.unique(groups).size:
+            # need to provide weights an an np.array rather than a dictionary
+            weights_np = np.array([w[1] for w in sorted(weights.items())])
+            self.penalty = rr.weighted_l1norm(weights=weights_np,
+                                              lagrange=1.)
+        else:
+            self.penalty = rr.group_lasso(groups,
                                       weights=weights,
                                       lagrange=1.)
+                                    
+        # store groups as a class variable since the non-group lasso doesn't
+        self.groups = groups
 
         self._initial_omega = perturb
 
@@ -60,9 +71,9 @@ class group_lasso(object):
         tol = 1.e-20
 
         # now we are collecting the directions and norms of the active groups
-        for g in sorted(np.unique(self.penalty.groups)):  # g is group label
+        for g in sorted(np.unique(self.groups)):  # g is group label
 
-            group_mask = self.penalty.groups == g
+            group_mask = self.groups == g
             soln = self.initial_soln  # do not need to keep setting this
 
             if norm(soln[group_mask]) > tol * norm(soln):  # is group g appreciably nonzero
@@ -153,7 +164,7 @@ class group_lasso(object):
 
         print("K.K.T. map", np.allclose(self._initial_omega, self.observed_score_state + self.opt_linear.dot(self.observed_opt_state)
                                         + self.opt_offset, rtol=1e-03))
-        return active_signs
+        return active_signs, self.initial_soln
 
     def _solve_randomized_problem(self,
                                   perturb=None,
@@ -171,6 +182,8 @@ class group_lasso(object):
                                      0)
 
         problem = rr.simple_problem(self.loglike, self.penalty)
+        
+        # if all groups are size 1, set up lasso penalty and run usual lasso solver... (see existing code)...
 
         initial_soln = problem.solve(quad, **solve_args)
         initial_subgrad = -(self.loglike.smooth_objective(initial_soln,
@@ -187,6 +200,8 @@ class group_lasso(object):
                  sigma=1.,
                  quadratic=None,
                  ridge_term=0.,
+                 perturb=None,
+                 use_lasso=True, # should lasso solver be used when applicable - defaults to True
                  randomizer_scale=None):
 
         loglike = rr.glm.gaussian(X, Y, coef=1. / sigma ** 2, quadratic=quadratic)
@@ -199,13 +214,16 @@ class group_lasso(object):
         if randomizer_scale is None:
             randomizer_scale = np.sqrt(mean_diag) * 0.5 * np.std(Y) * np.sqrt(n / (n - 1.))
 
+        
         randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
 
         return group_lasso(loglike,
                            groups,
                            weights,
                            ridge_term,
-                           randomizer)
+                           randomizer,                           
+                           use_lasso,
+                           perturb)
 
 
     def _setup_implied_gaussian(self):
@@ -232,6 +250,7 @@ class group_lasso(object):
                       solve_args={'tol': 1.e-12},
                       level=0.9,
                       useC=False,
+                      useJacobian=True,
                       dispersion=None):
         """Do selective_MLE for group_lasso
 
@@ -301,6 +320,7 @@ class group_lasso(object):
                                  offset,
                                  self.C,
                                  self.active_dirs,
+                                 useJacobian,
                                  **solve_args)
 
         final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
@@ -383,9 +403,10 @@ def test_group_lasso(n=200,
                                 Y,
                                 groups,
                                 weights,
-                                randomizer_scale=randomizer_scale * sigma_)
+                                randomizer_scale=randomizer_scale * sigma_,
+                                use_lasso=True)
 
-    signs = conv.fit()          # fit doesn't actually return anything
+    signs,_ = conv.fit()          # fit doesn't actually return anything
     nonzero = conv.selection_variable['directions'].keys()
 
 
@@ -397,6 +418,7 @@ def solve_barrier_affine_jacobian_py(conjugate_arg,
                                      con_offset,
                                      C,
                                      active_dirs,
+                                     useJacobian=True,
                                      step=1,
                                      nstep=2000,
                                      min_its=500,
@@ -421,21 +443,30 @@ def solve_barrier_affine_jacobian_py(conjugate_arg,
     def objective(gs):
         p1 = -gs.T.dot(conjugate_arg)
         p2 = gs.T.dot(precision).dot(gs)/2.
-        p3 = - jacobian_grad_hess(gs, C, active_dirs)[0]
+        if useJacobian:
+            p3 = - jacobian_grad_hess(gs, C, active_dirs)[0]
+        else:
+            p3=0
         p4 = log(1. + 1./((con_offset - con_linear.dot(gs)) / scaling)).sum()
         return p1 + p2 + p3 + p4
 
     def grad(gs):
         p1 = -conjugate_arg + precision.dot(gs)
         p2 = -con_linear.T.dot(1./(scaling + con_offset - con_linear.dot(gs)))
-        p3 = - jacobian_grad_hess(gs, C, active_dirs)[1]
+        if useJacobian:
+            p3 = - jacobian_grad_hess(gs, C, active_dirs)[1]
+        else:
+            p3=0
         p4 = 1./(con_offset - con_linear.dot(gs))
         return p1 + p2 + p3 + p4
 
     def barrier_hessian(gs):    # contribution of barrier and jacobian to hessian
         p1 = con_linear.T.dot(np.diag(-1./((scaling + con_offset-con_linear.dot(gs))**2.)
                                                  + 1./((con_offset-con_linear.dot(gs))**2.))).dot(con_linear)
-        p2 = - jacobian_grad_hess(gs, C, active_dirs)[2]
+        if useJacobian:
+            p2 = - jacobian_grad_hess(gs, C, active_dirs)[2]
+        else:
+            p2 = 0
         return p1 + p2
 
     current = feasible_point
@@ -484,7 +515,7 @@ def solve_barrier_affine_jacobian_py(conjugate_arg,
 
         if itercount % 4 == 0:
             step *= 2
-
+    
     hess = inv(precision + barrier_hessian(current))
     return current_value, current, hess
 
