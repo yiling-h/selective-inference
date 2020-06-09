@@ -8,17 +8,17 @@ import matplotlib.pyplot as plt
 from statsmodels.distributions.empirical_distribution import ECDF
 from scipy.stats import norm as ndist
 
-p_temp = 25
-def test_selected_targets(n=50,
+p_temp = 5
+def test_selected_targets(n=100,
                           p=p_temp,
-                          signal_fac=0,
+                          signal_fac=0.5,
                           sgroup=1,
                           #s =10,
                           groups=np.arange(1).repeat(p_temp),
                           sigma=1.,
                           rho=0,
                           randomizer_scale=1,
-                          weight_frac=.7):
+                          weight_frac=.8):
 
     inst = gaussian_group_instance
     #inst = gaussian_instance
@@ -186,7 +186,7 @@ def main(nsim=500,p=2):
     return nselect/nsim, np.mean(cover), np.mean(avg_length), beta_hat, Sigma_hat, nselect_nj/nsim, np.mean(cover_nj), np.mean(avg_length_nj), beta_hat_nj, Sigma_hat_nj 
 
 seed(1)
-nsim_temp = 50
+nsim_temp = 200
 pct_selected,coverage,int_length,beta_hat,Sigma_hat,pct_selected_nj,coverage_nj,int_length_nj,beta_hat_nj,Sigma_hat_nj = main(nsim=nsim_temp,p=p_temp)
 
 print('Proportion of iterations with variables selected:')
@@ -199,5 +199,14 @@ print(np.mean(abs(beta_hat - beta_hat_nj)))
 
 print('Signed difference in se(beta_1):')
 print(np.mean(Sigma_hat[:,0,0] - Sigma_hat_nj[:,0,0]))
+
+# setting 1: n=50,p=25,1 group,0 signal,weight_frac=.7, 100 reps
+# in setting 1, the lengths are comparable, with Jacobian the coverage is good,
+# while without the coverage is below 0.9
+
+# setting 2: n=100,p=5,1 group,signal=0.5,weight_frac=.8, 200 reps
+# in setting 1, the Jacobian gives correct coverage while without the Jacobian,
+# coverage is slightly below nominal. The intervals with the Jacobian are 
+# also slightly narrower (less influence from the barrier hessian)
 
 
