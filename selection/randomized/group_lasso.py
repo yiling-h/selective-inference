@@ -97,7 +97,12 @@ class group_lasso(object):
                                    'active_groups': active_groups}  # kind of redundant with keys of active_dirs
 
         self._ordered_groups = ordered_groups
-
+        
+        # exception if no groups are selected
+        if len(self.selection_variable['active_groups'])==0:
+            return np.sign(soln), soln
+            
+        # otherwise continue as before
         self.observed_opt_state = np.hstack(ordered_opt)  # gammas as array
 
         _beta_unpenalized = restricted_estimator(self.loglike,  # refit OLS on E
@@ -164,7 +169,7 @@ class group_lasso(object):
 
         print("K.K.T. map", np.allclose(self._initial_omega, self.observed_score_state + self.opt_linear.dot(self.observed_opt_state)
                                         + self.opt_offset, rtol=1e-03))
-        return active_signs, self.initial_soln
+        return active_signs, soln
 
     def _solve_randomized_problem(self,
                                   perturb=None,
