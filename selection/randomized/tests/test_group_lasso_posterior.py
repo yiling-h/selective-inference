@@ -81,12 +81,12 @@ def main(ndraw=1):
     for n in range(ndraw):
         cov, len = test_posterior_inference(n=500,
                                             p=100,
-                                            signal_fac=0.1,
+                                            signal_fac=0.5,
                                             sgroup=3,
                                             s =5,
                                             groups=np.arange(50).repeat(2),
-                                            sigma=3.,
-                                            rho=0.3,
+                                            sigma=1.,
+                                            rho=0.2,
                                             randomizer_scale=1,
                                             weight_frac=1.)
 
