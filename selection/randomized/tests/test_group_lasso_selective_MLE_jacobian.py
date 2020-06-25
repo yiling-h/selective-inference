@@ -3,6 +3,7 @@ from random import seed
 
 from selection.randomized.group_lasso import group_lasso
 from selection.tests.instance import gaussian_group_instance, gaussian_instance
+from selection.randomized.randomization import randomization
 
 import matplotlib.pyplot as plt
 from statsmodels.distributions.empirical_distribution import ECDF
