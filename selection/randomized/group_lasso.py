@@ -8,6 +8,7 @@ from numpy import log
 from numpy.linalg import norm, qr, inv, eig
 from scipy.stats import norm as ndist
 import collections
+from selection.randomized.query import naive_confidence_intervals, naive_pvalues
 
 
 class group_lasso(object):
@@ -343,6 +344,35 @@ class group_lasso(object):
         quantile = ndist.ppf(1 - alpha / 2.)
         intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
                                final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
+
+        return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
+
+
+    def naive_inference(self,
+                        level=0.9,
+                        dispersion=None):
+        """This method is analogous to selective_MLE, but performs naive
+        inference for group_lasso
+
+        Note: this method assumes you have already run the fit method
+        since this uses results from that method.
+        """
+
+        self._setup_implied_gaussian()  # Calculate useful quantities
+        (observed_target, cov_target, cov_target_score, alternatives) = self.selected_targets(dispersion)
+
+        intervals = naive_confidence_intervals(np.diag(cov_target),
+                                               observed_target, level)
+
+        pvalues = naive_pvalues(np.diag(cov_target), observed_target, np.zeros_like(observed_target))
+
+        final_estimator = observed_target
+        ind_unbiased_estimator = observed_target
+        observed_info_mean = cov_target
+
+        Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
+        pvalues = ndist.cdf(Z_scores)
+        pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
 
         return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
 
