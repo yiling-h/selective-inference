@@ -114,24 +114,56 @@ def test_selected_targets(n=100,
         pivot_MLE_nj = []
         estimate_nj = np.zeros(p)
         observed_info_mean_nj = np.zeros((p,p))
-        
-    return p0,pa,coverage,intervals,pivot_MLE,estimate,observed_info_mean,p0_nj,pa_nj,coverage_nj,intervals_nj,pivot_MLE_nj,estimate_nj,observed_info_mean_nj,
+
+    # naive inference
+    if nonzero.sum() > 0:
+        if n>p:
+            dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+        else:
+            dispersion = sigma_ ** 2
+
+
+        estimate_naive, observed_info_mean_naive, _, pval_naive, intervals_naive, _ = conv.naive_inference(dispersion=dispersion,
+                                                                                           level=0.9)
+
+        beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+
+        pivot_MLE_naive = ndist.cdf((estimate_naive - beta_target)/np.sqrt(np.diag(observed_info_mean_naive)))
+
+        coverage_naive = (beta_target > intervals_naive[:, 0]) * (beta_target <
+                                                      intervals_naive[:, 1])
+        p0_naive = pval_naive[beta[nonzero] == 0]
+        pa_naive = pval_naive[beta[nonzero] != 0]
+    else:
+        p0_naive = []
+        pa_naive = []
+        coverage_naive = []
+        intervals_naive = []
+        pivot_MLE_naive = []
+        estimate_naive = np.zeros(p)
+        observed_info_mean_naive = np.zeros((p,p))
+
+    return p0,pa,coverage,intervals,pivot_MLE,estimate,observed_info_mean,p0_nj,pa_nj,coverage_nj,intervals_nj,pivot_MLE_nj,estimate_nj,observed_info_mean_nj,p0_naive,pa_naive,coverage_naive,intervals_naive,pivot_MLE_naive,estimate_naive,observed_info_mean_naive,
 
 
 def main(nsim=500,p=2):
     P0, PA, cover, pivot, avg_length = [], [], [], [], []
     P0_nj, PA_nj, cover_nj, pivot_nj, avg_length_nj = [], [], [], [], []
+    P0_naive, PA_naive, cover_naive, pivot_naive, avg_length_naive = [], [], [], [], []
 
     beta_hat = np.zeros((nsim,p))
     Sigma_hat = np.zeros((nsim,p,p))
     beta_hat_nj = np.zeros((nsim,p))
     Sigma_hat_nj = np.zeros((nsim,p,p))
+    beta_hat_naive = np.zeros((nsim,p))
+    Sigma_hat_naive = np.zeros((nsim,p,p))
     # set parameters through defaults in function definition
     #n, p, sgroup = 200, 50, 1
     nselect = 0
     nselect_nj = 0
+    nselect_naive = 0
     for i in range(nsim):
-        p0, pA, cover_, intervals, pivot_, beta_hat_, Sigma_hat_,p0_nj, pA_nj, cover_nj_, intervals_nj, pivot_nj_, beta_hat_nj_, Sigma_hat_nj_ = test_selected_targets()
+        p0, pA, cover_, intervals, pivot_, beta_hat_, Sigma_hat_,p0_nj, pA_nj, cover_nj_, intervals_nj, pivot_nj_, beta_hat_nj_, Sigma_hat_nj_, p0_naive, pA_naive, cover_naive_, intervals_naive, pivot_naive_, beta_hat_naive_, Sigma_hat_naive_ = test_selected_targets()
         if len(intervals)>0:
             nselect += 1
             avg_length_ = intervals[:, 1] - intervals[:, 0]
@@ -170,6 +202,26 @@ def main(nsim=500,p=2):
             print(np.mean(cover_nj), np.mean(avg_length_nj),
                   'coverage + length so far without Jacobian')
 
+        if len(intervals_naive)>0:
+            nselect_naive += 1
+            avg_length_naive_ = intervals_naive[:, 1] - intervals_naive[:, 0]
+        else:
+            avg_length_naive_ = []
+
+        cover_naive.extend(cover_naive_)
+        pivot_naive.extend(pivot_naive_)
+        avg_length_naive.extend(avg_length_naive_)
+        P0_naive.extend(p0_naive)
+        PA_naive.extend(pA_naive)
+        # store estimate and covariance
+        beta_hat_naive[i,:] = beta_hat_naive_
+        Sigma_hat_naive[i,:,:] = Sigma_hat_naive_
+
+        if len(intervals_naive)>0:
+            print(np.mean(cover_naive), np.mean(avg_length_naive),
+                  'coverage + length so far with naive approach')
+
+
     plt.clf()
     ecdf_MLE = ECDF(np.asarray(pivot))
     grid = np.linspace(0, 1, 101)
@@ -183,12 +235,19 @@ def main(nsim=500,p=2):
     plt.plot(grid, ecdf_MLE(grid), c='red', marker='^')
     plt.plot(grid, grid, 'k--')
     plt.show()
+
+    plt.clf()
+    ecdf_MLE = ECDF(np.asarray(pivot_naive))
+    grid = np.linspace(0, 1, 101)
+    plt.plot(grid, ecdf_MLE(grid), c='red', marker='^')
+    plt.plot(grid, grid, 'k--')
+    plt.show()
     
-    return nselect/nsim, np.mean(cover), np.mean(avg_length), beta_hat, Sigma_hat, nselect_nj/nsim, np.mean(cover_nj), np.mean(avg_length_nj), beta_hat_nj, Sigma_hat_nj 
+    return nselect/nsim, np.mean(cover), np.mean(avg_length), beta_hat, Sigma_hat, nselect_nj/nsim, np.mean(cover_nj), np.mean(avg_length_nj), beta_hat_nj, Sigma_hat_nj , nselect_naive/nsim, np.mean(cover_naive), np.mean(avg_length_naive), beta_hat_naive, Sigma_hat_naive 
 
 seed(1)
 nsim_temp = 200
-pct_selected,coverage,int_length,beta_hat,Sigma_hat,pct_selected_nj,coverage_nj,int_length_nj,beta_hat_nj,Sigma_hat_nj = main(nsim=nsim_temp,p=p_temp)
+pct_selected,coverage,int_length,beta_hat,Sigma_hat,pct_selected_nj,coverage_nj,int_length_nj,beta_hat_nj,Sigma_hat_nj,pct_selected_naive,coverage_naive,int_length_naive,beta_hat_naive,Sigma_hat_naive = main(nsim=nsim_temp,p=p_temp)
 
 print('Proportion of iterations with variables selected:')
 print(pct_selected)
