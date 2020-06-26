@@ -10,16 +10,16 @@ from statsmodels.distributions.empirical_distribution import ECDF
 from scipy.stats import norm as ndist
 
 p_temp = 5
-def test_selected_targets(n=100,
+def test_selected_targets(n=200,
                           p=p_temp,
-                          signal_fac=0.5,
+                          signal_fac=0.1,
                           sgroup=1,
                           #s =10,
                           groups=np.arange(1).repeat(p_temp),
                           sigma=1.,
                           rho=0,
-                          randomizer_scale=1,
-                          weight_frac=.8):
+                          randomizer_scale=1.,
+                          weight_frac=0.1):
 
     inst = gaussian_group_instance
     #inst = gaussian_instance
@@ -232,7 +232,7 @@ def main(nsim=500,p=2):
     plt.clf()
     ecdf_MLE = ECDF(np.asarray(pivot_nj))
     grid = np.linspace(0, 1, 101)
-    plt.plot(grid, ecdf_MLE(grid), c='red', marker='^')
+    plt.plot(grid, ecdf_MLE(grid), c='green', marker='^')
     plt.plot(grid, grid, 'k--')
     plt.show()
 
@@ -246,7 +246,7 @@ def main(nsim=500,p=2):
     return nselect/nsim, np.mean(cover), np.mean(avg_length), beta_hat, Sigma_hat, nselect_nj/nsim, np.mean(cover_nj), np.mean(avg_length_nj), beta_hat_nj, Sigma_hat_nj , nselect_naive/nsim, np.mean(cover_naive), np.mean(avg_length_naive), beta_hat_naive, Sigma_hat_naive 
 
 seed(1)
-nsim_temp = 200
+nsim_temp = 100
 pct_selected,coverage,int_length,beta_hat,Sigma_hat,pct_selected_nj,coverage_nj,int_length_nj,beta_hat_nj,Sigma_hat_nj,pct_selected_naive,coverage_naive,int_length_naive,beta_hat_naive,Sigma_hat_naive = main(nsim=nsim_temp,p=p_temp)
 
 print('Proportion of iterations with variables selected:')
