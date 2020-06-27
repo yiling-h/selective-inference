@@ -1771,6 +1771,8 @@ def selective_MLE(observed_target,
                              offset,
                              **solve_args)
 
+    log_ref = val + conjugate_arg.T.dot(cond_cov).dot(conjugate_arg) / 2.
+
     final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
     ind_unbiased_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean
                                                                                             - init_soln)))
@@ -1787,7 +1789,7 @@ def selective_MLE(observed_target,
     intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
                            final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
 
-    return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator
+    return final_estimator, observed_info_mean, Z_scores, pvalues, intervals, ind_unbiased_estimator, log_ref
 
 def twostage_selective_MLE(observed_target,
                            cov_target,

@@ -60,12 +60,8 @@ def test_selected_targets(n=500,
     print("check dimensions of selected set ", nonzero.sum())
 
     if nonzero.sum() > 0:
-        if n > p:
-            dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
-        else:
-            dispersion = sigma_ ** 2
 
-        estimate, observed_info_mean, _, pval, intervals, _ = conv.selective_MLE(dispersion=dispersion)
+        estimate, observed_info_mean, _, pval, intervals, _, _ = conv.selective_MLE(dispersion=dispersion)
 
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
@@ -113,4 +109,4 @@ def main(nsim=500):
 
 if __name__ == "__main__":
 
-    main(nsim=500)
+    main(nsim=1)
