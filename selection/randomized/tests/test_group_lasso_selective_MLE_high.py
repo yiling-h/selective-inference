@@ -55,7 +55,7 @@ def test_selected_targets(n=500,
     sigma_ = np.sqrt(dispersion)
     weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
     conv = const(X, Y, groups, weights, randomizer_scale=randomizer_scale * sigma_)
-    signs = conv.fit()
+    signs, _ = conv.fit()
     nonzero = signs != 0
     print("check dimensions of selected set ", nonzero.sum())
 
@@ -111,4 +111,6 @@ def main(nsim=500):
     plt.plot(grid, grid, 'k--')
     plt.show()
 
-main(nsim=500)
+if __name__ == "__main__":
+
+    main(nsim=500)
