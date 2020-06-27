@@ -402,49 +402,6 @@ class group_lasso(object):
                 crosscov_target_score,
                 alternatives)
 
-from selection.tests.instance import gaussian_instance
-from selection.tests.instance import gaussian_group_instance
-
-
-def test_group_lasso(n=200,
-                     p=50,
-                     signal_fac=3,
-                     sgroup=1,
-                     groups=np.arange(5).repeat(10),
-                     sigma=3,
-                     target='selected',
-                     rho=0.4,
-                     randomizer_scale=1.):
-
-    inst = gaussian_group_instance
-    signal = np.sqrt(signal_fac * log(p))
-
-    X, Y, beta = inst(n=n,
-                      p=p,
-                      signal=signal,
-                      sgroup=sgroup,
-                      groups=groups,
-                      equicorrelated=False,
-                      rho=rho,
-                      sigma=sigma,
-                      random_signs=True)[:3]
-
-    n, p = X.shape
-
-    sigma_ = np.std(Y)
-
-    weights = dict([(i, sigma_ * 2 * np.sqrt(2)) for i in np.unique(groups)])
-    conv = group_lasso.gaussian(X,
-                                Y,
-                                groups,
-                                weights,
-                                randomizer_scale=randomizer_scale * sigma_,
-                                use_lasso=True)
-
-    signs,_ = conv.fit()          # fit doesn't actually return anything
-    nonzero = conv.selection_variable['directions'].keys()
-
-
 
 def solve_barrier_affine_jacobian_py(conjugate_arg,
                                      precision,
@@ -503,7 +460,7 @@ def solve_barrier_affine_jacobian_py(conjugate_arg,
         else:
             p2 = 0
         return p1 + p2
-    
+
     current = feasible_point
     current_value = np.inf
 
@@ -569,19 +526,25 @@ def jacobian_grad_hess(gamma, C, active_dirs):
         return 0,0,0
     else:
         GammaMinus = calc_GammaMinus(gamma,active_dirs)
+
         # eigendecomposition
         evalues,evectors = eig(GammaMinus + C)
+
         # log Jacobian
         J = log(evalues).sum()
+
         # inverse
         GpC_inv = evectors.dot(np.diag(1/evalues).dot(evectors.T))
+
         # summing matrix (gamma.size by C.shape[0])
         S = block_diag(*[np.ones((1,ug.size-1)) for ug in active_dirs.values()])
+
         # gradient
         grad_J = S.dot(GpC_inv.diagonal())
+
         # hessian
         hess_J = -S.dot(np.multiply(GpC_inv,GpC_inv.T).dot(S.T))
-        # return all the objects
+
         return J,grad_J,hess_J
 
 
@@ -626,4 +589,3 @@ def _check_groups(groups):
         raise ValueError("Some group is skipped")
 
 
-test_group_lasso()
