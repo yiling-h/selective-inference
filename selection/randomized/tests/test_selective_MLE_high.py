@@ -7,7 +7,8 @@ from selection.tests.instance import gaussian_instance
 def test_full_targets(n=200, 
                       p=1000, 
                       signal_fac=0.5, 
-                      s=5, sigma=3, 
+                      s=5,
+                      sigma=3,
                       rho=0.4, 
                       randomizer_scale=0.5,
                       full_dispersion=False):

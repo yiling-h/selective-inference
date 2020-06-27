@@ -477,33 +477,33 @@ def solve_barrier_affine_jacobian_py(conjugate_arg,
 
     def objective(gs):
         p1 = -gs.T.dot(conjugate_arg)
-        p2 = gs.T.dot(precision).dot(gs)/2.
+        p2 = gs.T.dot(precision).dot(gs) / 2.
         if useJacobian:
             p3 = - jacobian_grad_hess(gs, C, active_dirs)[0]
         else:
-            p3=0
-        p4 = log(1. + 1./((con_offset - con_linear.dot(gs)) / scaling)).sum()
+            p3 = 0
+        p4 = log(1. + 1. / ((con_offset - con_linear.dot(gs)) / scaling)).sum()
         return p1 + p2 + p3 + p4
 
     def grad(gs):
         p1 = -conjugate_arg + precision.dot(gs)
-        p2 = -con_linear.T.dot(1./(scaling + con_offset - con_linear.dot(gs)))
+        p2 = -con_linear.T.dot(1. / (scaling + con_offset - con_linear.dot(gs)))
         if useJacobian:
             p3 = - jacobian_grad_hess(gs, C, active_dirs)[1]
         else:
-            p3=0
-        p4 = 1./(con_offset - con_linear.dot(gs))
+            p3 = 0
+        p4 = 1. / (con_offset - con_linear.dot(gs))
         return p1 + p2 + p3 + p4
 
-    def barrier_hessian(gs):    # contribution of barrier and jacobian to hessian
-        p1 = con_linear.T.dot(np.diag(-1./((scaling + con_offset-con_linear.dot(gs))**2.)
-                                                 + 1./((con_offset-con_linear.dot(gs))**2.))).dot(con_linear)
+    def barrier_hessian(gs):  # contribution of barrier and jacobian to hessian
+        p1 = con_linear.T.dot(np.diag(-1. / ((scaling + con_offset - con_linear.dot(gs)) ** 2.)
+                                      + 1. / ((con_offset - con_linear.dot(gs)) ** 2.))).dot(con_linear)
         if useJacobian:
             p2 = - jacobian_grad_hess(gs, C, active_dirs)[2]
         else:
             p2 = 0
         return p1 + p2
-
+    
     current = feasible_point
     current_value = np.inf
 
