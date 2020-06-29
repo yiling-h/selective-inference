@@ -62,8 +62,9 @@ def test_posterior_inference(n=500,
                                   prior=prior,
                                   dispersion=dispersion)
 
-        samples = posterior_inf.langevin_sampler(nsample=500,
-                                                 nburnin=50)
+        samples = posterior_inf.langevin_sampler(nsample=1200,
+                                                 nburnin=100,
+                                                 step=1.)
 
         lci = np.percentile(samples, 5, axis=0)
         uci = np.percentile(samples, 95, axis=0)
@@ -74,21 +75,21 @@ def test_posterior_inference(n=500,
 
 
 
-def main(ndraw=1):
+def main(ndraw=10):
 
     coverage_ = 0.
     length_ = 0.
     for n in range(ndraw):
         cov, len = test_posterior_inference(n=500,
-                                            p=100,
-                                            signal_fac=0.5,
+                                            p=200,
+                                            signal_fac=0.2,
                                             sgroup=3,
-                                            s =5,
-                                            groups=np.arange(50).repeat(2),
+                                            s=5,
+                                            groups=np.arange(50).repeat(4),
                                             sigma=1.,
-                                            rho=0.2,
+                                            rho=0.20,
                                             randomizer_scale=1,
-                                            weight_frac=1.)
+                                            weight_frac=1.2)
 
         coverage_ += cov
         length_ += len
