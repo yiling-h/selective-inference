@@ -622,7 +622,7 @@ class posterior():
     def __init__(self,
                  conv,
                  prior,
-                 dispersion=1,
+                 dispersion,
                  solve_args={'tol': 1.e-12}):
 
         self.solve_args = solve_args
@@ -655,6 +655,7 @@ class posterior():
 
         self.initial_estimate = observed_target
         self.dispersion = dispersion
+        print("while init ", self.dispersion)
         self.log_ref = log_ref
 
         self._set_marginal_parameters()
@@ -805,12 +806,13 @@ class posterior():
                            self.log_posterior_wip,
                            proposal_scale,
                            stepsize,
-                           self.dispersion)
+                           scaling=self.dispersion)
 
         samples = np.zeros((nsample, self.ntarget))
 
         for i, sample in enumerate(sampler):
             sampler.scaling = self.dispersion
+            print("check dispersion in Langevin ", self.dispersion)
             samples[i, :] = sample.copy()
             sys.stderr.write("sample number " + str(i) + " sample " + str(sample.copy()) + "\n")
             if i == nsample - 1:

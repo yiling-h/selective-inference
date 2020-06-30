@@ -16,6 +16,7 @@ def test_posterior_inference(n=500,
                              weight_frac=1.2):
 
     inst = gaussian_group_instance
+    #inst = gaussian_instance
     signal = np.sqrt(signal_fac * 2 * np.log(p))
 
     X, Y, beta = inst(n=n,
@@ -28,7 +29,18 @@ def test_posterior_inference(n=500,
                       sigma=sigma,
                       random_signs=True)[:3]
 
+    # X, Y, beta = inst(n=n,
+    #                   p=p,
+    #                   signal=signal,
+    #                   s=s,
+    #                   equicorrelated=False,
+    #                   rho=rho,
+    #                   sigma=sigma,
+    #                   random_signs=True)[:3]
+
     n, p = X.shape
+    _sigma = np.sqrt(np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p))
+    Y /= _sigma
 
     sigma_ = np.std(Y)
     if n > p:
@@ -37,6 +49,8 @@ def test_posterior_inference(n=500,
         dispersion = sigma_ ** 2
 
     sigma_ = np.sqrt(dispersion)
+    print("check dispersion ", dispersion)
+
     weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
     conv = group_lasso.gaussian(X,
                                 Y,
@@ -66,8 +80,10 @@ def test_posterior_inference(n=500,
                                                  nburnin=100,
                                                  step=1.)
 
-        lci = np.percentile(samples, 5, axis=0)
-        uci = np.percentile(samples, 95, axis=0)
+        lci = _sigma * np.percentile(samples, 5, axis=0)
+        uci = _sigma *  np.percentile(samples, 95, axis=0)
+        # lci = np.percentile(samples, 5, axis=0)
+        # uci = np.percentile(samples, 95, axis=0)
         coverage = (lci < beta_target) * (uci > beta_target)
         length = uci - lci
 
@@ -82,11 +98,11 @@ def main(ndraw=10):
     for n in range(ndraw):
         cov, len = test_posterior_inference(n=500,
                                             p=200,
-                                            signal_fac=1.,
+                                            signal_fac=0.1,
                                             sgroup=3,
                                             s=5,
                                             groups=np.arange(50).repeat(4),
-                                            sigma=1.,
+                                            sigma=3.,
                                             rho=0.20,
                                             randomizer_scale=1.,
                                             weight_frac=1.2)
