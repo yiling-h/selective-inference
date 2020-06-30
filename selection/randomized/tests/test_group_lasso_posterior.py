@@ -39,8 +39,6 @@ def test_posterior_inference(n=500,
     #                   random_signs=True)[:3]
 
     n, p = X.shape
-    _sigma = np.sqrt(np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p))
-    Y /= _sigma
 
     sigma_ = np.std(Y)
     if n > p:
@@ -80,10 +78,8 @@ def test_posterior_inference(n=500,
                                                  nburnin=100,
                                                  step=1.)
 
-        lci = _sigma * np.percentile(samples, 5, axis=0)
-        uci = _sigma *  np.percentile(samples, 95, axis=0)
-        # lci = np.percentile(samples, 5, axis=0)
-        # uci = np.percentile(samples, 95, axis=0)
+        lci = np.percentile(samples, 5, axis=0)
+        uci = np.percentile(samples, 95, axis=0)
         coverage = (lci < beta_target) * (uci > beta_target)
         length = uci - lci
 

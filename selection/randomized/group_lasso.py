@@ -806,13 +806,12 @@ class posterior():
                            self.log_posterior_wip,
                            proposal_scale,
                            stepsize,
-                           scaling=self.dispersion)
+                           scaling=np.sqrt(self.dispersion))
 
         samples = np.zeros((nsample, self.ntarget))
 
         for i, sample in enumerate(sampler):
-            sampler.scaling = self.dispersion
-            print("check dispersion in Langevin ", self.dispersion)
+            sampler.scaling = np.sqrt(self.dispersion)
             samples[i, :] = sample.copy()
             sys.stderr.write("sample number " + str(i) + " sample " + str(sample.copy()) + "\n")
             if i == nsample - 1:
