@@ -82,13 +82,13 @@ def main(ndraw=10):
     for n in range(ndraw):
         cov, len = test_posterior_inference(n=500,
                                             p=200,
-                                            signal_fac=0.2,
+                                            signal_fac=1.,
                                             sgroup=3,
                                             s=5,
                                             groups=np.arange(50).repeat(4),
                                             sigma=1.,
                                             rho=0.20,
-                                            randomizer_scale=1,
+                                            randomizer_scale=1.,
                                             weight_frac=1.2)
 
         coverage_ += cov
