@@ -754,7 +754,7 @@ class posterior():
         grad_lik = (self.prec_target.dot(self.observed_target) -
                     self.prec_target.dot(target_parameter) \
                     - self.linear_coef.T.dot(prec_marginal.dot(soln) - conjugate_marginal)) - \
-                   self.linear_coef.T.dot(prec_marginal).dot(log_jacob[1])
+                   self.linear_coef.T.dot(prec_marginal).dot(hess).dot(log_jacob[1])
 
         grad_prior, log_prior = self.prior(target_parameter)
 
