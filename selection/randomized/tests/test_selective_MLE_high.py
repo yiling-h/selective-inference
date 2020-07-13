@@ -70,12 +70,10 @@ def test_full_targets(n=200,
                                                   penalty=conv.penalty,
                                                   dispersion=dispersion)
 
-            estimate, _, _, pval, intervals, _ = conv.selective_MLE(observed_target,
+            estimate, _, _, pval, intervals, _, _ = conv.selective_MLE(observed_target,
                                                                     cov_target,
                                                                     cov_target_score,
                                                                     alternatives)
-
-            print("estimate, intervals", estimate, intervals)
 
             coverage = (beta[nonzero] > intervals[:, 0]) * (beta[nonzero] < intervals[:, 1])
             return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
@@ -136,7 +134,7 @@ def test_selected_targets(n=2000,
                                               nonzero, 
                                               dispersion=dispersion)
 
-            estimate, _, _, pval, intervals, _ = conv.selective_MLE(observed_target,
+            estimate, _, _, pval, intervals, _, _ = conv.selective_MLE(observed_target,
                                                                     cov_target,
                                                                     cov_target_score,
                                                                     alternatives)
@@ -144,6 +142,7 @@ def test_selected_targets(n=2000,
             beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
             coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
+
             return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
 
 def main(nsim=500, full=False):
@@ -174,4 +173,4 @@ def main(nsim=500, full=False):
         #     np.mean(avg_length), 'null pvalue + power + length')
         print(np.mean(cover), np.mean(avg_length), 'coverage + length')
 
-main(nsim=500, full=True)
+main(nsim=500, full=False)
