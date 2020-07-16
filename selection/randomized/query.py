@@ -1762,7 +1762,7 @@ def selective_MLE(observed_target,
     # else:
     #     print("not using C")
     #     solver = solve_barrier_affine_py
-    solver = solve_barrier_affine_C
+    solver = solve_barrier_affine_py
 
     val, soln, hess = solver(conjugate_arg,
                              prec_opt,

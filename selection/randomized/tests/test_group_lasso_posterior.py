@@ -94,14 +94,14 @@ def main(ndraw=10):
     for n in range(ndraw):
         cov, len = test_posterior_inference(n=500,
                                             p=200,
-                                            signal_fac=1.,
+                                            signal_fac=0.2,
                                             sgroup=3,
                                             s=5,
                                             groups=np.arange(50).repeat(4),
                                             sigma=1.,
                                             rho=0.20,
                                             randomizer_scale=0.5,
-                                            weight_frac=1.2)
+                                            weight_frac=1.)
 
         coverage_ += cov
         length_ += len
@@ -112,4 +112,4 @@ def main(ndraw=10):
 
 
 if __name__ == "__main__":
-    main()
+    main(ndraw=20)
