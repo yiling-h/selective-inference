@@ -94,14 +94,14 @@ def main(ndraw=10):
     for n in range(ndraw):
         cov, len = test_posterior_inference(n=500,
                                             p=200,
-                                            signal_fac=1.,
+                                            signal_fac=1.2,
                                             sgroup=3,
                                             s=5,
                                             groups=np.arange(50).repeat(4),
-                                            sigma=1.,
-                                            rho=0.20,
+                                            sigma=3.,
+                                            rho=0.40,
                                             randomizer_scale=0.5,
-                                            weight_frac=1.)
+                                            weight_frac=1.2)
 
         coverage_ += cov
         length_ += len
