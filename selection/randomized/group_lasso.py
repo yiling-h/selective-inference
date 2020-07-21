@@ -8,7 +8,7 @@ from numpy import log
 from numpy.linalg import norm, qr, inv, eig
 from scipy.stats import norm as ndist
 import collections
-from selection.randomized.query import naive_confidence_intervals, naive_pvalues
+from selection.randomized.query import naive_confidence_intervals, naive_pvalues, solve_barrier_affine_py
 from scipy.linalg import fractional_matrix_power
 import sys
 
@@ -655,7 +655,6 @@ class posterior():
 
         self.initial_estimate = observed_target
         self.dispersion = dispersion
-        print("while init ", self.dispersion)
         self.log_ref = log_ref
 
         self._set_marginal_parameters()
@@ -681,60 +680,7 @@ class posterior():
         prec_marginal = np.linalg.inv(self.cov_marginal)
         conjugate_marginal = prec_marginal.dot(mean_marginal)
 
-
-        solver = solve_barrier_affine_jacobian_py
-        useJacobian = True
-
-        val, soln, hess = solver(conjugate_marginal,
-                                 prec_marginal,
-                                 self.feasible_point,
-                                 self.linear_part,
-                                 self.offset,
-                                 self.C,
-                                 self.active_dirs,
-                                 useJacobian,
-                                 step=1,
-                                 nstep=2000,
-                                 min_its=500,
-                                 tol=1.e-12)
-
-        log_normalizer = -val - mean_marginal.T.dot(prec_marginal).dot(mean_marginal) / 2.
-
-        log_lik = -((self.observed_target - target_parameter).T.dot(self.prec_target).dot(
-            self.observed_target - target_parameter)) / 2. \
-                  - log_normalizer
-
-        grad_lik = (self.prec_target.dot(self.observed_target) -
-                    self.prec_target.dot(target_parameter) \
-                    - self.linear_coef.T.dot(prec_marginal.dot(soln) - conjugate_marginal))
-
-        grad_prior, log_prior = self.prior(target_parameter)
-
-        return (self.dispersion * grad_lik / sigmasq + grad_prior,
-                self.dispersion * log_lik / sigmasq + log_prior -
-                (self.dispersion * self.log_ref / sigmasq))
-
-    def log_posterior_wip(self,
-                          target_parameter,
-                          sigma=1):
-
-        """
-        Parameters
-        ----------
-        target_parameter : ndarray
-            Value of parameter at which to evaluate
-            posterior and its gradient.
-        sigma : ndarray
-            Noise standard deviation.
-        """
-
-        sigmasq = sigma ** 2
-        mean_marginal = self.linear_coef.dot(target_parameter) + self.offset_coef
-        prec_marginal = np.linalg.inv(self.cov_marginal)
-        conjugate_marginal = prec_marginal.dot(mean_marginal)
-
-
-        solver = solve_barrier_affine_C
+        solver = solve_barrier_affine_py
 
         val, soln, hess = solver(conjugate_marginal,
                                  prec_marginal,
@@ -803,7 +749,7 @@ class posterior():
             proposal_scale = self.inverse_info
 
         sampler = langevin(state,
-                           self.log_posterior_wip,
+                           self.log_posterior,
                            proposal_scale,
                            stepsize,
                            scaling=np.sqrt(self.dispersion))
