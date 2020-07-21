@@ -62,10 +62,10 @@ def test_posterior_inference(n=500,
 
     conv._setup_implied_gaussian()
 
-    def prior(target_parameter):
-        grad_prior = -target_parameter * (1./(100 * dispersion))
-        log_prior = -0.5 * np.sum(target_parameter ** 2 * (1./(100 * dispersion)))
-        return log_prior, grad_prior
+    def prior(target_parameter, prior_var=100):
+        grad_prior = -target_parameter / prior_var
+        log_prior = -np.linalg.norm(target_parameter) ** 2 / (2. * prior_var)
+        return grad_prior, log_prior
 
     if nonzero.sum() > 0:
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
@@ -94,7 +94,7 @@ def main(ndraw=10):
     for n in range(ndraw):
         cov, len = test_posterior_inference(n=500,
                                             p=200,
-                                            signal_fac=0.2,
+                                            signal_fac=1.,
                                             sgroup=3,
                                             s=5,
                                             groups=np.arange(50).repeat(4),

@@ -1584,15 +1584,15 @@ def naive_pvalues(diag_cov, observed, parameter):
         pvalues[j] = 2 * min(pval, 1-pval)
     return pvalues
 
-def solve_barrier_affine_py(conjugate_arg,
-                            precision,
-                            feasible_point,
-                            con_linear,
-                            con_offset,
-                            step=1,
-                            nstep=2000,
-                            min_its=500,
-                            tol=1.e-12):
+def _solve_barrier_affine_py(conjugate_arg,
+                             precision,
+                             feasible_point,
+                             con_linear,
+                             con_offset,
+                             step=1,
+                             nstep=1000,
+                             min_its=200,
+                             tol=1.e-10):
 
     scaling = np.sqrt(np.diag(con_linear.dot(precision).dot(con_linear.T)))
 
@@ -1762,7 +1762,7 @@ def selective_MLE(observed_target,
     # else:
     #     print("not using C")
     #     solver = solve_barrier_affine_py
-    solver = solve_barrier_affine_py
+    solver = _solve_barrier_affine_py
 
     val, soln, hess = solver(conjugate_arg,
                              prec_opt,
@@ -1916,7 +1916,7 @@ def normalizing_constant(target_parameter,
     if useC:
         solver = solve_barrier_affine_C
     else:
-        solver = solve_barrier_affine_py
+        solver = _solve_barrier_affine_py
 
     value, soln, hess = solver(-linear_term,
                                 full_Q,

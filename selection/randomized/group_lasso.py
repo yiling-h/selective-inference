@@ -8,7 +8,7 @@ from numpy import log
 from numpy.linalg import norm, qr, inv, eig
 from scipy.stats import norm as ndist
 import collections
-from selection.randomized.query import naive_confidence_intervals, naive_pvalues, solve_barrier_affine_py
+from selection.randomized.query import naive_confidence_intervals, naive_pvalues, _solve_barrier_affine_py
 from scipy.linalg import fractional_matrix_power
 import sys
 
@@ -680,7 +680,7 @@ class posterior():
         prec_marginal = np.linalg.inv(self.cov_marginal)
         conjugate_marginal = prec_marginal.dot(mean_marginal)
 
-        solver = solve_barrier_affine_py
+        solver = _solve_barrier_affine_py
 
         val, soln, hess = solver(conjugate_marginal,
                                  prec_marginal,
