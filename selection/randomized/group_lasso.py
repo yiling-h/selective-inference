@@ -12,7 +12,7 @@ from selection.randomized.query import naive_confidence_intervals, naive_pvalues
 from scipy.linalg import fractional_matrix_power
 import sys
 
-from selectinf.randomized.selective_MLE_utils import solve_barrier_affine as solve_barrier_affine_C
+from selection.randomized.selective_MLE_utils import solve_barrier_affine as solve_barrier_affine_C
 
 
 class group_lasso(object):
