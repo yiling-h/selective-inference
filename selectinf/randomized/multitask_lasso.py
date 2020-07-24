@@ -53,14 +53,15 @@ class multi_task_lasso(gaussian_query):
 
         return initial_solns, initial_subgrads
 
-    def multitasking_solver(self, num_iter=50):
+    def multitasking_solver(self, num_iter=100, min_its=20, atol=1.e-8):
 
         penalty_prev = rr.weighted_l1norm(self.feature_weight, lagrange=1.)
         solution_prev = self._solve_randomized_problem(penalty= penalty_prev)
         beta = solution_prev[0].T
 
-        for iteration in range(num_iter):
+        for itercount in range(num_iter):
 
+            beta_prev = beta.copy()
             sum_all_tasks = np.sum(np.absolute(beta), axis=1)
             penalty_weight = 1. / np.maximum(np.sqrt(sum_all_tasks), 10 ** -10)
 
@@ -71,6 +72,9 @@ class multi_task_lasso(gaussian_query):
             solution_current = self._solve_randomized_problem(penalty=penalty_current)
 
             beta = solution_current[0].T
+
+            if np.all(np.fabs(beta_prev[0].T - beta)) < atol and itercount >= min_its:
+                break
 
         subgrad = solution_current[1].T
 
