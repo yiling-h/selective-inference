@@ -28,18 +28,18 @@ def main():
                                             feature_weight,
                                             randomizer_scales = randomizer_scales)
 
-    print(multi_lasso.multitasking_solver())
+    print(multi_lasso.fit())
 
 
 def test_multitask_lasso(ntask=5,
                          nsamples=500 * np.ones(5),
                          p=100,
                          global_sparsity=.9,
-                         task_sparsity=.5,
+                         task_sparsity=.3,
                          sigma=1.*np.ones(5),
                          signal=np.array([0.3,5.]),
                          rhos=0.*np.ones(5),
-                         weight=1.):
+                         weight=2.):
 
     nsamples = nsamples.astype(int)
     response_vars, predictor_vars, beta = gaussian_multitask_instance(ntask,
@@ -58,9 +58,10 @@ def test_multitask_lasso(ntask=5,
                                             response_vars,
                                             feature_weight,
                                             randomizer_scales = randomizer_scales)
+    multi_lasso.fit()
 
-    print('True Beta',beta)
-    print('Multi-task Solution', multi_lasso.multitasking_solver()[0])
+    #print('True Beta',beta)
+    #print('Multi-task Solution', multi_lasso.fit())
 
 if __name__ == "__main__":
     test_multitask_lasso()
