@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.linalg import block_diag
+import collections
 
 import regreg.api as rr
 from .query import gaussian_query
@@ -34,38 +36,69 @@ class multi_task_lasso(gaussian_query):
 
          p = self.nfeature
 
+         ## solve multitasking problem
+
          (self.initial_solns,
           self.initial_subgrads) = self._solve_multitasking_problem(perturbations=perturbations)
 
-         active_signs = np.array([np.sign(self.initial_solns[:, i]) for i in range(self.ntask)]).T
-         active = self._active = np.array([(active_signs[:, i] != 0) for i in range(self.ntask)]).T
+         ##setting up some initial objects to form our K.K.T map which loops over the K regression tasks
 
-         self._overall = {i: (active[:, i] > 0) for i in range(self.ntask)}
-         self._inactive = inactive = {i: ~self._overall[i] for i in range(self.ntask)}
-         _seltasks = np.array([active[j,:].sum() for j in range(p)])
-         self._seltasks = _seltasks[_seltasks>0]
-         print("number of selected tasks across variables ", self._seltasks)
+         active_signs = np.zeros((p, self.ntask))
+         beta_bar = np.zeros((p, self.ntask))
+
+         _active =  np.zeros((p, self.ntask), np.bool)
+
+         _overall = _inactive = {}
+
+         ordered_variables = {}
+         initial_scalings = {}
+         _beta_unpenalized = {}
+
+         for i in range(self.ntask):
+
+             active_signs[:, i] = np.sign(self.initial_solns[:, i])
+             _active[:, i] = active_signs[:, i] != 0
+             active_ = _active[:, i]
+
+             _overall[i] = _active[:, i] > 0
+             overall = _overall[i]
+             _inactive[i] = ~overall
+
+             ordered_variables[i] = np.nonzero(active_)[0]
+
+             initial_scalings[i] = np.fabs(self.initial_solns[:, i][overall])
+
+             _beta_unpenalized[i] = restricted_estimator(self.loglikes[i],
+                                                         overall,
+                                                         solve_args=solve_args)
+
+             beta_bar[overall, i] = _beta_unpenalized[i]
+
+         active = self._active = _active
+         self._overall = _overall
+         self.inactive = _inactive
 
          _active_signs = active_signs.copy()
-         ordered_variables = {i: np.nonzero(active[:, i])[0] for i in range(self.ntask)}
+
+         _seltasks = np.array([active[j,:].sum() for j in range(p)])
+         self._seltasks = _seltasks[_seltasks>0]
 
          self.selection_variable = {'sign': _active_signs,
                                     'variables': ordered_variables}
 
-         initial_scalings = {i: np.fabs((self.initial_solns[:, i])[active[:, i]]) for i in range(self.ntask)}
          self.observed_opt_state = initial_scalings
 
-         _beta_unpenalized = {i: restricted_estimator(self.loglikes[i],
-                                                      self._overall[i],
-                                                      solve_args=solve_args) for i in range(self.ntask)}
+         self._beta_full = beta_bar
 
          def signed_basis_vector(p, j, s):
              v = np.zeros(p)
              v[j] = s
              return v
 
-         beta_bar = np.zeros((p, self.ntask))
          num_opt_var = np.array([self.observed_opt_state[i].shape[0] for i in range(self.ntask)])
+         tot_opt_var = num_opt_var.sum()
+
+         ###setting up K.K.T. map at solution
 
          _score_linear_term = {}
          observed_score_state = {}
@@ -73,7 +106,6 @@ class multi_task_lasso(gaussian_query):
          opt_offset = {i: self.initial_subgrads[:, i] for i in range(self.ntask)}
 
          for j in range(self.ntask):
-             beta_bar[self._overall[j], j] = _beta_unpenalized[j]
 
              X, y = self.loglikes[j].data
              W = self._W = self.loglikes[j].saturated_loss.hessian(X.dot(beta_bar[:,j]))
@@ -82,7 +114,7 @@ class multi_task_lasso(gaussian_query):
              _score_linear_term[j] = _hessian_active
 
              _observed_score_state = _hessian_active.dot(_beta_unpenalized[j])
-             _observed_score_state[inactive[j]] += self.loglikes[j].smooth_objective(beta_bar[:,j], 'grad')[inactive[j]]
+             _observed_score_state[self.inactive[j]] += self.loglikes[j].smooth_objective(beta_bar[:,j], 'grad')[self.inactive[j]]
              observed_score_state[j] = _observed_score_state
 
              active_directions = np.array([signed_basis_vector(p,
@@ -101,24 +133,49 @@ class multi_task_lasso(gaussian_query):
              _opt_linear[:, scaling_slice] = _opt_hessian
              opt_linear[j] = _opt_linear
 
-         self._beta_full = beta_bar
-
-         ###permuting the optimization variables
-         ##Pi o = o'
-
-         Pi = np.zeros(num_opt_var.sum())
-         indx = 0
-         for irow, icol in np.ndindex(active.shape):
-             if active[irow, icol] > 0:
-                 Pi[indx] = active[:, :(icol+1)].sum()- active[irow:, icol].sum()
-                 indx += 1
-         Pi= Pi.astype(int)
-
-         print("check permuted indices ", Pi, num_opt_var.sum())
-
          for k in range(self.ntask):
              X, y = self.loglikes[k].data
              print("check  K.K.T. map", np.allclose(self._initial_omega[:, k], -X.T.dot(y) + opt_offset[k] + opt_linear[k].dot(self.observed_opt_state[k])))
+
+         ###defining a transformation tying optimization variables across the K regression tasks
+
+         pi = np.zeros(tot_opt_var)
+         indx = 0
+         for irow, icol in np.ndindex(active.shape):
+             if active[irow, icol] > 0:
+                 pi[indx] = active[:, :(icol+1)].sum()- active[irow:, icol].sum()
+                 indx += 1
+         pi = pi.astype(int)
+         Pi = np.take(np.identity(tot_opt_var), pi, axis=0)
+
+         Psi = np.array([])
+         Tau = np.array([])
+         _A = np.array([])
+
+         for j in range(self._seltasks.shape[0]):
+
+             a_ = np.zeros(self._seltasks[j])
+             a_[-1] = 1
+             _A = block_diag(_A, a_)
+
+             B_ = np.identity(self._seltasks[j])
+             B_[(self._seltasks[j]-1), :] = np.ones(self._seltasks[j])
+             Psi = block_diag(Psi, B_)
+
+             C_ = np.identity(self._seltasks[j])
+             C_[(self._seltasks[j] - 1), :] = np.zeros(self._seltasks[j])
+             Tau = block_diag(Tau, C_)
+
+         Psi = Psi[1:, :]
+
+         Tau = Tau[1:, :]
+         _A = _A[1:, :]
+         Tau = np.delete(Tau, np.array(np.cumsum(self._seltasks) - 1), 0)
+         Tau = np.vstack((Tau, _A))
+
+         ##my final tranformation is o_new = Tau.dot(Psi).dot(Pi).dot(o)
+
+         CoV = Tau.dot(Psi).dot(Pi)
 
          return active_signs
 
@@ -176,7 +233,6 @@ class multi_task_lasso(gaussian_query):
         subgrad = solution_current[1].T
 
         return beta, subgrad
-
 
      @staticmethod
      def gaussian(predictor_vars,
