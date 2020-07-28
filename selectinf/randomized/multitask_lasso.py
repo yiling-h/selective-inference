@@ -146,9 +146,9 @@ class multi_task_lasso(gaussian_query):
          
          omegas = []
          scores = []
-         opt_offsets = []
-         opt_linears = np.array([])
-         observed_opt_states =[]
+         opt_offsets_ = []
+         opt_linears_ = np.array([])
+         observed_opt_states_ =[]
 
          for j in range(self.ntask):
 
@@ -180,35 +180,37 @@ class multi_task_lasso(gaussian_query):
 
              omegas.append(self._initial_omega[:, j])
              scores.append(observed_score_state[j])
-             opt_offsets.append(opt_offset[j])
-             observed_opt_states.extend(self.observed_opt_state[j])
-             opt_linears = block_diag(opt_linears, _opt_linear)
+             opt_offsets_.append(opt_offset[j])
+             observed_opt_states_.extend(self.observed_opt_state[j])
+             opt_linears_ = block_diag(opt_linears_, _opt_linear)
 
-         opt_linears = opt_linears[1:, :]
+         opt_linears_ = opt_linears_[1:, :]
          omegas = np.ravel(np.asarray(omegas))
          scores = np.ravel(np.asarray(scores))
-         opt_offsets = np.ravel(np.asarray(opt_offsets))
-         observed_opt_states = np.asarray(observed_opt_states)
+         opt_offsets_ = np.ravel(np.asarray(opt_offsets_))
+         observed_opt_states_ = np.asarray(observed_opt_states_)
 
-         opt_linears = opt_linears.dot(np.linalg.inv(CoV))
-         observed_opt_states = CoV.dot(observed_opt_states)
+         opt_linears_ = opt_linears_.dot(np.linalg.inv(CoV))
+         observed_opt_states_ = CoV.dot(observed_opt_states_)
 
          opt_vars = tot_opt_var - self._seltasks.shape[0]
 
-         opt_linear_ = opt_linears[:, :opt_vars]
+         opt_linears = opt_linears_[:, :opt_vars]
 
-         opt_offset_ = opt_offsets + opt_linears[:, opt_vars:].dot(observed_opt_states[opt_vars:])
+         opt_offsets = opt_offsets_ + opt_linears_[:, opt_vars:].dot(observed_opt_states_[opt_vars:])
+
+         observed_opt_states = observed_opt_states_[:opt_vars]
 
          ##check K.K.T map
 
-         print("check  K.K.T. map", np.allclose(omegas, scores +  opt_linear_.dot(observed_opt_states[:opt_vars])+ opt_offset_))
+         print("check  K.K.T. map", np.allclose(omegas, scores +  opt_linears.dot(observed_opt_states)+ opt_offsets))
 
          ##forming linear constraints on our optimization variables
 
          A_scaling = -np.identity(opt_vars)
          b_scaling = np.zeros(opt_vars)
 
-         print("check signs of observed opt_states ", ((A_scaling.dot(observed_opt_states[:opt_vars])-b_scaling)<0).sum(), opt_vars)
+         print("check signs of observed opt_states ", ((A_scaling.dot(observed_opt_states)-b_scaling)<0).sum(), opt_vars)
 
          return active_signs
 
