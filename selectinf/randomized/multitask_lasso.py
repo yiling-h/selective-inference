@@ -200,7 +200,15 @@ class multi_task_lasso(gaussian_query):
          opt_offset_ = opt_offsets + opt_linears[:, opt_vars:].dot(observed_opt_states[opt_vars:])
 
          ##check K.K.T map
+
          print("check  K.K.T. map", np.allclose(omegas, scores +  opt_linear_.dot(observed_opt_states[:opt_vars])+ opt_offset_))
+
+         ##forming linear constraints on our optimization variables
+
+         A_scaling = -np.identity(opt_vars)
+         b_scaling = np.zeros(opt_vars)
+
+         print("check signs of observed opt_states ", ((A_scaling.dot(observed_opt_states[:opt_vars])-b_scaling)<0).sum(), opt_vars)
 
          return active_signs
 
