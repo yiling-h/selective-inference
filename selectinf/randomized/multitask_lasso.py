@@ -98,12 +98,57 @@ class multi_task_lasso(gaussian_query):
          num_opt_var = np.array([self.observed_opt_state[i].shape[0] for i in range(self.ntask)])
          tot_opt_var = num_opt_var.sum()
 
+         ###defining a transformation tying optimization variables across the K regression tasks
+
+         pi = np.zeros(tot_opt_var)
+         indx = 0
+         for irow, icol in np.ndindex(active.shape):
+             if active[irow, icol] > 0:
+                 pi[indx] = active[:, :(icol + 1)].sum() - active[irow:, icol].sum()
+                 indx += 1
+         pi = pi.astype(int)
+         Pi = np.take(np.identity(tot_opt_var), pi, axis=0)
+
+         Psi = np.array([])
+         Tau = np.array([])
+         _A = np.array([])
+
+         for j in range(self._seltasks.shape[0]):
+             a_ = np.zeros(self._seltasks[j])
+             a_[-1] = 1
+             _A = block_diag(_A, a_)
+
+             B_ = np.identity(self._seltasks[j])
+             B_[(self._seltasks[j] - 1), :] = np.ones(self._seltasks[j])
+             Psi = block_diag(Psi, B_)
+
+             C_ = np.identity(self._seltasks[j])
+             C_[(self._seltasks[j] - 1), :] = np.zeros(self._seltasks[j])
+             Tau = block_diag(Tau, C_)
+
+         Psi = Psi[1:, :]
+
+         Tau = Tau[1:, :]
+         _A = _A[1:, :]
+         Tau = np.delete(Tau, np.array(np.cumsum(self._seltasks) - 1), 0)
+         Tau = np.vstack((Tau, _A))
+
+         ##my final tranformation is o_new = Tau.dot(Psi).dot(Pi).dot(o)
+
+         CoV = Tau.dot(Psi).dot(Pi)
+
          ###setting up K.K.T. map at solution
 
          _score_linear_term = {}
          observed_score_state = {}
          opt_linear = {}
          opt_offset = {i: self.initial_subgrads[:, i] for i in range(self.ntask)}
+         
+         omegas = []
+         scores = []
+         opt_offsets = []
+         opt_linears = np.array([])
+         observed_opt_states =[]
 
          for j in range(self.ntask):
 
@@ -111,9 +156,9 @@ class multi_task_lasso(gaussian_query):
              W = self._W = self.loglikes[j].saturated_loss.hessian(X.dot(beta_bar[:,j]))
 
              _hessian_active = np.dot(X.T, X[:, active[:, j]] * W[:, None])
-             _score_linear_term[j] = _hessian_active
+             _score_linear_term[j] = -_hessian_active
 
-             _observed_score_state = _hessian_active.dot(_beta_unpenalized[j])
+             _observed_score_state = _score_linear_term[j].dot(_beta_unpenalized[j])
              _observed_score_state[self.inactive[j]] += self.loglikes[j].smooth_objective(beta_bar[:,j], 'grad')[self.inactive[j]]
              observed_score_state[j] = _observed_score_state
 
@@ -133,49 +178,29 @@ class multi_task_lasso(gaussian_query):
              _opt_linear[:, scaling_slice] = _opt_hessian
              opt_linear[j] = _opt_linear
 
-         for k in range(self.ntask):
-             X, y = self.loglikes[k].data
-             print("check  K.K.T. map", np.allclose(self._initial_omega[:, k], -X.T.dot(y) + opt_offset[k] + opt_linear[k].dot(self.observed_opt_state[k])))
+             omegas.append(self._initial_omega[:, j])
+             scores.append(observed_score_state[j])
+             opt_offsets.append(opt_offset[j])
+             observed_opt_states.extend(self.observed_opt_state[j])
+             opt_linears = block_diag(opt_linears, _opt_linear)
 
-         ###defining a transformation tying optimization variables across the K regression tasks
+         opt_linears = opt_linears[1:, :]
+         omegas = np.ravel(np.asarray(omegas))
+         scores = np.ravel(np.asarray(scores))
+         opt_offsets = np.ravel(np.asarray(opt_offsets))
+         observed_opt_states = np.asarray(observed_opt_states)
 
-         pi = np.zeros(tot_opt_var)
-         indx = 0
-         for irow, icol in np.ndindex(active.shape):
-             if active[irow, icol] > 0:
-                 pi[indx] = active[:, :(icol+1)].sum()- active[irow:, icol].sum()
-                 indx += 1
-         pi = pi.astype(int)
-         Pi = np.take(np.identity(tot_opt_var), pi, axis=0)
+         opt_linears = opt_linears.dot(np.linalg.inv(CoV))
+         observed_opt_states = CoV.dot(observed_opt_states)
 
-         Psi = np.array([])
-         Tau = np.array([])
-         _A = np.array([])
+         opt_vars = tot_opt_var - self._seltasks.shape[0]
 
-         for j in range(self._seltasks.shape[0]):
+         opt_linear_ = opt_linears[:, :opt_vars]
 
-             a_ = np.zeros(self._seltasks[j])
-             a_[-1] = 1
-             _A = block_diag(_A, a_)
+         opt_offset_ = opt_offsets + opt_linears[:, opt_vars:].dot(observed_opt_states[opt_vars:])
 
-             B_ = np.identity(self._seltasks[j])
-             B_[(self._seltasks[j]-1), :] = np.ones(self._seltasks[j])
-             Psi = block_diag(Psi, B_)
-
-             C_ = np.identity(self._seltasks[j])
-             C_[(self._seltasks[j] - 1), :] = np.zeros(self._seltasks[j])
-             Tau = block_diag(Tau, C_)
-
-         Psi = Psi[1:, :]
-
-         Tau = Tau[1:, :]
-         _A = _A[1:, :]
-         Tau = np.delete(Tau, np.array(np.cumsum(self._seltasks) - 1), 0)
-         Tau = np.vstack((Tau, _A))
-
-         ##my final tranformation is o_new = Tau.dot(Psi).dot(Pi).dot(o)
-
-         CoV = Tau.dot(Psi).dot(Pi)
+         ##check K.K.T map
+         print("check  K.K.T. map", np.allclose(omegas, scores +  opt_linear_.dot(observed_opt_states[:opt_vars])+ opt_offset_))
 
          return active_signs
 
