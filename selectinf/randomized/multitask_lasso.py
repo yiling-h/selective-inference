@@ -219,13 +219,12 @@ class multi_task_lasso(gaussian_query):
 
          return active_signs
 
-     def _setup_implied_gaussian(self,
-                                 dispersion=1):
+     def _setup_implied_gaussian(self):
 
          precs = np.array([])
          for i in range(self.ntask):
              prec = (self.randomizers[i].cov_prec)[1]
-             prec = prec / dispersion
+             prec = prec / self.dispersions[i]
              precs = block_diag(precs, prec * np.identity(self.nfeature))
          precs = precs[1:, :]
 
@@ -242,11 +241,12 @@ class multi_task_lasso(gaussian_query):
                        level=0.9,
                        dispersion=None):
 
+         observed_target, cov_target, cov_target_score = self.selected_targets(dispersion)
+
          cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian()
 
-         (observed_target, cov_target, cov_target_score) = self.selected_targets(dispersion)
-
          init_soln = self.observed_opt_states
+         print("check init_soln ", init_soln)
 
          linear_part = self.linear_con
          offset = self.offset_con
@@ -293,6 +293,7 @@ class multi_task_lasso(gaussian_query):
          observed_targets = []
          cov_targets = np.array([])
          crosscov_target_scores = np.array([])
+         dispersions = np.zeros(self.ntask)
 
          for j in range(self.ntask):
 
@@ -313,12 +314,15 @@ class multi_task_lasso(gaussian_query):
              if dispersion is None:  # use Pearson's X^2
                  dispersion = ((y - self.loglikes[j].saturated_loss.mean_function(Xfeat.dot(observed_target))) ** 2 / W).sum() / (n - Xfeat.shape[1])
 
+             dispersions[j] = dispersion
              observed_targets.extend(observed_target)
              crosscov_target_scores = block_diag(crosscov_target_scores, crosscov_target_score.T * dispersion)
              cov_targets = block_diag(cov_targets, cov_target * dispersion)
 
          print("check final shapes of inferential objects ", np.asarray(observed_targets).shape,
                cov_targets[1:, :].shape, crosscov_target_scores[1:, :].shape)
+
+         self.dispersions = dispersions
 
          return (np.asarray(observed_targets),
                  cov_targets[1:, :],
@@ -426,8 +430,8 @@ def solve_barrier_affine_py(conjugate_arg,
                             con_linear,
                             con_offset,
                             step=1,
-                            nstep=1000,
-                            min_its=200,
+                            nstep=2000,
+                            min_its=1000,
                             tol=1.e-12):
     scaling = np.sqrt(np.diag(con_linear.dot(precision).dot(con_linear.T)))
 
