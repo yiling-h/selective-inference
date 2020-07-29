@@ -59,6 +59,7 @@ def test_multitask_lasso(ntask=5,
                                             feature_weight,
                                             randomizer_scales = randomizer_scales)
     multi_lasso.fit()
+    multi_lasso.selective_MLE()
 
     #print('True Beta',beta)
     #print('Multi-task Solution', multi_lasso.fit())

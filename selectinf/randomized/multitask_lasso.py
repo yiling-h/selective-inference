@@ -1,11 +1,12 @@
 import numpy as np
 from scipy.linalg import block_diag
-import collections
+from scipy.stats import norm as ndist
 
 import regreg.api as rr
 from .query import gaussian_query
 from .randomization import randomization
 from ..base import restricted_estimator
+
 
 class multi_task_lasso(gaussian_query):
 
@@ -29,7 +30,6 @@ class multi_task_lasso(gaussian_query):
          self._initial_omega = perturbations
          self.randomizers = randomizers
 
-
      def fit(self,
              perturbations=None,
              solve_args={'tol': 1.e-12, 'min_its': 50}):
@@ -44,7 +44,7 @@ class multi_task_lasso(gaussian_query):
          ##setting up some initial objects to form our K.K.T map which loops over the K regression tasks
 
          active_signs = np.zeros((p, self.ntask))
-         beta_bar = np.zeros((p, self.ntask))
+         self.beta_bar = beta_bar = np.zeros((p, self.ntask))
 
          _active =  np.zeros((p, self.ntask), np.bool)
 
@@ -153,7 +153,7 @@ class multi_task_lasso(gaussian_query):
          for j in range(self.ntask):
 
              X, y = self.loglikes[j].data
-             W = self._W = self.loglikes[j].saturated_loss.hessian(X.dot(beta_bar[:,j]))
+             W = self.loglikes[j].saturated_loss.hessian(X.dot(beta_bar[:,j]))
 
              _hessian_active = np.dot(X.T, X[:, active[:, j]] * W[:, None])
              _score_linear_term[j] = -_hessian_active
@@ -207,12 +207,122 @@ class multi_task_lasso(gaussian_query):
 
          ##forming linear constraints on our optimization variables
 
-         A_scaling = -np.identity(opt_vars)
-         b_scaling = np.zeros(opt_vars)
+         self.linear_con = -np.identity(opt_vars)
+         self.offset_con = np.zeros(opt_vars)
 
-         print("check signs of observed opt_states ", ((A_scaling.dot(observed_opt_states)-b_scaling)<0).sum(), opt_vars)
+         self.opt_linears = opt_linears
+         self.opt_offsets = opt_offsets
+         self.observed_opt_states = observed_opt_states
+         self.observed_score_states = scores
+
+         print("check signs of observed opt_states ", ((self.linear_con.dot(observed_opt_states)-self.offset_con)<0).sum(), opt_vars)
 
          return active_signs
+
+     def _setup_implied_gaussian(self,
+                                 dispersion=1):
+
+         precs = np.array([])
+         for i in range(self.ntask):
+             prec = (self.randomizers[i].cov_prec)[1]
+             prec = prec / dispersion
+             precs = block_diag(precs, prec * np.identity(self.nfeature))
+         precs = precs[1:, :]
+
+         cond_precision = self.opt_linears.T.dot(precs.dot(self.opt_linears))
+         cond_cov = np.linalg.inv(cond_precision)
+         logdens_linear = cond_cov.dot(self.opt_linears.T).dot(precs)
+
+         cond_mean = -logdens_linear.dot(self.observed_score_states + self.opt_offsets)
+
+         return cond_mean, cond_cov, cond_precision, logdens_linear
+
+     def selective_MLE(self,
+                       solve_args={'tol': 1.e-12},
+                       level=0.9,
+                       dispersion=None):
+
+         cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian()
+
+         (observed_target, cov_target, cov_target_score) = self.selected_targets(dispersion)
+
+         init_soln = self.observed_opt_states
+
+         linear_part = self.linear_con
+         offset = self.offset_con
+
+         prec_opt = cond_precision
+         conjugate_arg = prec_opt.dot(cond_mean)
+
+         solver = solve_barrier_affine_py
+
+         val, soln, hess = solver(conjugate_arg,
+                                  prec_opt,
+                                  init_soln,
+                                  linear_part,
+                                  offset,
+                                  **solve_args)
+
+         prec_target = np.linalg.inv(cov_target)
+         target_lin = - logdens_linear.dot(cov_target_score.T.dot(prec_target))
+
+         final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
+
+         L = target_lin.T.dot(prec_opt)
+         observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
+         observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
+
+         Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
+         pvalues = ndist.cdf(Z_scores)
+         pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
+
+         alpha = 1. - level
+         quantile = ndist.ppf(1 - alpha / 2.)
+         intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
+                                final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
+
+
+         print("check within MLE ", final_estimator.shape, observed_info_mean.shape)
+
+         return final_estimator, observed_info_mean, Z_scores, pvalues, intervals
+
+     def selected_targets(self,
+                          dispersion=None,
+                          solve_args={'tol': 1.e-12, 'min_its': 50}):
+
+         observed_targets = []
+         cov_targets = np.array([])
+         crosscov_target_scores = np.array([])
+
+         for j in range(self.ntask):
+
+             X, y = self.loglikes[j].data
+             n, p = X.shape
+             features = self._active[:, j]
+             W = self.loglikes[j].saturated_loss.hessian(X.dot(self.beta_bar[:, j]))
+
+             Xfeat = X[:, features]
+             Qfeat = Xfeat.T.dot(W[:, None] * Xfeat)
+
+             observed_target = restricted_estimator(self.loglikes[j], features, solve_args=solve_args)
+             cov_target = np.linalg.inv(Qfeat)
+             _score_linear = -Xfeat.T.dot(W[:, None] * X).T
+
+             crosscov_target_score = _score_linear.dot(cov_target)
+
+             if dispersion is None:  # use Pearson's X^2
+                 dispersion = ((y - self.loglikes[j].saturated_loss.mean_function(Xfeat.dot(observed_target))) ** 2 / W).sum() / (n - Xfeat.shape[1])
+
+             observed_targets.extend(observed_target)
+             crosscov_target_scores = block_diag(crosscov_target_scores, crosscov_target_score.T * dispersion)
+             cov_targets = block_diag(cov_targets, cov_target * dispersion)
+
+         print("check final shapes of inferential objects ", np.asarray(observed_targets).shape,
+               cov_targets[1:, :].shape, crosscov_target_scores[1:, :].shape)
+
+         return (np.asarray(observed_targets),
+                 cov_targets[1:, :],
+                 crosscov_target_scores[1:, :])
 
      def _solve_randomized_problem(self,
                                    penalty,
@@ -309,6 +419,86 @@ class multi_task_lasso(gaussian_query):
                                 randomizers,
                                 nfeature,
                                 ntask)
+
+def solve_barrier_affine_py(conjugate_arg,
+                            precision,
+                            feasible_point,
+                            con_linear,
+                            con_offset,
+                            step=1,
+                            nstep=1000,
+                            min_its=200,
+                            tol=1.e-12):
+    scaling = np.sqrt(np.diag(con_linear.dot(precision).dot(con_linear.T)))
+
+    if feasible_point is None:
+        feasible_point = 1. / scaling
+
+    objective = lambda u: -u.T.dot(conjugate_arg) + u.T.dot(precision).dot(u) / 2. \
+                          + np.log(1. + 1. / ((con_offset - con_linear.dot(u)) / scaling)).sum()
+    grad = lambda u: -conjugate_arg + precision.dot(u) - con_linear.T.dot(
+        1. / (scaling + con_offset - con_linear.dot(u)) -
+        1. / (con_offset - con_linear.dot(u)))
+    barrier_hessian = lambda u: con_linear.T.dot(np.diag(-1. / ((scaling + con_offset - con_linear.dot(u)) ** 2.)
+                                                         + 1. / ((con_offset - con_linear.dot(u)) ** 2.))).dot(
+        con_linear)
+
+    current = feasible_point
+    current_value = np.inf
+
+    for itercount in range(nstep):
+        cur_grad = grad(current)
+
+        # make sure proposal is feasible
+
+        count = 0
+        while True:
+            count += 1
+            proposal = current - step * cur_grad
+            if np.all(con_offset - con_linear.dot(proposal) > 0):
+                break
+            step *= 0.5
+            if count >= 40:
+                raise ValueError('not finding a feasible point')
+
+        # make sure proposal is a descent
+
+        count = 0
+        while True:
+            count += 1
+            proposal = current - step * cur_grad
+            proposed_value = objective(proposal)
+            if proposed_value <= current_value:
+                break
+            step *= 0.5
+            if count >= 20:
+                if not (np.isnan(proposed_value) or np.isnan(current_value)):
+                    break
+                else:
+                    raise ValueError('value is NaN: %f, %f' % (proposed_value, current_value))
+
+        # stop if relative decrease is small
+
+        if np.fabs(current_value - proposed_value) < tol * np.fabs(current_value) and itercount >= min_its:
+            current = proposal
+            current_value = proposed_value
+            break
+
+        current = proposal
+        current_value = proposed_value
+
+        if itercount % 4 == 0:
+            step *= 2
+
+    hess = np.linalg.inv(precision + barrier_hessian(current))
+    return current_value, current, hess
+
+
+
+
+
+
+
 
 
 

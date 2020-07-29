@@ -173,7 +173,7 @@ class gaussian_query(query):
                                 # for covariance of randomization
                                 dispersion=1):
 
-        _, prec = self.randomizer.cov_prec 
+        _, prec = self.randomizer.cov_prec
         prec = prec / dispersion
 
         if np.asarray(prec).shape in [(), (0,)]:

@@ -228,4 +228,4 @@ def main(nsim=500):
         print(np.mean(cover), 'coverage so far ')
 
 if __name__ == "__main__":
-    main(nsim=500)
+    main(nsim=1)
