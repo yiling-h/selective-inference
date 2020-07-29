@@ -203,7 +203,7 @@ class multi_task_lasso(gaussian_query):
 
          ##check K.K.T map
 
-         print("check  K.K.T. map", np.allclose(omegas, scores +  opt_linears.dot(observed_opt_states)+ opt_offsets))
+         print("check  K.K.T. map", np.allclose(omegas, scores +  opt_linears.dot(observed_opt_states)+ opt_offsets, atol=1e-03))
 
          ##forming linear constraints on our optimization variables
 
@@ -246,7 +246,6 @@ class multi_task_lasso(gaussian_query):
          cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian()
 
          init_soln = self.observed_opt_states
-         print("check init_soln ", init_soln)
 
          linear_part = self.linear_con
          offset = self.offset_con
@@ -280,9 +279,6 @@ class multi_task_lasso(gaussian_query):
          quantile = ndist.ppf(1 - alpha / 2.)
          intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
                                 final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
-
-
-         print("check within MLE ", final_estimator.shape, observed_info_mean.shape)
 
          return final_estimator, observed_info_mean, Z_scores, pvalues, intervals
 
@@ -319,9 +315,6 @@ class multi_task_lasso(gaussian_query):
              crosscov_target_scores = block_diag(crosscov_target_scores, crosscov_target_score.T * dispersion)
              cov_targets = block_diag(cov_targets, cov_target * dispersion)
 
-         print("check final shapes of inferential objects ", np.asarray(observed_targets).shape,
-               cov_targets[1:, :].shape, crosscov_target_scores[1:, :].shape)
-
          self.dispersions = dispersions
 
          return (np.asarray(observed_targets),
@@ -348,7 +341,7 @@ class multi_task_lasso(gaussian_query):
 
         return initial_solns, initial_subgrads
 
-     def _solve_multitasking_problem(self, perturbations=None, num_iter=1000, rtol=1.e-5):
+     def _solve_multitasking_problem(self, perturbations=None, num_iter=1000, atol=1.e-5):
 
         if perturbations is not None:
             self._initial_omega = perturbations
@@ -375,10 +368,10 @@ class multi_task_lasso(gaussian_query):
 
             beta = solution_current[0].T
 
-            if np.sum(np.fabs(beta_prev - beta)) < rtol * np.sum(np.fabs(beta_prev)):
+            if np.sum(np.fabs(beta_prev - beta)) < atol:
                 break
 
-        print("check itercount ", itercount, np.sum(np.fabs(beta_prev - beta)), beta_prev.shape, beta.shape)
+        print("check itercount ", itercount, np.sum(np.fabs(beta_prev - beta)))
 
         subgrad = solution_current[1].T
 
