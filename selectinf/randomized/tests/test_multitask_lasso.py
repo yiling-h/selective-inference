@@ -39,11 +39,13 @@ def test_multitask_lasso(ntask=2,
                          global_sparsity=.8,
                          task_sparsity=.3,
                          sigma=1.*np.ones(2),
-                         signal=np.array([0.3,5.]),
+                         signal_fac= 0.5,
                          rhos=0.*np.ones(2),
                          weight=2.):
 
     nsamples = nsamples.astype(int)
+
+    signal = np.sqrt(signal_fac * 2 * np.log(p))
 
     response_vars, predictor_vars, beta = gaussian_multitask_instance(ntask,
                                                                       nsamples,
@@ -54,7 +56,8 @@ def test_multitask_lasso(ntask=2,
                                                                       signal,
                                                                       rhos)[:3]
 
-    feature_weight = weight * np.ones(p)
+    feature_weight = weight * 1. * np.sqrt(2 * np.log(p)) * np.ones(p)
+
     randomizer_scales = np.ones(ntask)
 
     multi_lasso = multi_task_lasso.gaussian(predictor_vars,
@@ -76,6 +79,7 @@ def test_multitask_lasso(ntask=2,
     coverage = (beta_target > intervals[:, 0]) * (beta_target <
                                                   intervals[:, 1])
 
+    print("coverage ", coverage)
     return coverage
 
 def test_coverage(nsim=100):
@@ -90,9 +94,9 @@ def test_coverage(nsim=100):
                                         global_sparsity=.8,
                                         task_sparsity=.5,
                                         sigma=1.*np.ones(2),
-                                        signal=1.,
+                                        signal_fac=.5,
                                         rhos=0.3*np.ones(2),
-                                        weight=2.)
+                                        weight=1.)
 
         cov.extend(coverage)
 
@@ -100,4 +104,4 @@ def test_coverage(nsim=100):
         print("coverage so far ", np.mean(np.asarray(cov)))
 
 if __name__ == "__main__":
-    test_coverage(nsim=50)
+    test_coverage(nsim=100)

@@ -348,7 +348,7 @@ class multi_task_lasso(gaussian_query):
 
         return initial_solns, initial_subgrads
 
-     def _solve_multitasking_problem(self, perturbations=None, num_iter=100, atol=1.e-5):
+     def _solve_multitasking_problem(self, perturbations=None, num_iter=1000, rtol=1.e-5):
 
         if perturbations is not None:
             self._initial_omega = perturbations
@@ -375,10 +375,11 @@ class multi_task_lasso(gaussian_query):
 
             beta = solution_current[0].T
 
-            if np.sum(np.fabs(beta_prev[0].T - beta)) < atol:
+            if np.sum(np.fabs(beta_prev - beta)) < rtol * np.sum(np.fabs(beta_prev)):
                 break
 
-        print("check itercount ", itercount)
+        print("check itercount ", itercount, np.sum(np.fabs(beta_prev - beta)), beta_prev.shape, beta.shape)
+
         subgrad = solution_current[1].T
 
         return beta, subgrad
