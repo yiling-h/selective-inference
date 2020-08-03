@@ -7,7 +7,6 @@ from .query import gaussian_query
 from .randomization import randomization
 from ..base import restricted_estimator
 
-
 class multi_task_lasso(gaussian_query):
 
      def __init__(self,
@@ -44,58 +43,53 @@ class multi_task_lasso(gaussian_query):
          ##setting up some initial objects to form our K.K.T map which loops over the K regression tasks
 
          active_signs = np.zeros((p, self.ntask))
-         self.beta_bar = beta_bar = np.zeros((p, self.ntask))
+         beta_bar = np.zeros((p, self.ntask))
 
          _active =  np.zeros((p, self.ntask), np.bool)
-
-         _overall = _inactive = {}
+         _overall = {}
+         inactive = {}
 
          ordered_variables = {}
+
          initial_scalings = {}
          _beta_unpenalized = {}
 
          for i in range(self.ntask):
 
              active_signs[:, i] = np.sign(self.initial_solns[:, i])
-             _active[:, i] = active_signs[:, i] != 0
-             active_ = _active[:, i]
+             active_ = _active[:, i] = active_signs[:, i] != 0
 
-             _overall[i] = _active[:, i] > 0
-             overall = _overall[i]
-             _inactive[i] = ~overall
+             overall_ = _overall[i] = _active[:, i] > 0
+             inactive[i] = ~overall_
 
              ordered_variables[i] = np.nonzero(active_)[0]
 
-             initial_scalings[i] = np.fabs(self.initial_solns[:, i][overall])
+             initial_scalings[i] = np.fabs(self.initial_solns[:, i][overall_])
 
              _beta_unpenalized[i] = restricted_estimator(self.loglikes[i],
-                                                         overall,
+                                                         overall_,
                                                          solve_args=solve_args)
 
-             beta_bar[overall, i] = _beta_unpenalized[i]
+             beta_bar[overall_, i] = _beta_unpenalized[i]
 
          active = self._active = _active
          self._overall = _overall
-         self.inactive = _inactive
+         self.inactive = inactive
 
-         _active_signs = active_signs.copy()
+         self.beta_bar = beta_bar
 
-         _seltasks = np.array([active[j,:].sum() for j in range(p)])
-         self._seltasks = _seltasks[_seltasks>0]
+         seltasks = np.array([active[j,:].sum() for j in range(p)])
+         self.seltasks = seltasks[seltasks>0]
 
-         self.selection_variable = {'sign': _active_signs,
+         self.selection_variable = {'sign': active_signs.copy(),
                                     'variables': ordered_variables}
-
-         self.observed_opt_state = initial_scalings
-
-         self._beta_full = beta_bar
 
          def signed_basis_vector(p, j, s):
              v = np.zeros(p)
              v[j] = s
              return v
 
-         num_opt_var = np.array([self.observed_opt_state[i].shape[0] for i in range(self.ntask)])
+         num_opt_var = np.array([initial_scalings[i].shape[0] for i in range(self.ntask)])
          tot_opt_var = num_opt_var.sum()
 
          ###defining a transformation tying optimization variables across the K regression tasks
@@ -106,32 +100,34 @@ class multi_task_lasso(gaussian_query):
              if active[irow, icol] > 0:
                  pi[indx] = active[:, :(icol + 1)].sum() - active[irow:, icol].sum()
                  indx += 1
+
          pi = pi.astype(int)
+
          Pi = np.take(np.identity(tot_opt_var), pi, axis=0)
 
          Psi = np.array([])
          Tau = np.array([])
-         _A = np.array([])
+         A_ = np.array([])
 
-         for j in range(self._seltasks.shape[0]):
-             a_ = np.zeros(self._seltasks[j])
+         for j in range(self.seltasks.shape[0]):
+             a_ = np.zeros(self.seltasks[j])
              a_[-1] = 1
-             _A = block_diag(_A, a_)
+             A_ = block_diag(A_, a_)
 
-             B_ = np.identity(self._seltasks[j])
-             B_[(self._seltasks[j] - 1), :] = np.ones(self._seltasks[j])
+             B_ = np.identity(self.seltasks[j])
+             B_[(self.seltasks[j] - 1), :] = np.ones(self.seltasks[j])
              Psi = block_diag(Psi, B_)
 
-             C_ = np.identity(self._seltasks[j])
-             C_[(self._seltasks[j] - 1), :] = np.zeros(self._seltasks[j])
+             C_ = np.identity(self.seltasks[j])
+             C_[(self.seltasks[j] - 1), :] = np.zeros(self.seltasks[j])
              Tau = block_diag(Tau, C_)
 
          Psi = Psi[1:, :]
 
          Tau = Tau[1:, :]
-         _A = _A[1:, :]
-         Tau = np.delete(Tau, np.array(np.cumsum(self._seltasks) - 1), 0)
-         Tau = np.vstack((Tau, _A))
+         A_ = A_[1:, :]
+         Tau = np.delete(Tau, np.array(np.cumsum(self.seltasks) - 1), 0)
+         Tau = np.vstack((Tau, A_))
 
          ##my final tranformation is o_new = Tau.dot(Psi).dot(Pi).dot(o)
 
@@ -141,7 +137,6 @@ class multi_task_lasso(gaussian_query):
 
          _score_linear_term = {}
          observed_score_state = {}
-         opt_linear = {}
          opt_offset = {i: self.initial_subgrads[:, i] for i in range(self.ntask)}
          
          omegas = []
@@ -150,50 +145,54 @@ class multi_task_lasso(gaussian_query):
          opt_linears_ = np.array([])
          observed_opt_states_ =[]
 
-         for j in range(self.ntask):
+         for i in range(self.ntask):
+             X, y = self.loglikes[i].data
+             W = self.loglikes[i].saturated_loss.hessian(X.dot(beta_bar[:,i]))
 
-             X, y = self.loglikes[j].data
-             W = self.loglikes[j].saturated_loss.hessian(X.dot(beta_bar[:,j]))
+             _hessian_active = np.dot(X.T, X[:, active[:, i]] * W[:, None])
+             _score_linear_term[i] = -_hessian_active
 
-             _hessian_active = np.dot(X.T, X[:, active[:, j]] * W[:, None])
-             _score_linear_term[j] = -_hessian_active
-
-             _observed_score_state = _score_linear_term[j].dot(_beta_unpenalized[j])
-             _observed_score_state[self.inactive[j]] += self.loglikes[j].smooth_objective(beta_bar[:,j], 'grad')[self.inactive[j]]
-             observed_score_state[j] = _observed_score_state
+             _observed_score_state = _score_linear_term[i].dot(_beta_unpenalized[i])
+             _observed_score_state[self.inactive[i]] += self.loglikes[i].smooth_objective(beta_bar[:,i], 'grad')[self.inactive[i]]
+             observed_score_state[i] = _observed_score_state
 
              active_directions = np.array([signed_basis_vector(p,
                                                                k,
-                                                               (active_signs[:,j])[k])
-                                           for k in np.nonzero(active[:,j])[0]]).T
+                                                               (active_signs[:,i])[k])
+                                           for k in np.nonzero(active[:,i])[0]]).T
 
-             _opt_linear = np.zeros((p, num_opt_var[j]))
-             scaling_slice = slice(0, active[:,j].sum())
-             if np.sum(active[:,j]) == 0:
+             _opt_linear = np.zeros((p, num_opt_var[i]))
+             scaling_slice = slice(0, active[:,i].sum())
+             if np.sum(active[:,i]) == 0:
                  _opt_hessian = 0
              else:
-                 _opt_hessian = (_hessian_active * (active_signs[:,j])[None, active[:,j]]
-                                 + self.ridge_terms[j] * active_directions)
+                 _opt_hessian = (_hessian_active * (active_signs[:,i])[None, active[:,i]]
+                                 + self.ridge_terms[i] * active_directions)
 
              _opt_linear[:, scaling_slice] = _opt_hessian
-             opt_linear[j] = _opt_linear
 
-             omegas.append(self._initial_omega[:, j])
-             scores.append(observed_score_state[j])
-             opt_offsets_.append(opt_offset[j])
-             observed_opt_states_.extend(self.observed_opt_state[j])
+             omegas.append(self._initial_omega[:, i])
+
+             scores.append(observed_score_state[i])
+
+             opt_offsets_.append(opt_offset[i])
+
+             observed_opt_states_.extend(initial_scalings[i])
+
              opt_linears_ = block_diag(opt_linears_, _opt_linear)
 
          opt_linears_ = opt_linears_[1:, :]
          omegas = np.ravel(np.asarray(omegas))
          scores = np.ravel(np.asarray(scores))
          opt_offsets_ = np.ravel(np.asarray(opt_offsets_))
+
          observed_opt_states_ = np.asarray(observed_opt_states_)
 
          opt_linears_ = opt_linears_.dot(np.linalg.inv(CoV))
+
          observed_opt_states_ = CoV.dot(observed_opt_states_)
 
-         opt_vars = tot_opt_var - self._seltasks.shape[0]
+         opt_vars = tot_opt_var - self.seltasks.shape[0]
 
          opt_linears = opt_linears_[:, :opt_vars]
 
@@ -223,8 +222,7 @@ class multi_task_lasso(gaussian_query):
 
          precs = np.array([])
          for i in range(self.ntask):
-             prec = (self.randomizers[i].cov_prec)[1]
-             prec = prec / self.dispersions[i]
+             _, prec = self.randomizers[i].cov_prec
              precs = block_diag(precs, prec * np.identity(self.nfeature))
          precs = precs[1:, :]
 
@@ -239,9 +237,9 @@ class multi_task_lasso(gaussian_query):
      def selective_MLE(self,
                        solve_args={'tol': 1.e-12},
                        level=0.9,
-                       dispersion=None):
+                       dispersions=None):
 
-         observed_target, cov_target, cov_target_score = self.selected_targets(dispersion)
+         observed_target, cov_target, cov_target_score = self.selected_targets(dispersions)
 
          cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian()
 
@@ -260,10 +258,14 @@ class multi_task_lasso(gaussian_query):
                                   init_soln,
                                   linear_part,
                                   offset,
-                                  **solve_args)
+                                  step=1,
+                                  nstep=5000,
+                                  min_its=3000,
+                                  tol=1.e-12)
 
          prec_target = np.linalg.inv(cov_target)
-         target_lin = - logdens_linear.dot(cov_target_score.T.dot(prec_target))
+
+         target_lin = -logdens_linear.dot(cov_target_score.T.dot(prec_target))
 
          final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
 
@@ -283,13 +285,12 @@ class multi_task_lasso(gaussian_query):
          return final_estimator, observed_info_mean, Z_scores, pvalues, intervals
 
      def selected_targets(self,
-                          dispersion=None,
+                          dispersions=None,
                           solve_args={'tol': 1.e-12, 'min_its': 50}):
 
          observed_targets = []
          cov_targets = np.array([])
          crosscov_target_scores = np.array([])
-         dispersions = np.zeros(self.ntask)
 
          for j in range(self.ntask):
 
@@ -307,15 +308,14 @@ class multi_task_lasso(gaussian_query):
 
              crosscov_target_score = _score_linear.dot(cov_target)
 
-             if dispersion is None:  # use Pearson's X^2
+             if dispersions is None:  # use Pearson's X^2
                  dispersion = ((y - self.loglikes[j].saturated_loss.mean_function(Xfeat.dot(observed_target))) ** 2 / W).sum() / (n - Xfeat.shape[1])
+             else:
+                 dispersion = dispersions[j]
 
-             dispersions[j] = dispersion
              observed_targets.extend(observed_target)
              crosscov_target_scores = block_diag(crosscov_target_scores, crosscov_target_score.T * dispersion)
              cov_targets = block_diag(cov_targets, cov_target * dispersion)
-
-         self.dispersions = dispersions
 
          return (np.asarray(observed_targets),
                  cov_targets[1:, :],
@@ -371,7 +371,7 @@ class multi_task_lasso(gaussian_query):
             if np.sum(np.fabs(beta_prev - beta)) < atol:
                 break
 
-        print("check itercount ", itercount, np.sum(np.fabs(beta_prev - beta)))
+        print("check itercount ", itercount)
 
         subgrad = solution_current[1].T
 
@@ -379,19 +379,20 @@ class multi_task_lasso(gaussian_query):
 
      @staticmethod
      def gaussian(predictor_vars,
-                 response_vars,
-                 feature_weight,
-                 noise_levels=None,
-                 quadratic=None,
-                 ridge_term=None,
-                 randomizer_scales=None):
+                  response_vars,
+                  feature_weight,
+                  noise_levels=None,
+                  quadratic=None,
+                  ridge_term=None,
+                  randomizer_scales=None):
 
         ntask = len(response_vars)
 
         if noise_levels is None:
             noise_levels = np.ones(ntask)
 
-        loglikes = {i: rr.glm.gaussian(predictor_vars[i], response_vars[i], coef=1. / noise_levels[i] ** 2, quadratic=quadratic) for i in range(ntask)}
+        loglikes = {i: rr.glm.gaussian(predictor_vars[i], response_vars[i], coef=1. / noise_levels[i] ** 2, quadratic=quadratic)
+                    for i in range(ntask)}
 
         sample_sizes = np.asarray([predictor_vars[i].shape[0] for i in range(ntask)])
         nfeatures = [predictor_vars[i].shape[1] for i in range(ntask)]
@@ -403,11 +404,13 @@ class multi_task_lasso(gaussian_query):
 
         if ridge_term is None:
             ridge_terms = np.zeros(ntask)
+        else:
+            ridge_terms = ridge_term
 
         mean_diag_list = [np.mean((predictor_vars[i] ** 2).sum(0)) for i in range(ntask)]
         if randomizer_scales is None:
-                randomizer_scales = np.asarray([np.sqrt(mean_diag_list[i]) * 0.5 * np.std(response_vars[i])
-                                                * np.sqrt(sample_sizes[i] / (sample_sizes[i] - 1.)) for i in range(ntask)])
+            randomizer_scales = np.asarray([np.sqrt(mean_diag_list[i]) * 0.5 * np.std(response_vars[i])
+                                            * np.sqrt(sample_sizes[i] / (sample_sizes[i] - 1.)) for i in range(ntask)])
 
         randomizers = {i: randomization.isotropic_gaussian((nfeature,), randomizer_scales[i]) for i in range(ntask)}
 
@@ -424,7 +427,7 @@ def solve_barrier_affine_py(conjugate_arg,
                             con_linear,
                             con_offset,
                             step=1,
-                            nstep=2000,
+                            nstep=5000,
                             min_its=1000,
                             tol=1.e-12):
     scaling = np.sqrt(np.diag(con_linear.dot(precision).dot(con_linear.T)))

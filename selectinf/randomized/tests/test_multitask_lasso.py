@@ -58,50 +58,68 @@ def test_multitask_lasso(ntask=2,
 
     feature_weight = weight * 1. * np.sqrt(2 * np.log(p)) * np.ones(p)
 
-    randomizer_scales = np.ones(ntask)
+    sigmas_ = np.array([np.std(response_vars[i]) for i in range(ntask)])
 
+    randomizer_scales = 1. * sigmas_
+
+    #ridge_terms = np.array([np.std(response_vars[i]) * np.sqrt(np.mean((predictor_vars[i] ** 2).sum(0)))/ np.sqrt(nsamples[i] - 1)
+    #                          for i in range(ntask)])
+   
     multi_lasso = multi_task_lasso.gaussian(predictor_vars,
                                             response_vars,
                                             feature_weight,
+                                            ridge_term = None,
                                             randomizer_scales = randomizer_scales)
     active_signs = multi_lasso.fit()
 
-    estimate, observed_info_mean, _, _, intervals = multi_lasso.selective_MLE(dispersion= None)
+    dispersions = np.array([np.linalg.norm(response_vars[i] -
+                                           predictor_vars[i].dot(np.linalg.pinv(predictor_vars[i]).dot(response_vars[i]))) ** 2 / (nsamples[i] - p)
+                           for i in range(ntask)])
+
+    estimate, observed_info_mean, _, _, intervals = multi_lasso.selective_MLE(dispersions= dispersions)
 
     beta_target = []
 
     for j in range(ntask):
-
         beta_target.extend(np.linalg.pinv((predictor_vars[j])[:, (active_signs[:, j] != 0)]).dot(predictor_vars[j].dot(beta[:,j])))
 
     beta_target = np.asarray(beta_target)
+    print("check max size ", np.amax(np.fabs(beta_target)))
 
     coverage = (beta_target > intervals[:, 0]) * (beta_target <
                                                   intervals[:, 1])
 
     print("coverage ", coverage)
-    return coverage
+    if coverage.sum() <= 0.10:
+        print(intervals, multi_lasso.observed_opt_states, estimate)
+    return coverage, intervals[:, 1]- intervals[:, 0]
 
 def test_coverage(nsim=100):
 
     cov = []
+    len = []
 
     for n in range(nsim):
 
-        coverage = test_multitask_lasso(ntask=4,
-                                        nsamples=500 * np.ones(4),
-                                        p=100,
-                                        global_sparsity=.8,
-                                        task_sparsity=.5,
-                                        sigma=1.*np.ones(4),
-                                        signal_fac=.5,
-                                        rhos=0.3*np.ones(4),
-                                        weight=1.)
+        coverage, length = test_multitask_lasso(ntask=4,
+                                                nsamples=500 * np.ones(4),
+                                                p=100,
+                                                global_sparsity=.95,
+                                                task_sparsity=0.25,
+                                                sigma=1.*np.ones(4),
+                                                signal_fac=1.2,
+                                                rhos=0.20*np.ones(4),
+                                                weight=1.)
+
+        if coverage.sum()<= 0.10:
+            break
 
         cov.extend(coverage)
+        len.extend(length)
 
         print("iteration completed ", n)
         print("coverage so far ", np.mean(np.asarray(cov)))
+        print("length so far ", np.mean(np.asarray(length)))
 
 if __name__ == "__main__":
     test_coverage(nsim=100)
