@@ -82,7 +82,7 @@ def test_posterior_inference(n=500,
         coverage = (lci < beta_target) * (uci > beta_target)
         length = uci - lci
 
-        return np.mean(coverage), np.mean(length)
+        return np.mean(coverage), np.mean(length), samples
 
 
 
@@ -91,7 +91,7 @@ def main(ndraw=10):
     coverage_ = 0.
     length_ = 0.
     for n in range(ndraw):
-        cov, len = test_posterior_inference(n=500,
+        cov, len, _ = test_posterior_inference(n=500,
                                             p=200,
                                             signal_fac=1.2,
                                             sgroup=3,
