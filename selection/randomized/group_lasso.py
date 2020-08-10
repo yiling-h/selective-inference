@@ -740,7 +740,8 @@ class posterior():
                          nsample=2000,
                          nburnin=100,
                          proposal_scale=None,
-                         step=1.):
+                         step=1.,
+                         verbose=0):
 
         state = self.initial_estimate
         stepsize = 1. / (step * self.ntarget)
@@ -759,7 +760,8 @@ class posterior():
         for i, sample in enumerate(sampler):
             sampler.scaling = np.sqrt(self.dispersion)
             samples[i, :] = sample.copy()
-            sys.stderr.write("sample number " + str(i) + " sample " + str(sample.copy()) + "\n")
+            if(verbose >= 1):
+                sys.stderr.write("sample number " + str(i) + " sample " + str(sample.copy()) + "\n")
             if i == nsample - 1:
                 break
 
