@@ -1,0 +1,6 @@
+# Requirements for conducting simulation studies
+numpy
+scipy
+tables
+pandas
+pypet
