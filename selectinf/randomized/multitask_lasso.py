@@ -79,6 +79,7 @@ class multi_task_lasso(gaussian_query):
          self.beta_bar = beta_bar
 
          seltasks = np.array([active[j,:].sum() for j in range(p)])
+         self.active_global = np.asarray([j for j in range(p) if seltasks[j]>0])
          self.seltasks = seltasks[seltasks>0]
 
          self.selection_variable = {'sign': active_signs.copy(),
@@ -214,7 +215,7 @@ class multi_task_lasso(gaussian_query):
          self.observed_opt_states = observed_opt_states
          self.observed_score_states = scores
 
-         print("check signs of observed opt_states ", ((self.linear_con.dot(observed_opt_states)-self.offset_con)<0).sum(), opt_vars)
+         print("check signs of observed opt_states ", ((self.linear_con.dot(observed_opt_states)-self.offset_con)<0).sum(), opt_vars, self.seltasks)
 
          return active_signs
 
@@ -283,6 +284,94 @@ class multi_task_lasso(gaussian_query):
                                 final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
 
          return final_estimator, observed_info_mean, Z_scores, pvalues, intervals
+
+     def selective_MLE_mt(self,
+                          solve_args={'tol': 1.e-12},
+                          level=0.9,
+                          dispersions=None):
+
+         observed_target, cov_target, cov_target_score = self.multitasking_target(dispersions=dispersions)
+
+         cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian()
+
+         init_soln = self.observed_opt_states
+
+         linear_part = self.linear_con
+         offset = self.offset_con
+
+         prec_opt = cond_precision
+         conjugate_arg = prec_opt.dot(cond_mean)
+
+         solver = solve_barrier_affine_py
+
+         val, soln, hess = solver(conjugate_arg,
+                                  prec_opt,
+                                  init_soln,
+                                  linear_part,
+                                  offset,
+                                  step=1,
+                                  nstep=5000,
+                                  min_its=3000,
+                                  tol=1.e-12)
+
+         prec_target = np.linalg.inv(cov_target)
+
+         target_lin = -logdens_linear.dot(cov_target_score.T.dot(prec_target))
+
+         final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
+
+         L = target_lin.T.dot(prec_opt)
+         observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
+         observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
+
+         Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
+         pvalues = ndist.cdf(Z_scores)
+         pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
+
+         alpha = 1. - level
+         quantile = ndist.ppf(1 - alpha / 2.)
+         intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
+                                final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
+
+         return final_estimator, observed_info_mean, Z_scores, pvalues, intervals
+
+     def multitasking_target(self,
+                             dispersions=None,
+                             solve_args={'tol': 1.e-12, 'min_its': 50}):
+
+         observed_targets = {}
+         cov_targets = {}
+         crosscov_target_scores = {}
+
+         features = self.active_global
+
+         for i in range(self.ntask):
+
+             X, y = self.loglikes[i].data
+             n, p = X.shape
+             W = self.loglikes[i].saturated_loss.hessian(X.dot(self.beta_bar[:, i]))
+
+             Xfeat = X[:, features]
+             Qfeat = Xfeat.T.dot(W[:, None] * Xfeat)
+
+             observed_targets[i] = restricted_estimator(self.loglikes[i], features, solve_args=solve_args)
+
+             cov_target = np.linalg.inv(Qfeat)
+             _score_linear = -Xfeat.T.dot(W[:, None] * X).T
+
+             crosscov_target_score = _score_linear.dot(cov_target)
+
+             if dispersions is None:  # use Pearson's X^2
+                 dispersion = ((y - self.loglikes[i].saturated_loss.mean_function(Xfeat.dot(observed_targets[i]))) ** 2 / W).sum() / (n - Xfeat.shape[1])
+             else:
+                 dispersion = dispersions[i]
+
+             crosscov_target_scores[i] = crosscov_target_score.T * dispersion
+             cov_targets[i] = cov_target * dispersion
+
+         return (observed_targets,
+                 cov_targets,
+                 crosscov_target_scores)
 
      def selected_targets(self,
                           dispersions=None,

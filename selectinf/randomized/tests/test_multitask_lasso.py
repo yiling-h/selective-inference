@@ -60,7 +60,7 @@ def test_multitask_lasso(ntask=2,
 
     sigmas_ = np.array([np.std(response_vars[i]) for i in range(ntask)])
 
-    randomizer_scales = 1. * sigmas_
+    randomizer_scales = 0.71 * sigmas_
 
     #ridge_terms = np.array([np.std(response_vars[i]) * np.sqrt(np.mean((predictor_vars[i] ** 2).sum(0)))/ np.sqrt(nsamples[i] - 1)
     #                          for i in range(ntask)])
@@ -84,7 +84,7 @@ def test_multitask_lasso(ntask=2,
         beta_target.extend(np.linalg.pinv((predictor_vars[j])[:, (active_signs[:, j] != 0)]).dot(predictor_vars[j].dot(beta[:,j])))
 
     beta_target = np.asarray(beta_target)
-    print("check max size ", np.amax(np.fabs(beta_target)))
+    print("check size range ", np.amax(np.fabs(beta_target)), np.amin(np.fabs(beta_target)))
 
     coverage = (beta_target > intervals[:, 0]) * (beta_target <
                                                   intervals[:, 1])
@@ -101,15 +101,15 @@ def test_coverage(nsim=100):
 
     for n in range(nsim):
 
-        coverage, length = test_multitask_lasso(ntask=4,
-                                                nsamples=500 * np.ones(4),
-                                                p=100,
+        coverage, length = test_multitask_lasso(ntask=5,
+                                                nsamples=500 * np.ones(5),
+                                                p=50,
                                                 global_sparsity=.95,
-                                                task_sparsity=0.25,
-                                                sigma=1.*np.ones(4),
-                                                signal_fac=1.2,
-                                                rhos=0.20*np.ones(4),
-                                                weight=1.)
+                                                task_sparsity=0.20,
+                                                sigma=1.*np.ones(5),
+                                                signal_fac=1.,
+                                                rhos=0.50*np.ones(5),
+                                                weight=1.2)
 
         if coverage.sum()<= 0.10:
             break
@@ -122,4 +122,5 @@ def test_coverage(nsim=100):
         print("length so far ", np.mean(np.asarray(length)))
 
 if __name__ == "__main__":
+
     test_coverage(nsim=100)
