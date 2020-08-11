@@ -69,7 +69,7 @@ def main():
     env = Environment(trajectory = 'CoverageChecks',
                       comment='Our first pypet experiment',
                       multiproc=True,
-                      ncores=4,
+                      ncores=10,
                       overwrite_file=True,
                       filename='./hdf5/')
 
@@ -86,7 +86,8 @@ def main():
     traj.f_add_parameter('rho', 0.3)
 
     # specify parameters to explore
-    traj.f_explore({'signal': [6., 10., 20.]})
+    traj.f_explore(cartesian_product({"signal": [6., 10., 20.],
+                                      'sgroup': [3, 4, 5]}) )
 
     env.run(posterior_coverage)
 
