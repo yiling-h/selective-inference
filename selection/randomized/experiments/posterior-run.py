@@ -64,19 +64,6 @@ def posterior_coverage(traj):
         traj.f_add_result('mean.length', np.mean(length))
 
 
-def wrap_test(traj):
-    # hoping we can avoid using this form
-
-    res = test_posterior_inference(traj.n, traj.p, traj.signal_fac,
-                                   traj.sgroup, traj.groups,
-                                   traj.sigma, traj.rho,
-                                   traj.randomizer_scale,
-                                   traj.weight_frac)
-
-    traj.f_add_result('coverage', res[0])
-    traj.f_add_result('length', res[1])
-    traj.f_add_result('samples', res[2])
-
 def main():
     # Create the environment
     env = Environment(trajectory = 'CoverageChecks',
