@@ -268,6 +268,9 @@ class multi_task_lasso(gaussian_query):
          self.cov_marginal = implied_cov[ntarget:][:, ntarget:]
          self.prec_marginal = np.linalg.inv(self.cov_marginal)
 
+         self.observed_target = observed_target
+         self.prec_target = prec_target
+         
      def multitasking_likelihood(self,
                                  target_parameter):
 
@@ -303,7 +306,62 @@ class multi_task_lasso(gaussian_query):
                             self.linear_coef.T.dot(prec_marginal).dot(self.linear_coef)-
                             self.linear_coef.T.dot(prec_marginal).dot(hess).dot(prec_marginal).self.linear_coef).dot(D)
 
+         self.initial_estimate_mle = D.dot(self.observed_target)
+
          return log_lik, grad_lik, hess_lik
+
+     def minimize_lik(self,
+                      step=1,
+                      nstep=5000,
+                      min_its=1000,
+                      tol=1.e-12):
+
+         current = self.initial_estimate_mle
+         current_value = np.inf
+
+         log_lik_current, grad_lik_current, hess_lik_current = self.multitasking_likelihood(current)
+
+         for itercount in range(nstep):
+
+             newton_step = -grad_lik_current
+
+             count = 0
+
+             while True:
+                 count += 1
+                 proposal = current - step * newton_step
+
+                 log_lik_proposal, grad_lik_proposal, hess_lik_proposal = self.multitasking_likelihood(proposal)
+                 proposed_value = -log_lik_proposal
+
+                 if proposed_value <= current_value:
+                     break
+                 step *= 0.5
+
+                 if count >= 20:
+                     if not (np.isnan(proposed_value) or np.isnan(current_value)):
+                         break
+                     else:
+                         raise ValueError('value is NaN: %f, %f' % (proposed_value, current_value))
+
+             if np.fabs(current_value - proposed_value) < tol * np.fabs(current_value) and itercount >= min_its:
+
+                 current = proposal
+                 current_value = proposed_value
+
+                 grad_lik_current = grad_lik_proposal
+                 hess_lik_current = hess_lik_proposal
+                 break
+
+             current = proposal
+             current_value = proposed_value
+             grad_lik_current = grad_lik_proposal
+             hess_lik_current = hess_lik_proposal
+
+             if itercount % 4 == 0:
+                 step *= 2
+
+         return current_value, current, -hess_lik_current
 
      def multitasking_target(self,
                              dispersions=None,
@@ -453,6 +511,7 @@ def solve_barrier_affine_py(conjugate_arg,
                             nstep=5000,
                             min_its=1000,
                             tol=1.e-12):
+
     scaling = np.sqrt(np.diag(con_linear.dot(precision).dot(con_linear.T)))
 
     if feasible_point is None:
