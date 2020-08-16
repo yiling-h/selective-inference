@@ -72,6 +72,10 @@ def test_multitask_lasso(ntask=2,
                                             randomizer_scales = randomizer_scales)
     active_signs = multi_lasso.fit()
 
+    ###check new target######
+
+    multi_lasso.multitasking_target()
+
     dispersions = np.array([np.linalg.norm(response_vars[i] -
                                            predictor_vars[i].dot(np.linalg.pinv(predictor_vars[i]).dot(response_vars[i]))) ** 2 / (nsamples[i] - p)
                            for i in range(ntask)])

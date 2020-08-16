@@ -235,113 +235,83 @@ class multi_task_lasso(gaussian_query):
 
          return cond_mean, cond_cov, cond_precision, logdens_linear
 
-     def selective_MLE(self,
-                       solve_args={'tol': 1.e-12},
-                       level=0.9,
-                       dispersions=None):
+     def _set_marginal_parameters(self,
+                                  dispersions= None):
 
-         observed_target, cov_target, cov_target_score = self.selected_targets(dispersions)
-
-         cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian()
-
-         init_soln = self.observed_opt_states
-
-         linear_part = self.linear_con
-         offset = self.offset_con
-
-         prec_opt = cond_precision
-         conjugate_arg = prec_opt.dot(cond_mean)
-
-         solver = solve_barrier_affine_py
-
-         val, soln, hess = solver(conjugate_arg,
-                                  prec_opt,
-                                  init_soln,
-                                  linear_part,
-                                  offset,
-                                  step=1,
-                                  nstep=5000,
-                                  min_its=3000,
-                                  tol=1.e-12)
+         observed_target, cov_target, cov_target_score = self.multitasking_target(dispersions)
+         ntarget = observed_target.shape[0]
 
          prec_target = np.linalg.inv(cov_target)
 
-         target_lin = -logdens_linear.dot(cov_target_score.T.dot(prec_target))
-
-         final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
-
-         L = target_lin.T.dot(prec_opt)
-         observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
-         observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
-
-         Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
-         pvalues = ndist.cdf(Z_scores)
-         pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
-
-         alpha = 1. - level
-         quantile = ndist.ppf(1 - alpha / 2.)
-         intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
-                                final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
-
-         return final_estimator, observed_info_mean, Z_scores, pvalues, intervals
-
-     def selective_MLE_mt(self,
-                          solve_args={'tol': 1.e-12},
-                          level=0.9,
-                          dispersions=None):
-
-         observed_target, cov_target, cov_target_score = self.multitasking_target(dispersions=dispersions)
-
          cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian()
+         nopt = cond_cov.shape[0]
 
-         init_soln = self.observed_opt_states
+         target_linear = -logdens_linear.dot(cov_target_score.T.dot(prec_target))
 
-         linear_part = self.linear_con
-         offset = self.offset_con
+         implied_precision = np.zeros((ntarget + nopt, ntarget + nopt))
+         implied_precision[:ntarget][:, :ntarget] = (prec_target + target_linear.T.dot(cond_precision.dot(target_linear)))
+         implied_precision[:ntarget][:, ntarget:] = -target_linear.T.dot(cond_precision)
+         implied_precision[ntarget:][:, :ntarget] = (-target_linear.T.dot(cond_precision)).T
 
-         prec_opt = cond_precision
-         conjugate_arg = prec_opt.dot(cond_mean)
+         implied_precision[ntarget:][:, ntarget:] = cond_precision
 
-         solver = solve_barrier_affine_py
+         implied_cov = np.linalg.inv(implied_precision)
 
-         val, soln, hess = solver(conjugate_arg,
-                                  prec_opt,
-                                  init_soln,
-                                  linear_part,
-                                  offset,
-                                  step=1,
-                                  nstep=5000,
-                                  min_its=3000,
-                                  tol=1.e-12)
+         self.linear_coef = implied_cov[ntarget:][:, :ntarget].dot(prec_target)
 
-         prec_target = np.linalg.inv(cov_target)
+         target_offset = cond_mean - target_linear.dot(observed_target)
+         M = implied_cov[ntarget:][:, ntarget:].dot(cond_precision.dot(target_offset))
+         N = -target_linear.T.dot(cond_precision).dot(target_offset)
 
-         target_lin = -logdens_linear.dot(cov_target_score.T.dot(prec_target))
+         self.offset_coef = implied_cov[ntarget:][:, :ntarget].dot(N) + M
 
-         final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
+         self.cov_marginal = implied_cov[ntarget:][:, ntarget:]
+         self.prec_marginal = np.linalg.inv(self.cov_marginal)
 
-         L = target_lin.T.dot(prec_opt)
-         observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
-         observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
+     def multitasking_likelihood(self,
+                                 target_parameter):
 
-         Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
-         pvalues = ndist.cdf(Z_scores)
-         pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
+         ##this is the O problem
 
-         alpha = 1. - level
-         quantile = ndist.ppf(1 - alpha / 2.)
-         intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
-                                final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
+         D = np.identity(target_parameter.shape[0])
+         for i in range(self.ntask-1):
+             D = np.block([[D],[np.identity(target_parameter.shape[0])]])
 
-         return final_estimator, observed_info_mean, Z_scores, pvalues, intervals
+         par = D.dot(target_parameter)
+         mean_marginal = self.linear_coef.dot(par) + self.offset_coef
+         prec_marginal = self.prec_marginal
+         conjugate_marginal = prec_marginal.dot(mean_marginal)
+
+         val, soln, hess = solve_barrier_affine_py(conjugate_marginal,
+                                                   prec_marginal,
+                                                   self.observed_opt_states,
+                                                   self.linear_con,
+                                                   self.offset_con,
+                                                   **self.solve_args)
+
+         log_normalizer = -val - mean_marginal.T.dot(prec_marginal).dot(mean_marginal) / 2.
+
+         ## based on this we now write the log-likelihood, gradient and hessian
+
+         log_lik = -((self.observed_target - par).T.dot(self.prec_target).dot(self.observed_target - par)) / 2. - log_normalizer
+
+         grad_lik = D.T.dot(self.prec_target.dot(self.observed_target) -
+                    self.prec_target.dot(par) \
+                    - self.linear_coef.T.dot(prec_marginal.dot(soln)- conjugate_marginal))
+
+         hess_lik = D.T.dot(-self.prec_target +
+                            self.linear_coef.T.dot(prec_marginal).dot(self.linear_coef)-
+                            self.linear_coef.T.dot(prec_marginal).dot(hess).dot(prec_marginal).self.linear_coef).dot(D)
+
+         return log_lik, grad_lik, hess_lik
 
      def multitasking_target(self,
                              dispersions=None,
                              solve_args={'tol': 1.e-12, 'min_its': 50}):
 
-         observed_targets = {}
-         cov_targets = {}
-         crosscov_target_scores = {}
+         observed_targets = []
+         cov_targets = np.array([])
+         crosscov_target_scores = np.array([])
 
          features = self.active_global
 
@@ -354,55 +324,19 @@ class multi_task_lasso(gaussian_query):
              Xfeat = X[:, features]
              Qfeat = Xfeat.T.dot(W[:, None] * Xfeat)
 
-             observed_targets[i] = restricted_estimator(self.loglikes[i], features, solve_args=solve_args)
+             observed_target = restricted_estimator(self.loglikes[i], features, solve_args=solve_args)
+             observed_targets.extend(observed_target)
 
              cov_target = np.linalg.inv(Qfeat)
              _score_linear = -Xfeat.T.dot(W[:, None] * X).T
 
              crosscov_target_score = _score_linear.dot(cov_target)
 
-             if dispersions is None:  # use Pearson's X^2
-                 dispersion = ((y - self.loglikes[i].saturated_loss.mean_function(Xfeat.dot(observed_targets[i]))) ** 2 / W).sum() / (n - Xfeat.shape[1])
+             if dispersions is None:
+                 dispersion = ((y - self.loglikes[i].saturated_loss.mean_function(Xfeat.dot(observed_target))) ** 2 / W).sum() / (n - Xfeat.shape[1])
              else:
                  dispersion = dispersions[i]
 
-             crosscov_target_scores[i] = crosscov_target_score.T * dispersion
-             cov_targets[i] = cov_target * dispersion
-
-         return (observed_targets,
-                 cov_targets,
-                 crosscov_target_scores)
-
-     def selected_targets(self,
-                          dispersions=None,
-                          solve_args={'tol': 1.e-12, 'min_its': 50}):
-
-         observed_targets = []
-         cov_targets = np.array([])
-         crosscov_target_scores = np.array([])
-
-         for j in range(self.ntask):
-
-             X, y = self.loglikes[j].data
-             n, p = X.shape
-             features = self._active[:, j]
-             W = self.loglikes[j].saturated_loss.hessian(X.dot(self.beta_bar[:, j]))
-
-             Xfeat = X[:, features]
-             Qfeat = Xfeat.T.dot(W[:, None] * Xfeat)
-
-             observed_target = restricted_estimator(self.loglikes[j], features, solve_args=solve_args)
-             cov_target = np.linalg.inv(Qfeat)
-             _score_linear = -Xfeat.T.dot(W[:, None] * X).T
-
-             crosscov_target_score = _score_linear.dot(cov_target)
-
-             if dispersions is None:  # use Pearson's X^2
-                 dispersion = ((y - self.loglikes[j].saturated_loss.mean_function(Xfeat.dot(observed_target))) ** 2 / W).sum() / (n - Xfeat.shape[1])
-             else:
-                 dispersion = dispersions[j]
-
-             observed_targets.extend(observed_target)
              crosscov_target_scores = block_diag(crosscov_target_scores, crosscov_target_score.T * dispersion)
              cov_targets = block_diag(cov_targets, cov_target * dispersion)
 
