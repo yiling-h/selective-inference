@@ -238,7 +238,7 @@ class multi_task_lasso(gaussian_query):
      def _set_marginal_parameters(self,
                                   dispersions= None):
 
-         observed_target, cov_target, cov_target_score = self.multitasking_target(dispersions)
+         observed_target, cov_target, cov_target_score = self.multitasking_target(dispersions = dispersions)
          ntarget = observed_target.shape[0]
 
          prec_target = np.linalg.inv(cov_target)
@@ -270,17 +270,24 @@ class multi_task_lasso(gaussian_query):
 
          self.observed_target = observed_target
          self.prec_target = prec_target
-         
+
+         D = np.identity(self.active_global.shape[0])
+         for i in range(self.ntask - 1):
+             D = np.block([[D], [np.identity(self.active_global.shape[0])]])
+
+
+         self.W_coef = np.linalg.inv(D.T.dot(self.prec_target).dot(D)).dot(D.T.dot(self.prec_target))
+
+         self.initial_estimate_mle = self.W_coef.dot(self.observed_target)
+
+         self.D = D
+
      def multitasking_likelihood(self,
                                  target_parameter):
 
          ##this is the O problem
 
-         D = np.identity(target_parameter.shape[0])
-         for i in range(self.ntask-1):
-             D = np.block([[D],[np.identity(target_parameter.shape[0])]])
-
-         par = D.dot(target_parameter)
+         par = self.D.dot(target_parameter)
          mean_marginal = self.linear_coef.dot(par) + self.offset_coef
          prec_marginal = self.prec_marginal
          conjugate_marginal = prec_marginal.dot(mean_marginal)
@@ -290,7 +297,10 @@ class multi_task_lasso(gaussian_query):
                                                    self.observed_opt_states,
                                                    self.linear_con,
                                                    self.offset_con,
-                                                   **self.solve_args)
+                                                   step=1,
+                                                   nstep=5000,
+                                                   min_its=1000,
+                                                   tol=1.e-12)
 
          log_normalizer = -val - mean_marginal.T.dot(prec_marginal).dot(mean_marginal) / 2.
 
@@ -298,23 +308,23 @@ class multi_task_lasso(gaussian_query):
 
          log_lik = -((self.observed_target - par).T.dot(self.prec_target).dot(self.observed_target - par)) / 2. - log_normalizer
 
-         grad_lik = D.T.dot(self.prec_target.dot(self.observed_target) -
-                    self.prec_target.dot(par) \
-                    - self.linear_coef.T.dot(prec_marginal.dot(soln)- conjugate_marginal))
+         grad_lik = self.D.T.dot(self.prec_target.dot(self.observed_target) -
+                                 self.prec_target.dot(par)- self.linear_coef.T.dot(prec_marginal.dot(soln)- conjugate_marginal))
 
-         hess_lik = D.T.dot(-self.prec_target +
-                            self.linear_coef.T.dot(prec_marginal).dot(self.linear_coef)-
-                            self.linear_coef.T.dot(prec_marginal).dot(hess).dot(prec_marginal).self.linear_coef).dot(D)
-
-         self.initial_estimate_mle = D.dot(self.observed_target)
+         hess_lik = self.D.T.dot(-self.prec_target + self.linear_coef.T.dot(prec_marginal).dot(self.linear_coef)-
+                                 self.linear_coef.T.dot(prec_marginal).dot(hess).dot(prec_marginal.dot(self.linear_coef))).dot(self.D)
 
          return log_lik, grad_lik, hess_lik
 
-     def minimize_lik(self,
-                      step=1,
-                      nstep=5000,
-                      min_its=1000,
-                      tol=1.e-12):
+     def multitask_inference(self,
+                             dispersions=None,
+                             step=1,
+                             nstep = 1000,
+                             min_its = 200,
+                             tol = 1.e-8,
+                             level = 0.9):
+
+         self._set_marginal_parameters(dispersions=dispersions)
 
          current = self.initial_estimate_mle
          current_value = np.inf
@@ -322,7 +332,6 @@ class multi_task_lasso(gaussian_query):
          log_lik_current, grad_lik_current, hess_lik_current = self.multitasking_likelihood(current)
 
          for itercount in range(nstep):
-
              newton_step = -grad_lik_current
 
              count = 0
@@ -361,7 +370,19 @@ class multi_task_lasso(gaussian_query):
              if itercount % 4 == 0:
                  step *= 2
 
-         return current_value, current, -hess_lik_current
+         final_estimator = current
+         observed_info_mean = np.linalg.inv(-hess_lik_current)
+
+         Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
+         pvalues = ndist.cdf(Z_scores)
+         pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
+
+         alpha = 1. - level
+         quantile = ndist.ppf(1 - alpha / 2.)
+         intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
+                                final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
+
+         return final_estimator, observed_info_mean, Z_scores, pvalues, intervals
 
      def multitasking_target(self,
                              dispersions=None,
