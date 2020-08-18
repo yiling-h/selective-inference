@@ -115,9 +115,6 @@ def test_coverage(nsim=100):
                                                 rhos=0.50*np.ones(3),
                                                 weight=1.)
 
-        if coverage.sum()<= 0.10:
-            break
-
         cov.extend(coverage)
         len.extend(length)
 
@@ -126,4 +123,4 @@ def test_coverage(nsim=100):
         print("length so far ", np.mean(np.asarray(length)))
 
 if __name__ == "__main__":
-    test_coverage(nsim=10)
+    test_coverage(nsim=50)

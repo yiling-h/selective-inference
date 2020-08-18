@@ -304,7 +304,7 @@ class multi_task_lasso(gaussian_query):
 
          log_normalizer = -val - mean_marginal.T.dot(prec_marginal).dot(mean_marginal) / 2.
 
-         ## based on this we now write the log-likelihood, gradient and hessian
+         ## based on the O problem, we now write the log-likelihood, its gradient and hessian
 
          log_lik = -((self.observed_target - par).T.dot(self.prec_target).dot(self.observed_target - par)) / 2. - log_normalizer
 
