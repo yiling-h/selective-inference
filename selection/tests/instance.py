@@ -414,7 +414,7 @@ def gaussian_group_instance(n=100, p=200, sgroup=7, sigma=5, rho=0., signal=7,
     signal : float or (float, float)
         Sizes for the coefficients. If a tuple -- then coefficients
         are equally spaced between these values using np.linspace.
-        Note: the size of signal is for a "normalized" design, where np.diag(X.T.dot(X)) == np.ones(p).
+        Note: the size of signal is for a "normalized" design, where np.diag(X.T.dot(X)) == np.ones(n).
         If scale=False, this signal is divided by np.sqrt(n), otherwise it is unchanged.
 
     random_signs : bool
