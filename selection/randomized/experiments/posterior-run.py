@@ -101,9 +101,9 @@ def main():
     traj.f_add_parameter('seed', 0)  # random seed
 
     # specify parameters to explore
-    traj.f_explore(cartesian_product({"signal_fac": [0.1, 0.2, 0.3],
-                                      'sgroup': [3, 4],
-                                      'seed': [1986, 2020, 2001]}))
+    traj.f_explore(cartesian_product({"signal_fac": [0.1, 0.2, 0.3, 0.5, 0.8, 1.1, 2.2, 3., 5., 10.],
+                                      'sgroup': [3, 4, 5],
+                                      'seed': [1986, 2020, 2001, 2019, 2021]}))
 
     env.run(posterior_coverage)
 
