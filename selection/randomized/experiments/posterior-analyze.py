@@ -20,9 +20,19 @@ df = pd.DataFrame({'SGroup': sgroup,
                    'Signal': signal_fac,
                    'coverage': list(coverage.values()),
                    'length': list(length.values())})
+dfg = df.groupby(['Signal', 'SGroup'])
 
-df.groupby(['SGroup', 'Signal']).mean()
-df.groupby(['SGroup', 'Signal']).var()
+dfg.agg([np.size, np.mean, np.std])
+
+dfg.mean()
+dfg.var()
+dfg.size()
+
+
+df.groupby(['Signal', 'SGroup']).var()
+df.gropu
+
+df.groupby(['Signal', 'SGroup'])
 
 for sg in np.unique(sgroup):
     mask = np.equal(sg, sgroup)

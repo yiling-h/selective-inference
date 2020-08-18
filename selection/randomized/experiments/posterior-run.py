@@ -50,7 +50,7 @@ def posterior_coverage(traj):
         log_prior = -np.linalg.norm(target_parameter) ** 2 / (2. * prior_var)
         return grad_prior, log_prior
 
-    if nonzero.sum() > 0:       # this is too dense
+    if nonzero.sum() > 0:
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
         posterior_inf = posterior(conv,  #  this sometimes takes a long time to run
