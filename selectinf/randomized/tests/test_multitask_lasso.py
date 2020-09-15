@@ -105,14 +105,14 @@ def test_coverage(nsim=100):
 
     for n in range(nsim):
 
-        coverage, length = test_multitask_lasso(ntask=3,
-                                                nsamples=500 * np.ones(3),
+        coverage, length = test_multitask_lasso(ntask=4,
+                                                nsamples=500 * np.ones(4),
                                                 p=50,
                                                 global_sparsity=.95,
-                                                task_sparsity=0.20,
-                                                sigma=1.*np.ones(3),
-                                                signal_fac=1.,
-                                                rhos=0.50*np.ones(3),
+                                                task_sparsity=0.50,
+                                                sigma=1*np.ones(4),
+                                                signal_fac=0.2,
+                                                rhos=0.50*np.ones(4),
                                                 weight=1.)
 
         cov.extend(coverage)
