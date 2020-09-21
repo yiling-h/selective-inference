@@ -130,7 +130,7 @@ def posi(traj, X, Y, beta):
 
 def data_splitting(traj, X, Y, beta):
     n = X.shape[0]
-    n_train = np.floor(n/2)
+    n_train = int(np.floor(n/2))
 
     indices = np.random.permutation(n)
 
