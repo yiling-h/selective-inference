@@ -149,7 +149,7 @@ def data_splitting(traj, X, Y, beta):
 
         QI = np.linalg.inv(X_test[:, nonzero].T.dot(X_test[:, nonzero]))
 
-        observed_target = np.linalg.pinv(X_test[:, nonzero]) * Y_test
+        observed_target = np.linalg.pinv(X_test[:, nonzero]).dot(Y_test)
 
         dispersion = np.sum((Y_test - X_test[:, nonzero].dot(observed_target)) ** 2) / (X_test[:, nonzero].shape[0] - X_test[:, nonzero].shape[1])
 
