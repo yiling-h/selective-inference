@@ -79,8 +79,8 @@ def naive_inference(traj, X, Y, beta):
 
         fe, oi, z, p, intervals, _ = conv.naive_inference()
 
-        lci = intervals[0, :]
-        uci = intervals[1, :]
+        lci = intervals[:, 0]
+        uci = intervals[:, 1]
 
         coverage = (lci < beta_target) * (uci > beta_target)
         length = uci - lci
@@ -157,8 +157,8 @@ def data_splitting(traj, X, Y, beta):
 
         intervals = naive_confidence_intervals(np.diag(cov_target), observed_target)
 
-        lci = intervals[0, :]
-        uci = intervals[1, :]
+        lci = intervals[:, 0]
+        uci = intervals[:, 1]
 
         coverage = (lci < beta_target) * (uci > beta_target)
         length = uci - lci
