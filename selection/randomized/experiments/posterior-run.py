@@ -55,14 +55,18 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
 
     if randomize:
         randomizer_scale = traj.randomizer_scale * sigma_
+        conv = group_lasso.gaussian(X,
+                                    Y,
+                                    traj.groups,
+                                    weights,
+                                    randomizer_scale=randomizer_scale)
     else:
-        randomizer_scale = 0
-
-    conv = group_lasso.gaussian(X,
-                                Y,
-                                traj.groups,
-                                weights,
-                                randomizer_scale=randomizer_scale)
+        perturb = np.repeat(0, traj.p)
+        conv = group_lasso.gaussian(X,
+                                    Y,
+                                    traj.groups,
+                                    weights,
+                                    perturb=perturb)
 
     signs, _ = conv.fit()
     nonzero = signs != 0
