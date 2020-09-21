@@ -137,10 +137,10 @@ def data_splitting(traj, X, Y, beta):
     train_idx, test_idx = indices[:n_train], indices[n_train:]
 
     X_train = X[train_idx, :]
-    Y_train = Y[train_idx, :]
+    Y_train = Y[train_idx]
 
     X_test = X[test_idx, :]
-    Y_test = Y[test_idx, :]
+    Y_test = Y[test_idx]
 
     nonzero, conv, _ = grp_lasso_selection(X_train, Y_train, traj, randomize=False)
 
