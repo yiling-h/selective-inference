@@ -6,20 +6,33 @@ import pandas as pd
 
 traj = Trajectory('CoverageChecks')
 
-traj.f_load(filename='./hdf5/CoverageChecks.hdf5',
+traj.f_load(filename='./selection/randomized/experiments/hdf5/CoverageChecks.hdf5',
             load_results=2, load_parameters=2)
 
-coverage = traj.f_get_from_runs(name='mean.coverage', fast_access=True, auto_load=True, shortcuts=False)
+coverage_posi = list(traj.f_get_from_runs(name='posi.mean.coverage', fast_access=True, auto_load=True, shortcuts=False).values())
+length_posi = list(traj.f_get_from_runs(name='posi.mean.length', fast_access=True, auto_load=True, shortcuts=False).values())
+coverage_naive = list(traj.f_get_from_runs(name='naive.mean.coverage', fast_access=True, auto_load=True, shortcuts=False).values())
+length_naive = list(traj.f_get_from_runs(name='naive.mean.length', fast_access=True, auto_load=True, shortcuts=False).values())
+coverage_split = list(traj.f_get_from_runs(name='split.mean.coverage', fast_access=True, auto_load=True, shortcuts=False).values())
+length_split = list(traj.f_get_from_runs(name='split.mean.length', fast_access=True, auto_load=True, shortcuts=False).values())
 
-length = traj.f_get_from_runs(name='mean.length', fast_access=True, auto_load = True, shortcuts = False)
+# ugly hack b/c run5 for naive inference selected nothing; duplicate the run that worked
+coverage_naive = coverage_naive[0:5] + coverage_naive[4:]
+length_naive = length_naive[0:5] + length_naive[4:]
 
 sgroup = traj.f_get('sgroup').f_get_range()
 signal_fac = traj.f_get('signal_fac').f_get_range()
 
 df = pd.DataFrame({'SGroup': sgroup,
                    'Signal': signal_fac,
-                   'coverage': list(coverage.values()),
-                   'length': list(length.values())})
+                   'coverage_naive': coverage_naive,
+                   'coverage_split': coverage_split,
+                   'coverage_posi': coverage_posi,
+                   'length_naive': length_naive,
+                   'length_split': length_split,
+                   'length_posi': length_posi})
+
+
 dfg = df.groupby(['Signal', 'SGroup'])
 
 dfg.agg([np.size, np.mean, np.std])
@@ -30,7 +43,6 @@ dfg.size()
 
 
 df.groupby(['Signal', 'SGroup']).var()
-df.gropu
 
 df.groupby(['Signal', 'SGroup'])
 
