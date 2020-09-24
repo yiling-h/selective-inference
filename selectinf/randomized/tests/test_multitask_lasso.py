@@ -123,4 +123,4 @@ def test_coverage(nsim=100):
         print("length so far ", np.mean(np.asarray(length)))
 
 if __name__ == "__main__":
-    test_coverage(nsim=50)
+    test_coverage(nsim=1)

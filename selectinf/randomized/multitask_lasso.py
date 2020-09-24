@@ -207,15 +207,33 @@ class multi_task_lasso(gaussian_query):
 
          ##forming linear constraints on our optimization variables
 
-         self.linear_con = -np.identity(opt_vars)
-         self.offset_con = np.zeros(opt_vars)
+         ##definining the truncation on sums of our opt variables for each j
+
+         con_vec = self.seltasks[self.seltasks-1 > 0] -1
+         _len_var = np.cumsum(con_vec)
+
+         _con_sum = np.zeros((_len_var.shape[0], opt_vars))
+         _con_trunc = (observed_opt_states_[opt_vars:])[self.seltasks-1 > 0]
+
+         for j in range(_len_var.shape[0]):
+
+             if j==0:
+                 (_con_sum[j, :])[:_len_var[j]] = 1
+             elif j== (_len_var[-1]-1):
+                 (_con_sum[j, :])[(_len_var[j-1]+1):]=1
+             else:
+                 (_con_sum[j, :])[_len_var[j-1]:_len_var[j]]=1
+
+         self.linear_con = np.vstack((-np.identity(opt_vars), _con_sum))
+         self.offset_con = np.append(np.zeros(opt_vars), _con_trunc)
 
          self.opt_linears = opt_linears
          self.opt_offsets = opt_offsets
          self.observed_opt_states = observed_opt_states
          self.observed_score_states = scores
 
-         print("check signs of observed opt_states ", ((self.linear_con.dot(observed_opt_states)-self.offset_con)<0).sum(), opt_vars, self.seltasks)
+         print("check signs of observed opt_states ", ((self.linear_con.dot(observed_opt_states)-self.offset_con)<0).sum(), self.linear_con.shape[0],
+               opt_vars, self.seltasks.sum())
 
          return active_signs
 
