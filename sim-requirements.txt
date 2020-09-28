@@ -4,3 +4,4 @@ scipy
 tables
 pandas
 pypet
+matplotlib
