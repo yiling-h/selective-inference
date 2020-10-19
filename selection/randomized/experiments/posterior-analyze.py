@@ -55,3 +55,32 @@ plt.ylabel('Coverage')
 plt.legend()
 
 plt.savefig('plot.png')
+
+# make a figure: coverage by signal for sgroup = 3, trace by method
+dfm = df[df['SGroup'] == 3]
+
+plt.figure()
+plt.plot(dfm['Signal'],dfm['coverage_naive'],label='Naive')
+plt.plot(dfm['Signal'],dfm['coverage_split'],label='Split')
+plt.plot(dfm['Signal'],dfm['coverage_posi'],label='PoSI')
+
+plt.legend(title='Method')
+plt.xlabel('Signal')
+plt.ylabel('Coverage')
+plt.title('Coverage by Method, 3 Active Groups')
+# plt.show()
+plt.savefig('/home/kesslerd/repos/og-posi-manuscript/figs/coverage-sgroup3.png')
+
+plt.figure()
+plt.plot(dfm['Signal'],dfm['length_naive'],label='Naive')
+plt.plot(dfm['Signal'],dfm['length_split'],label='Split')
+plt.plot(dfm['Signal'],dfm['length_posi'],label='PoSI')
+
+plt.legend(title = 'Method')
+plt.xlabel('Signal')
+plt.ylabel('Length')
+plt.title('CI Length by Method, 3 Active Groups')
+# plt.show()
+plt.savefig('/home/kesslerd/repos/og-posi-manuscript/figs/length-sgroup3.png')
+
+
