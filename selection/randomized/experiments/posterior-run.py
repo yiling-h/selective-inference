@@ -93,6 +93,12 @@ def naive_inference(traj, X, Y, beta):
 
         traj.f_add_result('naive.mean.coverage', np.mean(coverage))
         traj.f_add_result('naive.mean.length', np.mean(length))
+    else:
+        traj.f_add_result('naive.componentwise.coverage', np.nan)
+        traj.f_add_result('naive.componentwise.length', np.nan)
+
+        traj.f_add_result('naive.mean.coverage', np.nan)
+        traj.f_add_result('naive.mean.length', np.nan)
 
 
 def posi(traj, X, Y, beta):
@@ -129,7 +135,12 @@ def posi(traj, X, Y, beta):
 
         traj.f_add_result('posi.mean.coverage', np.mean(coverage))
         traj.f_add_result('posi.mean.length', np.mean(length))
+    else:
+        traj.f_add_result('naive.componentwise.coverage', np.nan)
+        traj.f_add_result('naive.componentwise.length', np.nan)
 
+        traj.f_add_result('naive.mean.coverage', np.nan)
+        traj.f_add_result('naive.mean.length', np.nan)
 
 def data_splitting(traj, X, Y, beta):
     n = X.shape[0]
@@ -171,7 +182,12 @@ def data_splitting(traj, X, Y, beta):
 
         traj.f_add_result('split.mean.coverage', np.mean(coverage))
         traj.f_add_result('split.mean.length', np.mean(length))
+    else:
+        traj.f_add_result('naive.componentwise.coverage', np.nan)
+        traj.f_add_result('naive.componentwise.length', np.nan)
 
+        traj.f_add_result('naive.mean.coverage', np.nan)
+        traj.f_add_result('naive.mean.length', np.nan)
 
 def posterior_coverage(traj):
     np.random.seed(seed=traj.seed)
