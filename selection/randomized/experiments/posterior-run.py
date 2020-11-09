@@ -245,7 +245,7 @@ def posterior_coverage(traj):
         traj.f_add_result('mean.length', np.mean(length))
 
 
-def main():
+def main(nreps=1):
     # Create the environment
     env = Environment(trajectory = 'CoverageChecks',
                       comment='Our first attempt at running on SLURM',
@@ -271,10 +271,12 @@ def main():
     traj.f_add_parameter('weight_frac', 1.0)
     traj.f_add_parameter('seed', 0)  # random seed
 
+    seeds = [1986 + i for i in np.arange(nreps)]  # offset seed for each rep
+
     # specify parameters to explore
     traj.f_explore(cartesian_product({"signal_fac": [0.1, 0.2, 0.3, 0.5, 0.8, 1.1, 2.2, 3., 5., 10.],
                                       'sgroup': [3, 4, 5],
-                                      'seed': [1986, 2020, 2001, 2019, 2021]}))
+                                      'seed': seeds}))
 
     env.run(coverage_experiment)
 
@@ -284,4 +286,4 @@ def main():
 if __name__ == '__main__':
     # Let's make the python evangelists happy and encapsulate
     # the main function as you always should ;-)
-    main()
+    main(10)
