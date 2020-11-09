@@ -104,14 +104,15 @@ def naive_inference(traj, X, Y, beta):
 def posi(traj, X, Y, beta):
     nonzero, conv, dispersion = grp_lasso_selection(X, Y, traj, randomize=True)
 
-    conv._setup_implied_gaussian()
-
-    def prior(target_parameter, prior_var=100):
-        grad_prior = -target_parameter / prior_var
-        log_prior = -np.linalg.norm(target_parameter) ** 2 / (2. * prior_var)
-        return grad_prior, log_prior
-
     if nonzero.sum() > 0:
+        conv._setup_implied_gaussian()
+
+        def prior(target_parameter, prior_var=100):
+            grad_prior = -target_parameter / prior_var
+            log_prior = -np.linalg.norm(target_parameter) ** 2 / (2. * prior_var)
+            return grad_prior, log_prior
+
+
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
         posterior_inf = posterior(conv,  #  this sometimes takes a long time to run
