@@ -192,8 +192,8 @@ def data_splitting(traj, X, Y, beta):
 
 def main(nreps=1):
     # Create the environment
-    env = Environment(trajectory='CoverageChecks',
-                      comment='Our first attempt at running on SLURM',
+    env = Environment(trajectory='StandardLasso:Singletons',
+                      comment='Randomized Group lasso, but each group is atomic',
                       multiproc=True,
                       log_multiproc=True,
                       use_scoop=True,
@@ -208,8 +208,8 @@ def main(nreps=1):
     traj.f_add_parameter('n', 500)
     traj.f_add_parameter('p', 200)
     traj.f_add_parameter('signal_fac', 0.1)
-    traj.f_add_parameter('groups', np.arange(50).repeat(4))
-    traj.f_add_parameter('sgroup', 3)
+    traj.f_add_parameter('groups', np.arange(200).repeat(1))
+    traj.f_add_parameter('sgroup', 10)
     traj.f_add_parameter('sigma', 3)
     traj.f_add_parameter('rho', 0.3)
     traj.f_add_parameter('randomizer_scale', 0.3)
@@ -219,8 +219,8 @@ def main(nreps=1):
     seeds = [1986 + i for i in np.arange(nreps)]  # offset seed for each rep
 
     # specify parameters to explore
-    traj.f_explore(cartesian_product({"signal_fac": [0.1, 0.2, 0.3, 0.5, 0.8, 1.1, 2.2, 3., 5., 10.],
-                                      'sgroup': [3, 4, 5],
+    traj.f_explore(cartesian_product({"signal_fac": [0.01, 0.1, 1., 10.],
+                                      'sgroup': [10],
                                       'seed': seeds}))
 
     env.run(coverage_experiment)
