@@ -136,11 +136,11 @@ def posi(traj, X, Y, beta):
         traj.f_add_result('posi.mean.coverage', np.mean(coverage))
         traj.f_add_result('posi.mean.length', np.mean(length))
     else:
-        traj.f_add_result('naive.componentwise.coverage', np.nan)
-        traj.f_add_result('naive.componentwise.length', np.nan)
+        traj.f_add_result('posi.componentwise.coverage', np.nan)
+        traj.f_add_result('posi.componentwise.length', np.nan)
 
-        traj.f_add_result('naive.mean.coverage', np.nan)
-        traj.f_add_result('naive.mean.length', np.nan)
+        traj.f_add_result('posi.mean.coverage', np.nan)
+        traj.f_add_result('posi.mean.length', np.nan)
 
 def data_splitting(traj, X, Y, beta):
     n = X.shape[0]
@@ -183,20 +183,20 @@ def data_splitting(traj, X, Y, beta):
         traj.f_add_result('split.mean.coverage', np.mean(coverage))
         traj.f_add_result('split.mean.length', np.mean(length))
     else:
-        traj.f_add_result('naive.componentwise.coverage', np.nan)
-        traj.f_add_result('naive.componentwise.length', np.nan)
+        traj.f_add_result('split.componentwise.coverage', np.nan)
+        traj.f_add_result('split.componentwise.length', np.nan)
 
-        traj.f_add_result('naive.mean.coverage', np.nan)
-        traj.f_add_result('naive.mean.length', np.nan)
+        traj.f_add_result('split.mean.coverage', np.nan)
+        traj.f_add_result('split.mean.length', np.nan)
 
 
 def main(nreps=1):
     # Create the environment
     env = Environment(trajectory='GrpLasso_Singletons',
                       comment='Randomized Group lasso, but each group is atomic',
-                      multiproc=True,
+                      multiproc=False,
                       log_multiproc=True,
-                      use_scoop=True,
+                      use_scoop=False,
                       wrap_mode='NETLOCK',
                       overwrite_file=True,
                       filename='./hdf5/')
