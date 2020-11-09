@@ -192,7 +192,7 @@ def data_splitting(traj, X, Y, beta):
 
 def main(nreps=1):
     # Create the environment
-    env = Environment(trajectory='StandardLasso:Singletons',
+    env = Environment(trajectory='GrpLasso_Singletons',
                       comment='Randomized Group lasso, but each group is atomic',
                       multiproc=True,
                       log_multiproc=True,
