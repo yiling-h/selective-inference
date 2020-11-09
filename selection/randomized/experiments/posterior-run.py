@@ -216,7 +216,7 @@ def main(nreps=1):
     traj.f_add_parameter('weight_frac', 1.0)
     traj.f_add_parameter('seed', 0)  # random seed
 
-    seeds = [1986 + i for i in np.arange(nreps)]  # offset seed for each rep
+    seeds = [1986 + i for i in range(nreps)]  # offset seed for each rep
 
     # specify parameters to explore
     traj.f_explore(cartesian_product({"signal_fac": [0.01, 0.1, 1., 10.],
