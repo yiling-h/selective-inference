@@ -17,7 +17,6 @@ def coverage_experiment(traj):
     data_splitting(traj, X, Y, beta)
 
 
-
 def draw_data(traj):
     np.random.seed(seed=traj.seed)
 
@@ -247,12 +246,12 @@ def posterior_coverage(traj):
 
 def main(nreps=1):
     # Create the environment
-    env = Environment(trajectory = 'CoverageChecks',
+    env = Environment(trajectory='CoverageChecks',
                       comment='Our first attempt at running on SLURM',
                       multiproc=True,
-		      log_multiproc=True,
-		      use_scoop=True,
-		      wrap_mode='NETLOCK',
+                      log_multiproc=True,
+                      use_scoop=True,
+                      wrap_mode='NETLOCK',
                       overwrite_file=True,
                       filename='./hdf5/')
 
