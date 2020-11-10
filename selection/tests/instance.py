@@ -466,7 +466,7 @@ def gaussian_group_instance(n=100, p=200, sgroup=7, sigma=5, rho=0., signal=7,
     if signal.shape == (1,):
         beta[active] = signal[0]
     else:
-        beta[active] = np.linspace(signal[0], signal[1], active)
+        beta[active] = np.linspace(signal[0], signal[1], active.sum())
     if random_signs:
         beta[active] *= (2 * np.random.binomial(1, 0.5, size=(active.sum(),)) - 1.)
     beta /= np.sqrt(n)
