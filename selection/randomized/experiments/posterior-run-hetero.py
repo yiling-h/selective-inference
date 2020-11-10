@@ -196,9 +196,9 @@ def main(nreps=1):
     # Create the environment
     env = Environment(trajectory='GrpLasso_Hetero',
                       comment='Randomized Group lasso, heterogeneous sizes and signals',
-                      multiproc=False,
+                      multiproc=True,
                       log_multiproc=True,
-                      use_scoop=False,
+                      use_scoop=True,
                       wrap_mode='NETQUEUE',
                       overwrite_file=True,
                       filename='./hdf5/')
