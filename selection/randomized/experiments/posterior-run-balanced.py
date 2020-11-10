@@ -193,7 +193,7 @@ def data_splitting(traj, X, Y, beta):
 
 def main(nreps=1):
     # Create the environment
-    env = Environment(trajectory='GrpLasso_Balanced',
+    env = Environment(trajectory='GrpLasso_Balanced2',
                       comment='Randomized Group lasso, with balanced groups',
                       multiproc=True,
                       log_multiproc=True,
@@ -232,4 +232,4 @@ def main(nreps=1):
 if __name__ == '__main__':
     # Let's make the python evangelists happy and encapsulate
     # the main function as you always should ;-)
-    main(100)
+    main(10)
