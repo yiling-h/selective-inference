@@ -4,9 +4,9 @@ import matplotlib
 import numpy as np
 import pandas as pd
 
-traj = Trajectory('GrpLasso_Balanced')
+traj = Trajectory('GrpLasso_Balanced2')
 
-traj.f_load(filename='./selection/randomized/experiments/hdf5/GrpLasso_Balanced.hdf5',
+traj.f_load(filename='./selection/randomized/experiments/hdf5/GrpLasso_Balanced2.hdf5',
             load_results=1, load_parameters=2)
 
 coverage_posi = list(traj.f_get_from_runs(name='posi.mean.coverage', fast_access=True, auto_load=True, shortcuts=False).values())
