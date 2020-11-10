@@ -2,6 +2,8 @@ import numpy as np
 
 from selection.randomized.group_lasso import group_lasso
 from selection.tests.instance import gaussian_group_instance, gaussian_instance
+from numpy import log
+from selection.randomized.randomization import randomization
 
 def test_lasso_vs_glasso(n=500,
                      p=50,
