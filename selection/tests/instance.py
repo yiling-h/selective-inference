@@ -399,8 +399,9 @@ def gaussian_group_instance(n=100, p=200, sgroup=7, sigma=5, rho=0., signal=7,
     p : int
         Number of features
 
-    sgroup : int
-        True sparsity (number of active groups)
+    sgroup : int or list
+        True sparsity (number of active groups).
+        If a list, which groups are active
 
     groups : array_like (1d, size == p)
         Assignment of features to (non-overlapping) groups
@@ -459,7 +460,10 @@ def gaussian_group_instance(n=100, p=200, sgroup=7, sigma=5, rho=0., signal=7,
     signal = np.atleast_1d(signal)
 
     group_labels = np.unique(groups)
-    group_active = np.random.choice(group_labels, sgroup, replace=False)
+    if isinstance(sgroup, list):
+        group_active = sgroup
+    else:
+        group_active = np.random.choice(group_labels, sgroup, replace=False)
 
     active = np.isin(groups, group_active)
 
