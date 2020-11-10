@@ -18,7 +18,7 @@ length_split = list(traj.f_get_from_runs(name='split.mean.length', fast_access=T
 
 signal_fac = traj.f_get('signal_fac').f_get_range()
 
-df = pd.DataFrame({'Signal': signal_fac,
+df = pd.DataFrame({'Signal_Lower': [x[0] for x in signal_fac],
                    'coverage_naive': coverage_naive,
                    'coverage_split': coverage_split,
                    'coverage_posi': coverage_posi,
