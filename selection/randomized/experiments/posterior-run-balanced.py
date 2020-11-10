@@ -232,4 +232,4 @@ def main(nreps=1):
 if __name__ == '__main__':
     # Let's make the python evangelists happy and encapsulate
     # the main function as you always should ;-)
-    main(10)
+    main(100)
