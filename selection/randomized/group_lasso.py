@@ -697,10 +697,15 @@ class posterior():
             self.observed_target - target_parameter)) / 2. \
                   - log_normalizer
 
-        grad_lik = (self.prec_target.dot(self.observed_target) -
-                    self.prec_target.dot(target_parameter) \
-                    - self.linear_coef.T.dot(prec_marginal.dot(soln) - conjugate_marginal)) - \
-                   self.linear_coef.T.dot(prec_marginal).dot(hess).dot(log_jacob[1])
+        if log_jacob[1] is 0:   # need to check literal since sometimes it's an array
+            grad_lik = (self.prec_target.dot(self.observed_target) -
+                        self.prec_target.dot(target_parameter) \
+                        - self.linear_coef.T.dot(prec_marginal.dot(soln) - conjugate_marginal))
+        else:
+            grad_lik = (self.prec_target.dot(self.observed_target) -
+                        self.prec_target.dot(target_parameter) \
+                        - self.linear_coef.T.dot(prec_marginal.dot(soln) - conjugate_marginal)) - \
+                       self.linear_coef.T.dot(prec_marginal).dot(hess).dot(log_jacob[1])
 
         grad_prior, log_prior = self.prior(target_parameter)
 
