@@ -22,11 +22,12 @@ def draw_data(traj):
 
     inst = gaussian_group_instance
 
-    signal = np.sqrt(traj.signal_fac * 2 * np.log(traj.p))
+    signal_l = np.sqrt(traj.signal_fac[0] * 2 * np.log(traj.p))
+    signal_u = np.sqrt(traj.signal_fac[1] * 2 * np.log(traj.p))
 
     X, Y, beta = inst(n=traj.n,
                       p=traj.p,
-                      signal=signal,
+                      signal=(signal_l, signal_u),
                       groups=traj.groups,
                       sgroup=traj.sgroup,
                       sigma=traj.sigma,
@@ -207,12 +208,12 @@ def main(nreps=1):
 
     # Now add the parameters with defaults
     traj.f_add_parameter('n', 500)
-    traj.f_add_parameter('p', 200)
-    traj.f_add_parameter('signal_fac', 0.1)
-    traj.f_add_parameter('groups', np.arange(200).repeat(1))
-    traj.f_add_parameter('sgroup', 10)
-    traj.f_add_parameter('sigma', 3)
-    traj.f_add_parameter('rho', 0)
+    traj.f_add_parameter('p', 100)
+    traj.f_add_parameter('signal_fac', (np.float64(0.1), np.float64(1)))
+    traj.f_add_parameter('groups', np.arange(10).repeat([2, 3, 4, 5, 7, 9, 10, 15, 20, 25]))
+    traj.f_add_parameter('sgroup', [0, 1, 2])
+    traj.f_add_parameter('sigma', 1)
+    traj.f_add_parameter('rho', 0.35)
     traj.f_add_parameter('randomizer_scale', 0.3)
     traj.f_add_parameter('weight_frac', 1.0)
     traj.f_add_parameter('seed', 0)  # random seed
@@ -220,8 +221,7 @@ def main(nreps=1):
     seeds = [1986 + i for i in range(nreps)]  # offset seed for each rep
 
     # specify parameters to explore
-    traj.f_explore(cartesian_product({"signal_fac": [0.1, 1., 10., 100.],
-                                      'sgroup': [10],
+    traj.f_explore(cartesian_product({"signal_fac": [(i, i+1) for i in np.arange(0.1, 2, 0.1)],
                                       'seed': seeds}))
 
     env.run(coverage_experiment)
