@@ -207,8 +207,8 @@ def data_splitting(traj, X, Y, beta):
 
 def main(nreps=1):
     # Create the environment
-    env = Environment(trajectory='GrpLasso_Balanced',
-                      comment='Randomized Group lasso, with balanced groups',
+    env = Environment(trajectory='GrpLasso_OG_Balanced',
+                      comment='Randomized Group lasso, OG, with balanced groups',
                       multiproc=True,
                       log_multiproc=True,
                       use_scoop=True,
