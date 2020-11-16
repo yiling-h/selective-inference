@@ -219,11 +219,17 @@ def main(nreps=1):
     # get the trajectory
     traj = env.traj
 
+    # setup overlapping groups
+
     # Now add the parameters with defaults
+    groups = {}
+    for k in range(0, 34):
+        groups[k] = range(k*3, k*3 + 4)
+
     traj.f_add_parameter('n', 500)
-    traj.f_add_parameter('p', 100)
+    traj.f_add_parameter('p', 103)
     traj.f_add_parameter('signal_fac', np.float64(0.))
-    traj.f_add_parameter('groups', np.arange(25).repeat(4))
+    traj.f_add_parameter('groups', groups)
     traj.f_add_parameter('sgroup', 3)
     traj.f_add_parameter('sigma', 1)
     traj.f_add_parameter('rho', 0.35)
