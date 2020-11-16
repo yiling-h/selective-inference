@@ -389,14 +389,19 @@ class group_lasso(object):
 
     def selected_targets(self,
                          dispersion=None,
-                         solve_args={'tol': 1.e-12, 'min_its': 50}):
+                         solve_args={'tol': 1.e-12, 'min_its': 50},
+                         XrawE=False):
 
         X, y = self.loglike.data
         n, p = X.shape
 
         XE = self.XE
         Q = self.Q
-        observed_target = restricted_estimator(self.loglike, self.ordered_vars, solve_args=solve_args)
+        if XrawE is False:
+            observed_target = restricted_estimator(self.loglike, self.ordered_vars, solve_args=solve_args)
+        else:
+            observed_target = np.inv(XrawE.T.dot(XrawE)).dot(XrawE.T.dot(y))
+
         _score_linear = -XE.T.dot(self._W[:, None] * X).T
         alternatives = ['twosided'] * len(self.active)
 
@@ -404,8 +409,12 @@ class group_lasso(object):
             dispersion = ((y - self.loglike.saturated_loss.mean_function(
                 XE.dot(observed_target))) ** 2 / self._W).sum() / (n - XE.shape[1])
 
-        cov_target = self.QI * dispersion
-        crosscov_target_score = _score_linear.dot(self.QI).T * dispersion
+        if XrawE is False:
+            cov_target = self.QI * dispersion
+            crosscov_target_score = _score_linear.dot(self.QI).T * dispersion
+        else:
+            cov_target = np.inv(XrawE.T.dot(XrawE)) * dispersion
+            crosscov_target_score = np.inv(XrawE.T.dot(XrawE)).dot(XrawE.T.dot(X)) * dispersion
 
         return (observed_target,
                 cov_target,
@@ -623,7 +632,8 @@ class posterior():
                  conv,
                  prior,
                  dispersion,
-                 solve_args={'tol': 1.e-12}):
+                 solve_args={'tol': 1.e-12},
+                 XrawE=False):
 
         self.solve_args = solve_args
 
@@ -634,7 +644,7 @@ class posterior():
         _, self.inverse_info, _, _, _, _, log_ref = conv.selective_MLE(dispersion=dispersion)
 
 
-        (observed_target, cov_target, cov_target_score, alternatives) = conv.selected_targets(dispersion)
+        (observed_target, cov_target, cov_target_score, alternatives) = conv.selected_targets(dispersion,XrawE)
 
         self.observed_target = observed_target
         self.cov_target_score = cov_target_score
