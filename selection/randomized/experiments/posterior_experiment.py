@@ -48,7 +48,9 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
 
     sigma_ = np.sqrt(dispersion)
 
-    weights = dict([(i, traj.weight_frac * sigma_ * np.sqrt(2 * np.log(traj.p))) for i in np.unique(traj.groups)])
+    grps_gsizes = zip(*np.unique(traj.groups, return_counts=True))  # useful iterable
+
+    weights = dict([(i, traj.weight_frac * sigma_ * np.sqrt(2 * np.log(traj.p)) * np.sqrt(gsize)) for (i, gsize) in grps_gsizes])
 
     if randomize:
         randomizer_scale = traj.randomizer_scale * sigma_
