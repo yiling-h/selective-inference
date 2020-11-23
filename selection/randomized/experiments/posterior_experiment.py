@@ -120,9 +120,16 @@ def posi(traj, X, Y, beta):
 
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
+        if len(np.unique(traj.groups)) == traj.p:  # if groups are all atomic
+            print('I am atomic!')
+            useJacobian = False
+        else:
+            useJacobian = True
+
         posterior_inf = posterior(conv,  #  this sometimes takes a long time to run
                                   prior=prior,
-                                  dispersion=dispersion)
+                                  dispersion=dispersion,
+                                  useJacobian=useJacobian)
 
         samples = posterior_inf.langevin_sampler(nsample=1500,
                                                  nburnin=100,
