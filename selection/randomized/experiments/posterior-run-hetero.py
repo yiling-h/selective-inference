@@ -1,6 +1,6 @@
 import numpy as np
 from pypet import Environment, cartesian_product
-from .posterior_experiment import coverage_experiment
+from selection.randomized.experiments.posterior_experiment import coverage_experiment
 
 
 def main(nreps=1):
