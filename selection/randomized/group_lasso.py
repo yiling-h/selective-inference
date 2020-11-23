@@ -636,7 +636,7 @@ class posterior():
         _, self.inverse_info, _, _, _, _, log_ref = conv.selective_MLE(dispersion=dispersion)
 
 
-        (observed_target, cov_target, cov_target_score, alternatives) = conv.selected_targets(dispersion,XrawE)
+        (observed_target, cov_target, cov_target_score, alternatives) = conv.selected_targets(dispersion,XrawE=XrawE)
 
         self.observed_target = observed_target
         self.cov_target_score = cov_target_score
