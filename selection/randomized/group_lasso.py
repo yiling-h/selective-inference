@@ -110,16 +110,8 @@ class group_lasso(object):
         # otherwise continue as before
         self.observed_opt_state = np.hstack(ordered_opt)  # gammas as array
 
-        _beta_unpenalized = restricted_estimator(self.loglike,  # refit OLS on E
-                                                 overall,
-                                                 solve_args=solve_args)
-
-        beta_bar = np.zeros(self.nfeature)
-        beta_bar[overall] = _beta_unpenalized  # refit OLS beta with zeros
-        self._beta_full = beta_bar
-
         X, y = self.loglike.data
-        W = self._W = self.loglike.saturated_loss.hessian(X.dot(beta_bar))  # all 1's for LS
+        W = self._W = np.ones(X.shape[0])
         opt_linearNoU = np.dot(X.T, X[:, ordered_vars] * W[:, np.newaxis])
 
         for i, var in enumerate(ordered_vars):
