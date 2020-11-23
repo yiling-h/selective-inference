@@ -147,7 +147,7 @@ class group_lasso(object):
         Ls = [compute_Lg(g) for g in sorted_active_dirs]
         L = block_diag(*Ls)     # unpack the list
         XE = X[:, ordered_vars]       # changed to ordered_vars
-        Q = XE.T.dot(self._W[:, None] * XE) + self.ridge_term * np.identity(X.shape[0])
+        Q = XE.T.dot(self._W[:, None] * XE) + self.ridge_term * np.identity(XE.shape[1])
         QI = inv(Q)
         C = V.T.dot(QI).dot(L).dot(V)
 
