@@ -12,8 +12,8 @@ bal <- tidyr::pivot_longer(
 
 bal.cov <- bal[bal$metric == 'coverage',] %>%
     ggplot(aes(x = Signal, y = value, color = method, style = method)) +
-    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2) +
-    stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
+    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position=position_dodge(width=0.05)) +
+    stat_summary(fun.data = mean_se, geom = 'line', size = 2, position = position_dodge(width = 0.05)) +
     theme_bw(base_size = 30) + 
     ylab('Coverage')
 
@@ -38,8 +38,8 @@ het <- tidyr::pivot_longer(
 
 het.cov <- het[het$metric == 'coverage',] %>%
     ggplot(aes(x = Signal_Lower, y = value, color = method, style = method)) +
-    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2) +
-    stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
+    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position = position_dodge(width = 0.05)) +
+    stat_summary(fun.data = mean_se, geom = 'line', size = 2, position = position_dodge(width = 0.05)) +
     theme_bw(base_size = 30) + 
     ylab('Coverage')
 
