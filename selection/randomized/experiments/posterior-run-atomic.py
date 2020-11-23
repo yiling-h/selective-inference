@@ -1,11 +1,11 @@
 import numpy as np
 from pypet import Environment, cartesian_product
-from .posterior_experiment import coverage_experiment
+from selection.randomized.experiments.posterior_experiment import coverage_experiment
 
 
 def main(nreps=1):
     # Create the environment
-    env = Environment(trajectory='GrpLasso_Singletons',
+    env = Environment(trajectory='GrpLasso_Atomic',
                       comment='Randomized Group lasso, but each group is atomic',
                       multiproc=True,
                       log_multiproc=True,
@@ -20,19 +20,19 @@ def main(nreps=1):
     # Now add the parameters with defaults
     traj.f_add_parameter('n', 500)
     traj.f_add_parameter('p', 100)
-    traj.f_add_parameter('signal_fac', 0.1)
+    traj.f_add_parameter('signal_fac', np.float64(0.))
     traj.f_add_parameter('groups', np.arange(100).repeat(1))
     traj.f_add_parameter('sgroup', 5)
     traj.f_add_parameter('sigma', 1)
     traj.f_add_parameter('rho', 0.35)
     traj.f_add_parameter('randomizer_scale', 0.71)
-    traj.f_add_parameter('weight_frac', 1.0)
+    traj.f_add_parameter('weight_frac', 0.8)
     traj.f_add_parameter('seed', 0)  # random seed
 
     seeds = [19860 + i for i in range(nreps)]  # offset seed for each rep
 
     # specify parameters to explore
-    traj.f_explore(cartesian_product({"signal_fac": np.linspace(0.5, 1.5, 10),
+    traj.f_explore(cartesian_product({"signal_fac": np.linspace(0.5, 1.5, 11),
                                       'sgroup': [5],
                                       'seed': seeds}))
 
