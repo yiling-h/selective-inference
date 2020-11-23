@@ -61,7 +61,7 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
         W = np.zeros_like(X)
         for grp in np.unique(traj.groups):
             svdg = np.linalg.svd(X[:, traj.groups == grp],
-                                 full_matrices=False, compute_uv=False)
+                                 full_matrices=False, compute_uv=True)
             Wg = svdg[0]
             W[:, traj.groups == grp] = Wg
         X = W                   # overwrite X with standardized W
