@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="oposi-het"
+#SBATCH --job-name="oposi-bal"
 #SBATCH --partition=compute
 #SBATCH --nodes=40
 #SBATCH --ntasks-per-node=24
