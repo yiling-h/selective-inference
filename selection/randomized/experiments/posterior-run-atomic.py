@@ -32,7 +32,7 @@ def main(nreps=1):
     seeds = [19860 + i for i in range(nreps)]  # offset seed for each rep
 
     # specify parameters to explore
-    traj.f_explore(cartesian_product({"signal_fac": [1., 10., 100.],
+    traj.f_explore(cartesian_product({"signal_fac": np.linspace(0.5, 1.5, 10),
                                       'sgroup': [5],
                                       'seed': seeds}))
 
