@@ -538,13 +538,13 @@ def jacobian_grad_hess(gamma, C, active_dirs):
         GammaMinus = calc_GammaMinus(gamma,active_dirs)
 
         # eigendecomposition
-        evalues,evectors = eig(GammaMinus + C)
+        # evalues,evectors = eig(GammaMinus + C)
 
         # log Jacobian
-        J = log(evalues).sum()
+        J = np.log(np.linalg.det(GammaMinus + C))
 
         # inverse
-        GpC_inv = evectors.dot(np.diag(1/evalues).dot(evectors.T))
+        GpC_inv = np.linalg.inv(GammaMinus + C)
 
         # summing matrix (gamma.size by C.shape[0])
         S = block_diag(*[np.ones((1,ug.size-1)) for ug in active_dirs.values()])
