@@ -25,7 +25,7 @@ def main(nreps=1):
     traj.f_add_parameter('sgroup', 3)
     traj.f_add_parameter('sigma', 1)
     traj.f_add_parameter('rho', 0.35)
-    traj.f_add_parameter('randomizer_scale', 0.3)
+    traj.f_add_parameter('randomizer_scale', 0.71)
     traj.f_add_parameter('weight_frac', 1.0)
     traj.f_add_parameter('seed', 0)  # random seed
 
