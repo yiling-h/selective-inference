@@ -28,6 +28,8 @@ def main(nreps=1):
     traj.f_add_parameter('randomizer_scale', 0.71)
     traj.f_add_parameter('weight_frac', 0.8)
     traj.f_add_parameter('seed', 0)  # random seed
+    traj.f_add_parameter('std', False)  # standardized mode
+    traj.f_add_parameter('og', False)  # overlapping groups mode
 
     seeds = [19860 + i for i in range(nreps)]  # offset seed for each rep
 
