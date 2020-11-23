@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name="oposi-het"
 #SBATCH --partition=compute
-#SBATCH --nodes=23
+#SBATCH --nodes=32
 #SBATCH --ntasks-per-node=24
 #SBATCH -t 01:00:00
 #SBATCH -A TG-DMS190038
