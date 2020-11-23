@@ -625,7 +625,8 @@ class posterior():
                  prior,
                  dispersion,
                  solve_args={'tol': 1.e-12},
-                 XrawE=False):
+                 XrawE=False,
+                 useJacobian=True):
 
         self.solve_args = solve_args
 
@@ -633,7 +634,7 @@ class posterior():
         offset = conv.offset
         logdens_linear = conv.logdens_linear
 
-        _, self.inverse_info, _, _, _, _, log_ref = conv.selective_MLE(dispersion=dispersion)
+        _, self.inverse_info, _, _, _, _, log_ref = conv.selective_MLE(dispersion=dispersion, useJacobian=useJacobian)
 
 
         (observed_target, cov_target, cov_target_score, alternatives) = conv.selected_targets(dispersion,XrawE=XrawE)
