@@ -127,8 +127,7 @@ class group_lasso(object):
 
         opt_offset = self.initial_subgrad
 
-        self.observed_score_state = -opt_linearNoU.dot(_beta_unpenalized)
-        self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
+        self.observed_score_state = - X.T.dot(y)
 
         active_signs = np.sign(self.initial_soln)
         active = np.flatnonzero(active_signs)
