@@ -143,6 +143,7 @@ def posi(traj, X, Y, beta):
         traj.f_add_result('posi.mean.coverage', np.nan)
         traj.f_add_result('posi.mean.length', np.nan)
 
+
 def data_splitting(traj, X, Y, beta):
     n = X.shape[0]
     n_train = int(np.floor(n/2))
