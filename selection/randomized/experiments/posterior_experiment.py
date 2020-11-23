@@ -53,7 +53,17 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
 
     sigma_ = np.sqrt(dispersion)
 
-    grps_gsizes = zip(*np.unique(traj.groups, return_counts=True))  # useful iterable
+
+    if traj.og:
+        print("Running in OG mode")
+        ridge_term = 1e-14
+        W = np.hstack([X[:, inds] for inds in traj.groups])
+        grps = np.arange(len(traj.groups)).repeat(len(g) for g in traj.groups.values())
+    else:
+        ridge_term = 0.
+        grps = traj.groups
+
+    grps_gsizes = zip(*np.unique(grps, return_counts=True))  # useful iterable
 
     min_gsize = np.min(np.unique(grps, return_counts=True)[1])
 
@@ -62,27 +72,29 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
     if traj.std:                # standardized mode
         print("Running in standardized mode")
         W = np.zeros_like(X)
-        for grp in np.unique(traj.groups):
-            svdg = np.linalg.svd(X[:, traj.groups == grp],
+        for grp in np.unique(grps):
+            svdg = np.linalg.svd(X[:, grps == grp],
                                  full_matrices=False, compute_uv=True)
             Wg = svdg[0]
-            W[:, traj.groups == grp] = Wg
+            W[:, grps == grp] = Wg
         X = W                   # overwrite X with standardized W
 
     if randomize:
         randomizer_scale = traj.randomizer_scale * sigma_
         conv = group_lasso.gaussian(X,
                                     Y,
-                                    traj.groups,
+                                    grps,
                                     weights,
-                                    randomizer_scale=randomizer_scale)
+                                    randomizer_scale=randomizer_scale,
+                                    ridge_term=ridge_term)
     else:
         perturb = np.repeat(0, traj.p)
         conv = group_lasso.gaussian(X,
                                     Y,
-                                    traj.groups,
+                                    grps,
                                     weights,
-                                    perturb=perturb)
+                                    perturb=perturb,
+                                    ridge_term=ridge_term)
 
     signs, _ = conv.fit()
     nonzero = signs != 0
@@ -124,6 +136,13 @@ def posi(traj, X, Y, beta):
     if nonzero.sum() > 0:
         conv._setup_implied_gaussian()
 
+        if traj.og:
+            back_grp_map = np.hstack([inds for inds in traj.groups.values()])
+            nonzero_raw_inds = back_grp_map[nonzero]
+            nonzero_raw = np.repeat([False], X.shape[1])
+            for ind in nonzero_raw_inds:
+                nonzero_raw[ind] = True
+
         def prior(target_parameter, prior_var=100 * dispersion):
             grad_prior = -target_parameter / prior_var
             log_prior = -np.linalg.norm(target_parameter) ** 2 / (2. * prior_var)
@@ -138,7 +157,13 @@ def posi(traj, X, Y, beta):
         else:
             useJacobian = True
 
-        if traj.std:
+        if traj.og:
+            posterior_inf = posterior(conv,  #  this sometimes takes a long time to run
+                                      prior=prior,
+                                      dispersion=dispersion,
+                                      useJacobian=useJacobian,
+                                      XrawE=X[:, nonzero_raw])
+        elif traj.std:
             posterior_inf = posterior(conv,  #  this sometimes takes a long time to run
                                       prior=prior,
                                       dispersion=dispersion,
