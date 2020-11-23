@@ -105,7 +105,7 @@ def posi(traj, X, Y, beta):
     if nonzero.sum() > 0:
         conv._setup_implied_gaussian()
 
-        def prior(target_parameter, prior_var=100):
+        def prior(target_parameter, prior_var=100 * dispersion):
             grad_prior = -target_parameter / prior_var
             log_prior = -np.linalg.norm(target_parameter) ** 2 / (2. * prior_var)
             return grad_prior, log_prior
