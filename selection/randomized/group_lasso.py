@@ -392,7 +392,7 @@ class group_lasso(object):
             observed_target = restricted_estimator(self.loglike, self.ordered_vars, solve_args=solve_args)
             _score_linear = -XE.T.dot(self._W[:, None] * X).T
         else:
-            observed_target = np.inv(XrawE.T.dot(XrawE)).dot(XrawE.T.dot(y))
+            observed_target = inv(XrawE.T.dot(XrawE)).dot(XrawE.T.dot(y))
             _score_linear = -XrawE.T.dot(self._W[:, None] * X).T
 
         alternatives = ['twosided'] * len(self.active)
@@ -405,8 +405,8 @@ class group_lasso(object):
             cov_target = self.QI * dispersion
             crosscov_target_score = _score_linear.dot(self.QI).T * dispersion
         else:
-            cov_target = np.inv(XrawE.T.dot(XrawE)) * dispersion
-            crosscov_target_score = np.inv(XrawE.T.dot(XrawE)).dot(XrawE.T.dot(X)) * dispersion
+            cov_target = inv(XrawE.T.dot(XrawE)) * dispersion
+            crosscov_target_score = inv(XrawE.T.dot(XrawE)).dot(XrawE.T.dot(X)) * dispersion
 
         return (observed_target,
                 cov_target,
