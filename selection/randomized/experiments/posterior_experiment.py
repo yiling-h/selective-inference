@@ -20,7 +20,12 @@ def draw_data(traj):
 
     inst = gaussian_group_instance
 
-    signal = np.sqrt(traj.signal_fac * 2 * np.log(traj.p))
+    if type(traj.signal_fac) is tuple:
+        signal_l = np.sqrt(traj.signal_fac[0] * 2 * np.log(traj.p))
+        signal_u = np.sqrt(traj.signal_fac[1] * 2 * np.log(traj.p))
+        signal = (signal_l, signal_u)
+    else:
+        signal = np.sqrt(traj.signal_fac * 2 * np.log(traj.p))
 
     X, Y, beta = inst(n=traj.n,
                       p=traj.p,
