@@ -398,10 +398,11 @@ class group_lasso(object):
         Q = self.Q
         if XrawE is False:
             observed_target = restricted_estimator(self.loglike, self.ordered_vars, solve_args=solve_args)
+            _score_linear = -XE.T.dot(self._W[:, None] * X).T
         else:
             observed_target = np.inv(XrawE.T.dot(XrawE)).dot(XrawE.T.dot(y))
+            _score_linear = -XrawE.T.dot(self._W[:, None] * X).T
 
-        _score_linear = -XE.T.dot(self._W[:, None] * X).T
         alternatives = ['twosided'] * len(self.active)
 
         if dispersion is None:  # use Pearson's X^2
