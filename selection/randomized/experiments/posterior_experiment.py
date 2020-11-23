@@ -58,6 +58,7 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
     weights = dict([(i, traj.weight_frac * sigma_ * np.sqrt(2 * np.log(traj.p)) * np.sqrt(gsize)) for (i, gsize) in grps_gsizes])
 
     if traj.std:                # standardized mode
+        print("Running in standardized mode")
         W = np.zeros_like(X)
         for grp in np.unique(traj.groups):
             svdg = np.linalg.svd(X[:, traj.groups == grp],
