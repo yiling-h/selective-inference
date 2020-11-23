@@ -57,6 +57,15 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
 
     weights = dict([(i, traj.weight_frac * sigma_ * np.sqrt(2 * np.log(traj.p)) * np.sqrt(gsize)) for (i, gsize) in grps_gsizes])
 
+    if traj.std:                # standardized mode
+        W = np.zeros_like(X)
+        for grp in np.unique(traj.groups):
+            svdg = np.linalg.svd(X[:, traj.groups == grp],
+                                 full_matrices=False, compute_uv=False)
+            Wg = svdg[0]
+            W[:, traj.groups == grp] = Wg
+        X = W                   # overwrite X with standardized W
+
     if randomize:
         randomizer_scale = traj.randomizer_scale * sigma_
         conv = group_lasso.gaussian(X,
@@ -126,10 +135,17 @@ def posi(traj, X, Y, beta):
         else:
             useJacobian = True
 
-        posterior_inf = posterior(conv,  #  this sometimes takes a long time to run
-                                  prior=prior,
-                                  dispersion=dispersion,
-                                  useJacobian=useJacobian)
+        if traj.std:
+            posterior_inf = posterior(conv,  #  this sometimes takes a long time to run
+                                      prior=prior,
+                                      dispersion=dispersion,
+                                      useJacobian=useJacobian,
+                                      XrawE=X[:, nonzero])
+        else:
+            posterior_inf = posterior(conv,  #  this sometimes takes a long time to run
+                                      prior=prior,
+                                      dispersion=dispersion,
+                                      useJacobian=useJacobian)
 
         samples = posterior_inf.langevin_sampler(nsample=1500,
                                                  nburnin=100,
