@@ -190,5 +190,3 @@ def data_splitting(traj, X, Y, beta):
 
         traj.f_add_result('split.mean.coverage', np.nan)
         traj.f_add_result('split.mean.length', np.nan)
-
-
