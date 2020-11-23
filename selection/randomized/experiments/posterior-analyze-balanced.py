@@ -28,5 +28,5 @@ df = pd.DataFrame({'SGroup': sgroup,
                    'length_split': length_split,
                    'length_posi': length_posi})
 
-df.to_csv('selection/randomized/experiments/posterior-balanced.csv')
+df.to_csv('selection/randomized/experiments/hdf5/posterior-balanced.csv')
 
