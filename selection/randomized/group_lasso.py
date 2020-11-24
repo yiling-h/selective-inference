@@ -285,7 +285,7 @@ class group_lasso(object):
         """
 
         self._setup_implied_gaussian()  # Calculate useful quantities
-        (observed_target, cov_target, cov_target_score, alternatives) = self.selected_targets(dispersion, XrawE)
+        (observed_target, cov_target, cov_target_score, alternatives) = self.selected_targets(dispersion, XrawE=XrawE)
 
         init_soln = self.observed_opt_state  # just the gammas
         cond_mean = self.cond_mean
@@ -635,7 +635,7 @@ class posterior():
         offset = conv.offset
         logdens_linear = conv.logdens_linear
 
-        _, self.inverse_info, _, _, _, _, log_ref = conv.selective_MLE(dispersion=dispersion, useJacobian=useJacobian, XrawE)
+        _, self.inverse_info, _, _, _, _, log_ref = conv.selective_MLE(dispersion=dispersion, useJacobian=useJacobian, XrawE=XrawE)
 
 
         (observed_target, cov_target, cov_target_score, alternatives) = conv.selected_targets(dispersion,XrawE=XrawE)
