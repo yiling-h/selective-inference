@@ -53,6 +53,7 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
 
     sigma_ = np.sqrt(dispersion)
 
+    W = X.copy()                # use X as W if we don't change it
 
     if traj.og:
         print("Running in OG mode")
@@ -77,11 +78,10 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
                                  full_matrices=False, compute_uv=True)
             Wg = svdg[0]
             W[:, grps == grp] = Wg
-        X = W                   # overwrite X with standardized W
 
     if randomize:
         randomizer_scale = traj.randomizer_scale * sigma_
-        conv = group_lasso.gaussian(X,
+        conv = group_lasso.gaussian(W,
                                     Y,
                                     grps,
                                     weights,
@@ -89,7 +89,7 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
                                     ridge_term=ridge_term)
     else:
         perturb = np.repeat(0, traj.p)
-        conv = group_lasso.gaussian(X,
+        conv = group_lasso.gaussian(W,
                                     Y,
                                     grps,
                                     weights,
