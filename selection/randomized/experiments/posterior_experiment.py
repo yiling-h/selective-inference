@@ -105,6 +105,8 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
 def naive_inference(traj, X, Y, beta):
 
     nonzero, conv, _ = grp_lasso_selection(X, Y, traj, randomize=False)
+    traj.f_add_result('naive.nonzero.mask', nonzero)
+    traj.f_add_result('naive.nonzero.nnz', nonzero.sum())
 
     if nonzero.sum() > 0:
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
@@ -140,6 +142,8 @@ def naive_inference(traj, X, Y, beta):
 
 def posi(traj, X, Y, beta):
     nonzero, conv, dispersion = grp_lasso_selection(X, Y, traj, randomize=True)
+    traj.f_add_result('posi.nonzero.mask', nonzero)
+    traj.f_add_result('posi.nonzero.nnz', nonzero.sum())
 
     if nonzero.sum() > 0:
         conv._setup_implied_gaussian()
@@ -223,6 +227,8 @@ def data_splitting(traj, X, Y, beta):
     Y_test = Y[test_idx]
 
     nonzero, conv, _ = grp_lasso_selection(X_train, Y_train, traj, randomize=False)
+    traj.f_add_result('split.nonzero.mask', nonzero)
+    traj.f_add_result('split.nonzero.nnz', nonzero.sum())
 
     if nonzero.sum() > 0:
         beta_target = np.linalg.pinv(X_test[:, nonzero]).dot(X_test.dot(beta))
