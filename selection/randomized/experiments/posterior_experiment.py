@@ -109,7 +109,15 @@ def naive_inference(traj, X, Y, beta):
     if nonzero.sum() > 0:
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
-        fe, oi, z, p, intervals, _ = conv.naive_inference()
+        QI = np.linalg.inv(X[:, nonzero].T.dot(X[:, nonzero]))
+
+        observed_target = np.linalg.pinv(X[:, nonzero]).dot(Y)
+
+        dispersion = np.sum((Y - X[:, nonzero].dot(observed_target)) ** 2) / (X[:, nonzero].shape[0] - X[:, nonzero].shape[1])
+
+        cov_target = QI * dispersion
+
+        intervals = naive_confidence_intervals(np.diag(cov_target), observed_target)
 
         lci = intervals[:, 0]
         uci = intervals[:, 1]
