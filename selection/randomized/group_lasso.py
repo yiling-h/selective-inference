@@ -407,7 +407,7 @@ class group_lasso(object):
             crosscov_target_score = _score_linear.dot(self.QI).T * dispersion
         else:
             cov_target = inv(XrawE.T.dot(XrawE)) * dispersion
-            crosscov_target_score = inv(XrawE.T.dot(XrawE)).dot(XrawE.T.dot(X)) * dispersion
+            crosscov_target_score = - inv(XrawE.T.dot(XrawE)).dot(XrawE.T.dot(X)) * dispersion
 
         return (observed_target,
                 cov_target,
