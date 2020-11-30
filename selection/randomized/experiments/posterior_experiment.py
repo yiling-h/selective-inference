@@ -27,11 +27,22 @@ def draw_data(traj):
     else:
         signal = np.sqrt(traj.signal_fac * 2 * np.log(traj.p))
 
+    sgroup = traj.sgroup        # pass thru defaults
+    groups = traj.groups        # pass thru defaults
+
+    if type(traj.groups) is dict:  # OG mode
+        sgroup = [True, False]     # make a big active group and a big inactive group
+        active_feats = np.array([], dtype=np.int)
+        for g in range(traj.sgroup):
+            active_feats = np.union1d(active_feats, traj.groups[g])
+        groups = np.ones(traj.p, dtype=np.int)
+        groups[active_feats] = 0
+
     X, Y, beta = inst(n=traj.n,
                       p=traj.p,
                       signal=signal,
-                      groups=traj.groups,
-                      sgroup=traj.sgroup,
+                      groups=groups,
+                      sgroup=sgroup,
                       sigma=traj.sigma,
                       rho=traj.rho,
                       equicorrelated=False,
