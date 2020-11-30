@@ -110,6 +110,14 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
     signs, _ = conv.fit()
     nonzero = signs != 0
 
+    if traj.og:                 # map nonzero back to original indexing
+        back_grp_map = np.hstack([inds for inds in traj.groups.values()])
+        nonzero_raw_inds = back_grp_map[nonzero]
+        nonzero_raw = np.repeat([False], X.shape[1])
+        for ind in nonzero_raw_inds:
+            nonzero_raw[ind] = True
+        nonzero = nonzero_raw
+
     return nonzero, conv, dispersion
 
 
@@ -159,13 +167,6 @@ def posi(traj, X, Y, beta):
     if nonzero.sum() > 0:
         conv._setup_implied_gaussian()
 
-        if traj.og:
-            back_grp_map = np.hstack([inds for inds in traj.groups.values()])
-            nonzero_raw_inds = back_grp_map[nonzero]
-            nonzero_raw = np.repeat([False], X.shape[1])
-            for ind in nonzero_raw_inds:
-                nonzero_raw[ind] = True
-
         def prior(target_parameter, prior_var=100 * dispersion):
             grad_prior = -target_parameter / prior_var
             log_prior = -np.linalg.norm(target_parameter) ** 2 / (2. * prior_var)
@@ -180,13 +181,7 @@ def posi(traj, X, Y, beta):
         else:
             useJacobian = True
 
-        if traj.og:
-            posterior_inf = posterior(conv,  #  this sometimes takes a long time to run
-                                      prior=prior,
-                                      dispersion=dispersion,
-                                      useJacobian=useJacobian,
-                                      XrawE=X[:, nonzero_raw])
-        elif traj.std:
+        if traj.std or traj.og:
             posterior_inf = posterior(conv,  #  this sometimes takes a long time to run
                                       prior=prior,
                                       dispersion=dispersion,
