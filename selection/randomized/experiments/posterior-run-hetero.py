@@ -20,7 +20,7 @@ def main(nreps=1):
     # Now add the parameters with defaults
     traj.f_add_parameter('n', 500)
     traj.f_add_parameter('p', 100)
-    traj.f_add_parameter('signal_fac', np.float64(0.1))
+    traj.f_add_parameter('signal_fac', (np.float64(0.1), np.float64(1)))
     traj.f_add_parameter('groups', np.arange(12).repeat([3, 4, 5, 8, 10, 10, 10, 10, 10, 10, 10, 10]))
     traj.f_add_parameter('sgroup', [0, 1, 2])
     traj.f_add_parameter('sigma', 1)
@@ -34,7 +34,7 @@ def main(nreps=1):
     seeds = [19860 + i for i in range(nreps)]  # offset seed for each rep
 
     # specify parameters to explore
-    traj.f_explore(cartesian_product({"signal_fac": np.linspace(0.1, 1.5, 15),
+    traj.f_explore(cartesian_product({"signal_fac": [(i, i+1) for i in np.linspace(0.1, 1.5, 15)],
                                       'seed': seeds}))
 
     env.run(coverage_experiment)
