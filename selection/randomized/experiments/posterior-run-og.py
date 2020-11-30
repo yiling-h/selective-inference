@@ -1,9 +1,6 @@
 import numpy as np
-from selection.randomized.tests.test_group_lasso_posterior import test_posterior_inference
-from selection.randomized.query import naive_confidence_intervals
 from pypet import Environment, cartesian_product
-from selection.tests.instance import gaussian_group_instance
-from selection.randomized.group_lasso import group_lasso, posterior
+from selection.randomized.experiments.posterior_experiment import coverage_experiment
 
 
 def main(nreps=1):
