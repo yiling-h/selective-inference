@@ -140,6 +140,12 @@ def naive_inference(traj, X, Y, beta):
     traj.f_add_result('naive.nonzero.mask', nonzero)
     traj.f_add_result('naive.nonzero.nnz', nonzero.sum())
 
+    nz_true = beta.astype(bool)
+    traj.f_add_result('naive.sigdet.tp', np.logical_and(nonzero, nz_true).sum())
+    traj.f_add_result('naive.sigdet.tn', np.logical_and(~nonzero, ~nz_true).sum())
+    traj.f_add_result('naive.sigdet.fp', np.logical_and(nonzero, ~nz_true).sum())
+    traj.f_add_result('naive.sigdet.fn', np.logical_and(~nonzero, nz_true).sum())
+
     if nonzero.sum() > 0:
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
@@ -176,6 +182,12 @@ def posi(traj, X, Y, beta):
     nonzero, conv, dispersion = grp_lasso_selection(X, Y, traj, randomize=True)
     traj.f_add_result('posi.nonzero.mask', nonzero)
     traj.f_add_result('posi.nonzero.nnz', nonzero.sum())
+
+    nz_true = beta.astype(bool)
+    traj.f_add_result('posi.sigdet.tp', np.logical_and(nonzero, nz_true).sum())
+    traj.f_add_result('posi.sigdet.tn', np.logical_and(~nonzero, ~nz_true).sum())
+    traj.f_add_result('posi.sigdet.fp', np.logical_and(nonzero, ~nz_true).sum())
+    traj.f_add_result('posi.sigdet.fn', np.logical_and(~nonzero, nz_true).sum())
 
     if nonzero.sum() > 0:
         conv._setup_implied_gaussian()
@@ -248,6 +260,12 @@ def data_splitting(traj, X, Y, beta):
     nonzero, conv, _ = grp_lasso_selection(X_train, Y_train, traj, randomize=False)
     traj.f_add_result('split.nonzero.mask', nonzero)
     traj.f_add_result('split.nonzero.nnz', nonzero.sum())
+
+    nz_true = beta.astype(bool)
+    traj.f_add_result('split.sigdet.tp', np.logical_and(nonzero, nz_true).sum())
+    traj.f_add_result('split.sigdet.tn', np.logical_and(~nonzero, ~nz_true).sum())
+    traj.f_add_result('split.sigdet.fp', np.logical_and(nonzero, ~nz_true).sum())
+    traj.f_add_result('split.sigdet.fn', np.logical_and(~nonzero, nz_true).sum())
 
     if nonzero.sum() > 0:
         beta_target = np.linalg.pinv(X_test[:, nonzero]).dot(X_test.dot(beta))
