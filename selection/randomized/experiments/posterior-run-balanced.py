@@ -31,7 +31,7 @@ def main(nreps=1):
     traj.f_add_parameter('std', False)  # standardized mode
     traj.f_add_parameter('og', False)  # overlapping groups mode
 
-    seeds = [19860 + i for i in range(nreps)]  # offset seed for each rep
+    seeds = [1986 + i for i in range(nreps)]  # offset seed for each rep
 
     # specify parameters to explore
     traj.f_explore(cartesian_product({"signal_fac": np.linspace(0.1, 1.5, 15),
