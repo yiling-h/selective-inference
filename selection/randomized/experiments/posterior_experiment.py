@@ -68,9 +68,11 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
 
     if traj.og:
         print("Running in OG mode")
-        ridge_term = 1e-14
         W = np.hstack([X[:, inds] for inds in traj.groups])
         grps = np.arange(len(traj.groups)).repeat(len(g) for g in traj.groups.values())
+        mean_diag = np.mean((W ** 2).sum(0))
+        ridge_term = np.sqrt(mean_diag)/np.sqrt(traj.n-1)
+        print(ridge_term)
     else:
         ridge_term = 0.
         grps = traj.groups
