@@ -4,9 +4,9 @@ import matplotlib
 import numpy as np
 import pandas as pd
 
-traj = Trajectory('GrpLasso_Atomic')
+traj = Trajectory('GrpLasso_OG_Balanced')
 
-traj.f_load(filename='./selection/randomized/experiments/hdf5/GrpLasso_Atomic.hdf5',
+traj.f_load(filename='./selection/randomized/experiments/hdf5/GrpLasso_OG_Balanced.hdf5',
             load_results=1, load_parameters=2)
 
 coverage_naive = list(traj.f_get_from_runs(name='naive.mean.coverage', fast_access=True, auto_load=True, shortcuts=False).values())
@@ -32,7 +32,6 @@ tp_posi = list(traj.f_get_from_runs(name='posi.sigdet.tp', fast_access=True, aut
 tn_posi = list(traj.f_get_from_runs(name='posi.sigdet.tn', fast_access=True, auto_load=True, shortcuts=False).values())
 fp_posi = list(traj.f_get_from_runs(name='posi.sigdet.fp', fast_access=True, auto_load=True, shortcuts=False).values())
 fn_posi = list(traj.f_get_from_runs(name='posi.sigdet.fn', fast_access=True, auto_load=True, shortcuts=False).values())
-
 
 signal_fac = traj.f_get('signal_fac').f_get_range()
 
@@ -60,4 +59,4 @@ df = pd.DataFrame({'Signal': signal_fac,
                    'fn_posi' : fn_posi,
                    })
 
-df.to_csv('selection/randomized/experiments/hdf5/posterior-atomic.csv')
+df.to_csv('selection/randomized/experiments/hdf5/posterior-og.csv')
