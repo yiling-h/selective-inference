@@ -27,7 +27,7 @@ def main(nreps=1):
     traj.f_add_parameter('n', 500)
     traj.f_add_parameter('p', 103)
     traj.f_add_parameter('signal_fac', np.float64(0.))
-    traj.f_add_parameter('groups', groups)
+    traj.f_add_parameter('groups', np.arange(25).repeat(4))  # will get overwritten in OG mode
     traj.f_add_parameter('sgroup', 3)
     traj.f_add_parameter('sigma', 1)
     traj.f_add_parameter('rho', 0.35)

@@ -30,11 +30,15 @@ def draw_data(traj):
     sgroup = traj.sgroup        # pass thru defaults
     groups = traj.groups        # pass thru defaults
 
-    if type(traj.groups) is dict:  # OG mode
-        sgroup = [True, False]     # make a big active group and a big inactive group
+    if traj.og:  # OG mode
+        groups = {}
+        for k in range(0, 34):
+            groups[k] = range(k*3, k*3 + 4)
+
+        sgroup = [0]     # only the 0th group is active
         active_feats = np.array([], dtype=np.int)
         for g in range(traj.sgroup):
-            active_feats = np.union1d(active_feats, traj.groups[g])
+            active_feats = np.union1d(active_feats, groups[g])
         groups = np.ones(traj.p, dtype=np.int)
         groups[active_feats] = 0
 
@@ -68,8 +72,12 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
 
     if traj.og:
         print("Running in OG mode")
-        W = np.hstack([X[:, inds] for inds in traj.groups])
-        grps = np.arange(len(traj.groups)).repeat(len(g) for g in traj.groups.values())
+        groups = {}
+        for k in range(0, 34):
+            groups[k] = range(k*3, k*3 + 4)
+
+        W = np.hstack([X[:, inds] for inds in groups.values()])
+        grps = np.arange(len(groups)).repeat([len(g) for g in groups.values()])
         mean_diag = np.mean((W ** 2).sum(0))
         ridge_term = np.sqrt(mean_diag)/np.sqrt(traj.n-1)
         print(ridge_term)
@@ -113,7 +121,10 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
     nonzero = signs != 0
 
     if traj.og:                 # map nonzero back to original indexing
-        back_grp_map = np.hstack([inds for inds in traj.groups.values()])
+        groups = {}
+        for k in range(0, 34):
+            groups[k] = range(k*3, k*3 + 4)
+        back_grp_map = np.hstack([inds for inds in groups.values()])
         nonzero_raw_inds = back_grp_map[nonzero]
         nonzero_raw = np.repeat([False], X.shape[1])
         for ind in nonzero_raw_inds:
