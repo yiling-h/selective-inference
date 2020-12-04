@@ -10,9 +10,9 @@ def coverage_experiment(traj):
     X, Y, beta = draw_data(traj)
 
     # below calls will update traj with results
-    posi(traj, X, Y, beta)
     naive_inference(traj, X, Y, beta)
     data_splitting(traj, X, Y, beta)
+    posi(traj, X, Y, beta)
 
 
 def draw_data(traj):
