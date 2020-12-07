@@ -104,3 +104,29 @@ std.len <- std[std$metric == 'length',] %>%
 
 ggsave('std-cov.png', std.cov, width = 19.20, height = 10.80, units = 'in')
 ggsave('std-len.png', std.len, width = 19.20, height = 10.80, units = 'in')
+
+## og study
+og.wide <- read.csv('posterior-og.csv')
+
+og <- tidyr::pivot_longer(
+                       og.wide,
+                       cols = coverage_naive:length_posi,
+                       names_to = c('metric','method'),
+                       names_sep = '_')
+
+og.cov <- og[og$metric == 'coverage',] %>%
+    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position=position_dodge(width=0.05)) +
+    stat_summary(fun.data = mean_se, geom = 'line', size = 2, position = position_dodge(width = 0.05)) +
+    theme_bw(base_size = 30) +
+    ylab('Coverage')
+
+og.len <- og[og$metric == 'length',] %>%
+    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2 ) +
+    stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
+    theme_bw(base_size = 30) +
+    ylab('Length')
+
+ggsave('og-cov.png', og.cov, width = 19.20, height = 10.80, units = 'in')
+ggsave('og-len.png', og.len, width = 19.20, height = 10.80, units = 'in')
