@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name="posi-atom"
-#SBATCH --ntasks=750
+#SBATCH --ntasks=75
 #SBATCH --mem-per-cpu=6gb
 #SBATCH --time=8:00:00
 #SBATCH --account=stats_dept1
