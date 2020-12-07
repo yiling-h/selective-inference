@@ -109,7 +109,7 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
                                     randomizer_scale=randomizer_scale,
                                     ridge_term=ridge_term)
     else:
-        perturb = np.repeat(0, traj.p)
+        perturb = np.repeat(0, W.shape[1])
         conv = group_lasso.gaussian(W,
                                     Y,
                                     grps,
