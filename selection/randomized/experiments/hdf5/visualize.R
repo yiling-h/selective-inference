@@ -11,14 +11,14 @@ atom <- tidyr::pivot_longer(
                        names_sep = '_')
 
 atom.cov <- atom[atom$metric == 'coverage',] %>%
-    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Fac, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position=position_dodge(width=0.05)) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2, position = position_dodge(width = 0.05)) +
     theme_bw(base_size = 30) + 
     ylab('Coverage')
 
 atom.len <- atom[atom$metric == 'length',] %>%
-    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Fac, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2 ) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
     theme_bw(base_size = 30) + 
@@ -26,7 +26,7 @@ atom.len <- atom[atom$metric == 'length',] %>%
 
 
 atom.sigdet <- atom[atom$metric %in% c('tp','fp','tn','fn'),] %>%
-    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Fac, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2 ) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
     facet_wrap(~metric, scales='free_y') +
@@ -48,14 +48,14 @@ bal <- tidyr::pivot_longer(
                        names_sep = '_')
 
 bal.cov <- bal[bal$metric == 'coverage',] %>%
-    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Fac, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position=position_dodge(width=0.05)) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2, position = position_dodge(width = 0.05)) +
     theme_bw(base_size = 30) + 
     ylab('Coverage')
 
 bal.len <- bal[bal$metric == 'length',] %>%
-    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Fac, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2 ) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
     theme_bw(base_size = 30) + 
@@ -63,7 +63,7 @@ bal.len <- bal[bal$metric == 'length',] %>%
 
 
 bal.sigdet <- bal[bal$metric %in% c('tp','fp','tn','fn'),] %>%
-    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Fac, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2 ) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
     facet_wrap(~metric, scales='free_y') +
@@ -85,14 +85,14 @@ het <- tidyr::pivot_longer(
                        names_sep = '_')
 
 het.cov <- het[het$metric == 'coverage',] %>%
-    ggplot(aes(x = Signal_Lower, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Upper, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position = position_dodge(width = 0.05)) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2, position = position_dodge(width = 0.05)) +
     theme_bw(base_size = 30) + 
     ylab('Coverage')
 
 het.len <- het[het$metric == 'length',] %>%
-    ggplot(aes(x = Signal_Lower, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Upper, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2 ) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
     theme_bw(base_size = 30) + 
@@ -100,7 +100,7 @@ het.len <- het[het$metric == 'length',] %>%
 
 
 het.sigdet <- het[het$metric %in% c('tp','fp','tn','fn'),] %>%
-    ggplot(aes(x = Signal_Lower, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Upper, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2 ) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
     facet_wrap(~metric, scales='free_y') +
@@ -122,21 +122,21 @@ std <- tidyr::pivot_longer(
                        names_sep = '_')
 
 std.cov <- std[std$metric == 'coverage',] %>%
-    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Fac, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position=position_dodge(width=0.05)) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2, position = position_dodge(width = 0.05)) +
     theme_bw(base_size = 30) + 
     ylab('Coverage')
 
 std.len <- std[std$metric == 'length',] %>%
-    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Fac, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2 ) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
     theme_bw(base_size = 30) + 
     ylab('Length')
 
 std.sigdet <- std[std$metric %in% c('tp','fp','tn','fn'),] %>%
-    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Fac, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2 ) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
     facet_wrap(~metric, scales='free_y') +
@@ -157,14 +157,14 @@ og <- tidyr::pivot_longer(
                        names_sep = '_')
 
 og.cov <- og[og$metric == 'coverage',] %>%
-    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Fac, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position=position_dodge(width=0.05)) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2, position = position_dodge(width = 0.05)) +
     theme_bw(base_size = 30) +
     ylab('Coverage')
 
 og.len <- og[og$metric == 'length',] %>%
-    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Fac, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2 ) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
     theme_bw(base_size = 30) +
@@ -172,7 +172,7 @@ og.len <- og[og$metric == 'length',] %>%
 
 
 og.sigdet <- og[og$metric %in% c('tp','fp','tn','fn'),] %>%
-    ggplot(aes(x = Signal, y = value, color = method, style = method)) +
+    ggplot(aes(x = Signal_Fac, y = value, color = method, style = method)) +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2 ) +
     stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
     facet_wrap(~metric, scales='free_y') +
