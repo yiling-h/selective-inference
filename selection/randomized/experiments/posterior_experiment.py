@@ -11,7 +11,8 @@ def coverage_experiment(traj):
 
     # below calls will update traj with results
     naive_inference(traj, X, Y, beta)
-    data_splitting(traj, X, Y, beta)
+    data_splitting(traj, X, Y, beta, splitrat=0.5)
+    data_splitting(traj, X, Y, beta, splitrat=0.67)
     posi(traj, X, Y, beta)
 
 
@@ -243,9 +244,9 @@ def posi(traj, X, Y, beta):
         traj.f_add_result('posi.mean.length', np.nan)
 
 
-def data_splitting(traj, X, Y, beta):
+def data_splitting(traj, X, Y, beta, splitrat=.5):
     n = X.shape[0]
-    n_train = int(np.floor(n/2))
+    n_train = int(np.floor(n*splitrat))
 
     indices = np.random.permutation(n)
 
@@ -258,14 +259,14 @@ def data_splitting(traj, X, Y, beta):
     Y_test = Y[test_idx]
 
     nonzero, conv, _ = grp_lasso_selection(X_train, Y_train, traj, randomize=False)
-    traj.f_add_result('split.nonzero.mask', nonzero)
-    traj.f_add_result('split.nonzero.nnz', nonzero.sum())
+    traj.f_add_result(f'split{splitrat}.nonzero.mask', nonzero)
+    traj.f_add_result(f'split{splitrat}.nonzero.nnz', nonzero.sum())
 
     nz_true = beta.astype(bool)
-    traj.f_add_result('split.sigdet.tp', np.logical_and(nonzero, nz_true).sum())
-    traj.f_add_result('split.sigdet.tn', np.logical_and(~nonzero, ~nz_true).sum())
-    traj.f_add_result('split.sigdet.fp', np.logical_and(nonzero, ~nz_true).sum())
-    traj.f_add_result('split.sigdet.fn', np.logical_and(~nonzero, nz_true).sum())
+    traj.f_add_result(f'split{splitrat}.sigdet.tp', np.logical_and(nonzero, nz_true).sum())
+    traj.f_add_result(f'split{splitrat}.sigdet.tn', np.logical_and(~nonzero, ~nz_true).sum())
+    traj.f_add_result(f'split{splitrat}.sigdet.fp', np.logical_and(nonzero, ~nz_true).sum())
+    traj.f_add_result(f'split{splitrat}.sigdet.fn', np.logical_and(~nonzero, nz_true).sum())
 
     if nonzero.sum() > 0:
         beta_target = np.linalg.pinv(X_test[:, nonzero]).dot(X_test.dot(beta))
@@ -286,14 +287,14 @@ def data_splitting(traj, X, Y, beta):
         coverage = (lci < beta_target) * (uci > beta_target)
         length = uci - lci
 
-        traj.f_add_result('split.componentwise.coverage', coverage)
-        traj.f_add_result('split.componentwise.length', length)
+        traj.f_add_result(f'split{splitrat}.componentwise.coverage', coverage)
+        traj.f_add_result(f'split{splitrat}.componentwise.length', length)
 
-        traj.f_add_result('split.mean.coverage', np.mean(coverage))
-        traj.f_add_result('split.mean.length', np.mean(length))
+        traj.f_add_result(f'split{splitrat}.mean.coverage', np.mean(coverage))
+        traj.f_add_result(f'split{splitrat}.mean.length', np.mean(length))
     else:
-        traj.f_add_result('split.componentwise.coverage', np.nan)
-        traj.f_add_result('split.componentwise.length', np.nan)
+        traj.f_add_result(f'split{splitrat}.componentwise.coverage', np.nan)
+        traj.f_add_result(f'split{splitrat}.componentwise.length', np.nan)
 
-        traj.f_add_result('split.mean.coverage', np.nan)
-        traj.f_add_result('split.mean.length', np.nan)
+        traj.f_add_result(f'split{splitrat}.mean.coverage', np.nan)
+        traj.f_add_result(f'split{splitrat}.mean.length', np.nan)
