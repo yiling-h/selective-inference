@@ -26,7 +26,7 @@ def main(nreps=1):
     traj.f_add_parameter('sigma', 1)
     traj.f_add_parameter('rho', 0.35)
     traj.f_add_parameter('randomizer_scale', 0.71)
-    traj.f_add_parameter('weight_frac', 2.0)
+    traj.f_add_parameter('weight_frac', 0.8)
     traj.f_add_parameter('seed', 0)  # random seed
     traj.f_add_parameter('std', False)  # standardized mode
     traj.f_add_parameter('og', False)  # overlapping groups mode
