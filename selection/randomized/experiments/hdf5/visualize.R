@@ -101,8 +101,8 @@ het.len <- het[het$metric == 'length',] %>%
 
 het.sigdet <- het[het$metric %in% c('tp','fp','tn','fn'),] %>%
     ggplot(aes(x = Signal_Upper, y = value, color = method, style = method)) +
-    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2 ) +
-    stat_summary(fun.data = mean_se, geom = 'line', size = 2) +
+    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position = position_dodge(width = 0.05)) +
+    stat_summary(fun.data = mean_se, geom = 'line', size = 2, position = position_dodge(width = 0.05)) +
     facet_wrap(~metric, scales='free_y') +
     theme_bw(base_size = 30) +
     ylab('Count')
