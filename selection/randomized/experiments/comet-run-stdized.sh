@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="oposi-std"
+#SBATCH --job-name="posi-std"
 #SBATCH --partition=compute
 #SBATCH --nodes=7
 #SBATCH --ntasks-per-node=24

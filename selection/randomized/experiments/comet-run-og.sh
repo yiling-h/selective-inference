@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="oposi-og"
+#SBATCH --job-name="posi-og"
 #SBATCH --partition=compute
 #SBATCH --nodes=7
 #SBATCH --ntasks-per-node=24
