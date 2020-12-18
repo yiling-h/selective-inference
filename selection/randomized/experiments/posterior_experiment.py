@@ -62,7 +62,7 @@ def draw_data(traj):
 
 def grp_lasso_selection(X, Y, traj, randomize=True):
     sigma_ = np.std(Y)          # sigma-hat
-    if traj.n > traj.p:
+    if traj.n > 2*traj.p:
         dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (traj.n - traj.p)
     else:
         dispersion = sigma_ ** 2
