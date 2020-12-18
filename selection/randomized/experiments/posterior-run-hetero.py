@@ -19,9 +19,9 @@ def main(nreps=1):
 
     # Now add the parameters with defaults
     traj.f_add_parameter('n', 500)
-    traj.f_add_parameter('p', 150)
+    traj.f_add_parameter('p', 100)
     traj.f_add_parameter('signal_fac', (np.float64(0.1), np.float64(1)))
-    traj.f_add_parameter('groups', np.arange(22).repeat([3]*3 + [4]*4 + [5]*5 + [10]*10))
+    traj.f_add_parameter('groups', np.arange(17).repeat([3]*3 + [4]*4 + [5]*5 + [10]*5))
     traj.f_add_parameter('sgroup', [0, 3, 7])
     traj.f_add_parameter('sigma', 1)
     traj.f_add_parameter('rho', 0.35)
