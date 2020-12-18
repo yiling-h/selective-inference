@@ -62,10 +62,11 @@ def draw_data(traj):
 
 def grp_lasso_selection(X, Y, traj, randomize=True):
     sigma_ = np.std(Y)          # sigma-hat
-    if traj.n > 2*traj.p:
-        dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (traj.n - traj.p)
-    else:
-        dispersion = sigma_ ** 2
+    # if traj.n > 2*traj.p:
+    #     dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (traj.n - traj.p)
+    # else:
+    #     dispersion = sigma_ ** 2
+    dispersion = traj.sigma ** 2
 
     sigma_ = np.sqrt(dispersion)
 
@@ -154,7 +155,8 @@ def naive_inference(traj, X, Y, beta):
 
         observed_target = np.linalg.pinv(X[:, nonzero]).dot(Y)
 
-        dispersion = np.sum((Y - X[:, nonzero].dot(observed_target)) ** 2) / (X[:, nonzero].shape[0] - X[:, nonzero].shape[1])
+        # dispersion = np.sum((Y - X[:, nonzero].dot(observed_target)) ** 2) / (X[:, nonzero].shape[0] - X[:, nonzero].shape[1])
+        dispersion = traj.sigma ** 2
 
         cov_target = QI * dispersion
 
@@ -275,7 +277,8 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
 
         observed_target = np.linalg.pinv(X_test[:, nonzero]).dot(Y_test)
 
-        dispersion = np.sum((Y_test - X_test[:, nonzero].dot(observed_target)) ** 2) / (X_test[:, nonzero].shape[0] - X_test[:, nonzero].shape[1])
+        # dispersion = np.sum((Y_test - X_test[:, nonzero].dot(observed_target)) ** 2) / (X_test[:, nonzero].shape[0] - X_test[:, nonzero].shape[1])
+        dispersion = traj.sigma ** 2
 
         cov_target = QI * dispersion
 
