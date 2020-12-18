@@ -1,5 +1,5 @@
 library(ggplot2)
-library(tidyr)
+library(tidyverse)
 
 ## atomic study
 atom.wide <- read.csv('posterior-atomic.csv')
