@@ -61,13 +61,7 @@ def draw_data(traj):
 
 
 def grp_lasso_selection(X, Y, traj, randomize=True):
-    sigma_ = np.std(Y)          # sigma-hat
-    # if traj.n > 2*traj.p:
-    #     dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (traj.n - traj.p)
-    # else:
-    #     dispersion = sigma_ ** 2
-    dispersion = traj.sigma ** 2
-
+    dispersion = traj.sigma ** 2  # use the true (oracle) value of sigma^2 as dispersion
     sigma_ = np.sqrt(dispersion)
 
     W = X.copy()                # use X as W if we don't change it
