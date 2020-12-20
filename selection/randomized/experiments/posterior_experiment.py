@@ -138,7 +138,7 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
 
 def naive_inference(traj, X, Y, beta):
 
-    nonzero, conv, _ = grp_lasso_selection(X, Y, traj, randomize=False)
+    nonzero, conv, dispersion = grp_lasso_selection(X, Y, traj, randomize=False)
     traj.f_add_result('naive.nonzero.mask', nonzero)
     traj.f_add_result('naive.nonzero.nnz', nonzero.sum())
 
@@ -154,9 +154,6 @@ def naive_inference(traj, X, Y, beta):
         QI = np.linalg.inv(X[:, nonzero].T.dot(X[:, nonzero]))
 
         observed_target = np.linalg.pinv(X[:, nonzero]).dot(Y)
-
-        # dispersion = np.sum((Y - X[:, nonzero].dot(observed_target)) ** 2) / (X[:, nonzero].shape[0] - X[:, nonzero].shape[1])
-        dispersion = traj.sigma ** 2
 
         cov_target = QI * dispersion
 
@@ -260,7 +257,7 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
     X_test = X[test_idx, :]
     Y_test = Y[test_idx]
 
-    nonzero, conv, _ = grp_lasso_selection(X_train, Y_train, traj, randomize=False)
+    nonzero, conv, dispersion = grp_lasso_selection(X_train, Y_train, traj, randomize=False)
     traj.f_add_result(f'split{splitrat}.nonzero.mask', nonzero)
     traj.f_add_result(f'split{splitrat}.nonzero.nnz', nonzero.sum())
 
@@ -276,9 +273,6 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
         QI = np.linalg.inv(X_test[:, nonzero].T.dot(X_test[:, nonzero]))
 
         observed_target = np.linalg.pinv(X_test[:, nonzero]).dot(Y_test)
-
-        # dispersion = np.sum((Y_test - X_test[:, nonzero].dot(observed_target)) ** 2) / (X_test[:, nonzero].shape[0] - X_test[:, nonzero].shape[1])
-        dispersion = traj.sigma ** 2
 
         cov_target = QI * dispersion
 
