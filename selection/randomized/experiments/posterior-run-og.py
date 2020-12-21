@@ -39,7 +39,7 @@ def main(nreps=1):
     traj.f_add_parameter('og', True)  # overlapping groups mode
 
     # specify parameters to explore
-    traj.f_explore(cartesian_product({"signal_fac": np.linspace(0.1, 1.5, 15),
+    traj.f_explore(cartesian_product({"signal_fac": [0.1, 0.5, 1.5],
                                       'sgroup': [3],
                                       'rep': range(nreps)}))
 
@@ -51,4 +51,4 @@ def main(nreps=1):
 if __name__ == '__main__':
     # Let's make the python evangelists happy and encapsulate
     # the main function as you always should ;-)
-    main(10)
+    main(500)
