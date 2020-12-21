@@ -23,8 +23,8 @@ def main(nreps=1):
     traj.f_add_parameter('signal_fac', (np.float64(0.1), np.float64(1)))
     traj.f_add_parameter('groups', np.arange(17).repeat([3]*3 + [4]*4 + [5]*5 + [10]*5))
     traj.f_add_parameter('sgroup', [0, 3, 7])
-    traj.f_add_parameter('sigma', 1)
-    traj.f_add_parameter('rho', 0.35)
+    traj.f_add_parameter('sigma', 3.)
+    traj.f_add_parameter('rho', 0.20)
     traj.f_add_parameter('randomizer_scale', 0.71)
     traj.f_add_parameter('weight_frac', 1.0)
     traj.f_add_parameter('seed', 1986)  # random seed offset
