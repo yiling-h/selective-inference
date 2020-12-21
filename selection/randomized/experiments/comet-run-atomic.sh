@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="posi-het"
+#SBATCH --job-name="posi-atom"
 #SBATCH --partition=compute
 #SBATCH --nodes=7
 #SBATCH --ntasks-per-node=24
