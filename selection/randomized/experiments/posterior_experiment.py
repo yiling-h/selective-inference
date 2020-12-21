@@ -19,8 +19,6 @@ def coverage_experiment(traj):
 
 
 def draw_data(traj):
-    np.random.seed(seed=traj.seed)
-
     inst = gaussian_group_instance
 
     if type(traj.signal_fac) is tuple:
