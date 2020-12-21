@@ -29,8 +29,8 @@ def main(nreps=1):
     traj.f_add_parameter('signal_fac', np.float64(0.))
     traj.f_add_parameter('groups', np.arange(25).repeat(4))  # will get overwritten in OG mode
     traj.f_add_parameter('sgroup', 3)
-    traj.f_add_parameter('sigma', 1)
-    traj.f_add_parameter('rho', 0.35)
+    traj.f_add_parameter('sigma', 3.)
+    traj.f_add_parameter('rho', 0.20)
     traj.f_add_parameter('randomizer_scale', 0.71)
     traj.f_add_parameter('weight_frac', 1.0)
     traj.f_add_parameter('seed', 1986)  # random seed offset
