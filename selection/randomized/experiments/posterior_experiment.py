@@ -85,7 +85,9 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
 
     avg_gsize_flr = np.floor(np.mean(np.unique(grps, return_counts=True)[1]))
 
-    weights = dict([(i, traj.weight_frac * sigma_ * np.sqrt(2 * np.log(traj.p)) * np.sqrt(gsize) / np.sqrt(avg_gsize_flr)) for (i, gsize) in grps_gsizes])
+    n_scale = W.shape[0] / traj.n
+
+    weights = dict([(i, n_scale * traj.weight_frac * sigma_ * np.sqrt(2 * np.log(traj.p)) * np.sqrt(gsize) / np.sqrt(avg_gsize_flr)) for (i, gsize) in grps_gsizes])
 
     if traj.std:                # standardized mode
         print("Running in standardized mode")
