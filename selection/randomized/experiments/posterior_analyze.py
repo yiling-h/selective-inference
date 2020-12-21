@@ -37,7 +37,7 @@ def make_df(traj):
 
     signal_fac = traj.f_get('signal_fac').f_get_range()
 
-    seed = list(traj.f_get_from_runs(name='seed', fast_access=True, auto_load=True, shortcuts=False).values())
+    cseed = list(traj.f_get_from_runs(name='cseed', fast_access=True, auto_load=True, shortcuts=False).values())
 
     df = pd.DataFrame({'coverage_naive': coverage_naive,
                        'coverage_split50': coverage_split50,
@@ -67,7 +67,7 @@ def make_df(traj):
                        'fn_split50': fn_split50,
                        'fn_split67': fn_split67,
                        'fn_posi': fn_posi,
-                       'seed': seed,
+                       'cseed': cseed,
                        })
 
     if isinstance(traj.signal_fac, tuple):

@@ -5,9 +5,9 @@ from selection.randomized.group_lasso import group_lasso, posterior
 
 
 def coverage_experiment(traj):
-    seed = traj.seed + traj.v_idx  # seed offset + run idx
-    traj.f_add_result('seed', seed)
-    np.random.seed(seed=seed)
+    cseed = traj.seed + traj.v_idx  # seed offset + run idx
+    traj.f_add_result('cseed', cseed)
+    np.random.seed(seed=cseed)
 
     X, Y, beta = draw_data(traj)
 
