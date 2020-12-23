@@ -183,3 +183,37 @@ og.sigdet <- og[og$metric %in% c('tp','fp','tn','fn'),] %>%
 ggsave('og-cov.png', og.cov, width = 19.20, height = 10.80, units = 'in')
 ggsave('og-len.png', og.len, width = 19.20, height = 10.80, units = 'in')
 ggsave('og-sigdet.png', og.sigdet, width = 19.20, height = 10.80, units = 'in')
+
+## compact plots
+
+names(het)[2] <- 'Signal_Fac'
+atom$Setting <- 'Atomic'
+bal$Setting <- 'Balanced'
+het$Setting <- 'Heterogeneous'
+std$Setting <- 'Standardized'
+og$Setting <- 'Overlapping'
+
+res <- rbind(atom,bal,het,std,og)
+res$SNR <- as.factor(res$Signal_Fac)
+res$Method <- recode(res$method, naive = 'Naive', posi = 'PoSI', split50 = 'Split (1:1)', split67= 'Split (2:1)')
+
+snr.labels <- as_labeller(c('0.2' = 'Low SNR', '0.5' = 'Medium SNR', '1.5' = 'High SNR'))
+
+cmp.cov <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage') %>%
+    ggplot(aes(x = Setting, y = value, fill = Method)) +
+    stat_summary(fun.data = mean_se, geom = 'col', size = 2, position='dodge') +
+    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position='dodge') +
+    facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
+    geom_hline(yintercept=0.9, linetype='dashed') +
+    coord_cartesian(ylim=c(0.5, 1.0)) +
+    ylab('Coverage') +
+    theme_bw(base_size = 30)
+
+
+cmp.len <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length') %>%
+    ggplot(aes(x = Setting, y = value, fill = Method)) +
+    stat_summary(fun.data = mean_se, geom = 'col', size = 2, position='dodge') +
+    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position='dodge') +
+    facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
+    ylab('Length') +
+    theme_bw(base_size = 30)
