@@ -34,7 +34,7 @@ def main(nreps=1):
     traj.f_add_parameter('nsample', 1500)  # number of samples for posi
 
     # specify parameters to explore
-    traj.f_explore(cartesian_product({"signal_fac": np.linspace(0.1, 1.5, 15),
+    traj.f_explore(cartesian_product({"signal_fac": np.linspace(0.2, 1.5, 15),
                                       'sgroup': [3],
                                       'rep': range(nreps)}))
 
