@@ -31,6 +31,7 @@ def main(nreps=1):
     traj.f_add_parameter('rep', 0)  # dummy to track replications
     traj.f_add_parameter('std', True)  # standardized mode
     traj.f_add_parameter('og', False)  # overlapping groups mode
+    traj.f_add_parameter('nsample', 1500)  # number of samples for posi
 
     # specify parameters to explore
     traj.f_explore(cartesian_product({"signal_fac": np.linspace(0.1, 1.5, 15),

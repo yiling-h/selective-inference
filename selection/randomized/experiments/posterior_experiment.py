@@ -188,7 +188,7 @@ def posi(traj, X, Y, beta):
     traj.f_add_result('posi.sigdet.fp', np.logical_and(nonzero, ~nz_true).sum())
     traj.f_add_result('posi.sigdet.fn', np.logical_and(~nonzero, nz_true).sum())
 
-    if nonzero.sum() > 0:
+    if nonzero.sum() > 0 & traj.nsample > 0:
         conv._setup_implied_gaussian()
 
         def prior(target_parameter, prior_var=100 * dispersion):
@@ -217,7 +217,8 @@ def posi(traj, X, Y, beta):
                                       dispersion=dispersion,
                                       useJacobian=useJacobian)
 
-        samples = posterior_inf.langevin_sampler(nsample=1500,
+
+        samples = posterior_inf.langevin_sampler(nsample=traj.nsample,
                                                  nburnin=100,
                                                  step=1.,
                                                  verbose=0)
