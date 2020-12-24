@@ -33,7 +33,7 @@ def main(nreps=1):
     traj.f_add_parameter('og', False)  # overlapping groups mode
 
     # specify parameters to explore
-    traj.f_explore(cartesian_product({"signal_fac": [(i/(12 ** 2), i) for i in np.array([0.1, 0.5, 1.5])],
+    traj.f_explore(cartesian_product({"signal_fac": [(i/(12 ** 2), i) for i in np.array([0.2, 0.5, 1.5])],
                                       'rep': range(nreps)}))
 
     env.run(coverage_experiment)
