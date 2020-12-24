@@ -117,6 +117,7 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
 
     signs, _ = conv.fit()
     nonzero = signs != 0
+    print(f'I selected {np.sum(nonzero)} coefficients as nonzero.\n')
 
     if traj.og:                 # map nonzero back to original indexing
         groups = {}
