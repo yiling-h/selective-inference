@@ -216,6 +216,7 @@ cmp.len.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length') %>%
     stat_summary(fun.data = mean_se, geom = 'col', size = 2, position='dodge') +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position='dodge') +
     facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
+    coord_cartesian(ylim = c(9,NA)) +
     ylab('Length') +
     theme_bw(base_size = 30)
 
@@ -237,6 +238,7 @@ cmp.len.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length') %>%
     stat_summary(fun.data = mean_se, geom = 'col', size = 2, position='dodge') +
     stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position='dodge') +
     facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
+    coord_cartesian(ylim=c(9,NA)) +
     ylab('Length') +
     theme_bw(base_size = 30)
 
