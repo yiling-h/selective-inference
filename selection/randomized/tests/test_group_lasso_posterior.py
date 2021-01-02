@@ -93,7 +93,7 @@ def main(ndraw=10):
     length_ = 0.
     for n in range(ndraw):
         cov, len = test_posterior_inference(n=500,
-                                            p=200,
+                                            p=100,
                                             signal_fac=1.2,
                                             sgroup=3,
                                             s=5,
