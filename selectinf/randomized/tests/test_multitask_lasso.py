@@ -27,7 +27,7 @@ def test_multitask_lasso_global(ntask=2,
                                                                       signal,
                                                                       rhos)[:3]
 
-    feature_weight = weight * 1. * np.sqrt(2 * np.log(p)) * np.ones(p)
+    feature_weight = weight * np.sqrt(2 * np.log(p)) * np.ones(p)
 
     sigmas_ = np.array([np.std(response_vars[i]) for i in range(ntask)])
 
@@ -88,11 +88,11 @@ def test_multitask_lasso_hetero(ntask=2,
                                                                       signal,
                                                                       rhos)[:3]
 
-    feature_weight = weight * 1. * np.sqrt(2 * np.log(p)) * np.ones(p)
+    feature_weight = weight * np.sqrt(2 * np.log(p)) * np.ones(p)
 
     sigmas_ = np.array([np.std(response_vars[i]) for i in range(ntask)])
 
-    randomizer_scales = 1. * sigmas_
+    randomizer_scales = 0.71 * sigmas_
 
     multi_lasso = multi_task_lasso.gaussian(predictor_vars,
                                             response_vars,
@@ -101,7 +101,7 @@ def test_multitask_lasso_hetero(ntask=2,
                                             randomizer_scales=randomizer_scales)
     active_signs = multi_lasso.fit()
 
-    dispersions = sigma
+    dispersions = sigma ** 2
 
     estimate, observed_info_mean, _, _, intervals = multi_lasso.multitask_inference_hetero(dispersions=dispersions)
 
@@ -140,11 +140,11 @@ def test_coverage(nsim=100):
         coverage, length = test_multitask_lasso_hetero(ntask=ntask,
                                                        nsamples=3000 * np.ones(ntask),
                                                        p=100,
-                                                       global_sparsity=.90,
+                                                       global_sparsity=.80,
                                                        task_sparsity=0.50,
                                                        sigma=1.*np.ones(ntask),
-                                                       signal_fac=0.5,
-                                                       rhos=0.20*np.ones(ntask),
+                                                       signal_fac=np.array([0.2, 1.]),
+                                                       rhos=0.30*np.ones(ntask),
                                                        weight=1.)
 
         if coverage.sum() <= 0.10:

@@ -400,10 +400,10 @@ def gaussian_multitask_instance(ntask,
 
     if signal.shape == (1,):
         beta = float(signal[0]) * np.ones((p,ntask))
-        global_nulls = np.random.choice(p, int(round(global_sparsity * p)))
+        global_nulls = np.random.choice(p, int(round(global_sparsity * p)), replace=False)
         beta[global_nulls, :] = np.zeros((ntask,))
         for i in np.delete(range(p), global_nulls):
-            beta[i, np.random.choice(ntask, int(round(task_sparsity * ntask)))] = 0.
+            beta[i, np.random.choice(ntask, int(round(task_sparsity * ntask)), replace=False)] = 0.
 
     else:
         beta = np.ones((p,ntask))
