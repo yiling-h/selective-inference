@@ -79,8 +79,8 @@ class multi_task_lasso(gaussian_query):
          self.beta_bar = beta_bar
 
          seltasks = np.array([active[j,:].sum() for j in range(p)])
-         self.active_global = np.asarray([j for j in range(p) if seltasks[j]>0])
-         self.seltasks = seltasks[seltasks>0]
+         self.active_global = np.asarray([j for j in range(p) if seltasks[j] > 0])
+         self.seltasks = seltasks[seltasks > 0]
 
          self.selection_variable = {'sign': active_signs.copy(),
                                     'variables': ordered_variables}
@@ -203,13 +203,13 @@ class multi_task_lasso(gaussian_query):
 
          ##check K.K.T map
 
-         print("check  K.K.T. map", np.allclose(omegas, scores +  opt_linears.dot(observed_opt_states)+ opt_offsets, atol=1e-03))
+         print("check  K.K.T. map", np.allclose(omegas, scores + opt_linears.dot(observed_opt_states) + opt_offsets, atol=1e-05))
 
          ##forming linear constraints on our optimization variables
 
          ##definining the truncation on sums of our opt variables for each j
 
-         con_vec = self.seltasks[self.seltasks-1 > 0] -1
+         con_vec = self.seltasks[self.seltasks-1 > 0] - 1
          _len_var = np.cumsum(con_vec)
 
          _con_sum = np.zeros((_len_var.shape[0], opt_vars))
@@ -220,9 +220,9 @@ class multi_task_lasso(gaussian_query):
              if j==0:
                  (_con_sum[j, :])[:_len_var[j]] = 1
              elif j== (_len_var[-1]-1):
-                 (_con_sum[j, :])[(_len_var[j-1]+1):]=1
+                 (_con_sum[j, :])[(_len_var[j-1]+1):] = 1
              else:
-                 (_con_sum[j, :])[_len_var[j-1]:_len_var[j]]=1
+                 (_con_sum[j, :])[_len_var[j-1]:_len_var[j]] = 1
 
          self.linear_con = np.vstack((-np.identity(opt_vars), _con_sum))
          self.offset_con = np.append(np.zeros(opt_vars), _con_trunc)
@@ -232,7 +232,7 @@ class multi_task_lasso(gaussian_query):
          self.observed_opt_states = observed_opt_states
          self.observed_score_states = scores
 
-         print("check signs of observed opt_states ", ((self.linear_con.dot(observed_opt_states)-self.offset_con)<0).sum(), self.linear_con.shape[0],
+         print("check signs of observed opt_states ", ((self.linear_con.dot(observed_opt_states)-self.offset_con) < 0).sum(), self.linear_con.shape[0],
                opt_vars, self.seltasks.sum())
 
          return active_signs
@@ -243,6 +243,7 @@ class multi_task_lasso(gaussian_query):
          for i in range(self.ntask):
              _, prec = self.randomizers[i].cov_prec
              precs = block_diag(precs, prec * np.identity(self.nfeature))
+
          precs = precs[1:, :]
 
          cond_precision = self.opt_linears.T.dot(precs.dot(self.opt_linears))
@@ -335,7 +336,6 @@ class multi_task_lasso(gaussian_query):
          return log_lik, grad_lik, hess_lik
 
      def multitask_inference_hetero(self,
-                                    solve_args={'tol': 1.e-12},
                                     level=0.9,
                                     dispersions=None):
 
@@ -359,9 +359,9 @@ class multi_task_lasso(gaussian_query):
                                   linear_part,
                                   offset,
                                   step=1,
-                                  nstep=5000,
+                                  nstep=8000,
                                   min_its=3000,
-                                  tol=1.e-12)
+                                  tol=1.e-15)
 
          prec_target = np.linalg.inv(cov_target)
 
@@ -383,6 +383,44 @@ class multi_task_lasso(gaussian_query):
                                 final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
 
          return final_estimator, observed_info_mean, Z_scores, pvalues, intervals
+
+     def multitask_target_hetero(self,
+                                dispersions=None,
+                                solve_args={'tol': 1.e-12, 'min_its': 50}):
+
+         observed_targets = []
+         cov_targets = np.array([])
+         crosscov_target_scores = np.array([])
+
+         for j in range(self.ntask):
+
+             X, y = self.loglikes[j].data
+             n, p = X.shape
+             features = self._active[:, j]
+             W = self.loglikes[j].saturated_loss.hessian(X.dot(self.beta_bar[:, j]))
+
+             Xfeat = X[:, features]
+             Qfeat = Xfeat.T.dot(W[:, None] * Xfeat)
+
+             observed_target = restricted_estimator(self.loglikes[j], features, solve_args=solve_args)
+             cov_target = np.linalg.inv(Qfeat)
+             _score_linear = -Xfeat.T.dot(W[:, None] * X).T
+
+             crosscov_target_score = _score_linear.dot(cov_target)
+
+             if dispersions is None:  # use Pearson's X^2
+                 dispersion = ((y - self.loglikes[j].saturated_loss.mean_function(
+                     Xfeat.dot(observed_target))) ** 2 / W).sum() / (n - Xfeat.shape[1])
+             else:
+                 dispersion = dispersions[j]
+
+             observed_targets.extend(observed_target)
+             crosscov_target_scores = block_diag(crosscov_target_scores, crosscov_target_score.T * dispersion)
+             cov_targets = block_diag(cov_targets, cov_target * dispersion)
+
+         return (np.asarray(observed_targets),
+                 cov_targets[1:, :],
+                 crosscov_target_scores[1:, :])
 
      def multitask_inference_global(self,
                                     dispersions=None,
@@ -491,44 +529,6 @@ class multi_task_lasso(gaussian_query):
                  cov_targets[1:, :],
                  crosscov_target_scores[1:, :])
 
-     def multitask_target_hetero(self,
-                                    dispersions=None,
-                                    solve_args={'tol': 1.e-12, 'min_its': 50}):
-
-         observed_targets = []
-         cov_targets = np.array([])
-         crosscov_target_scores = np.array([])
-
-         for j in range(self.ntask):
-
-             X, y = self.loglikes[j].data
-             n, p = X.shape
-             features = self._active[:, j]
-             W = self.loglikes[j].saturated_loss.hessian(X.dot(self.beta_bar[:, j]))
-
-             Xfeat = X[:, features]
-             Qfeat = Xfeat.T.dot(W[:, None] * Xfeat)
-
-             observed_target = restricted_estimator(self.loglikes[j], features, solve_args=solve_args)
-             cov_target = np.linalg.inv(Qfeat)
-             _score_linear = -Xfeat.T.dot(W[:, None] * X).T
-
-             crosscov_target_score = _score_linear.dot(cov_target)
-
-             if dispersions is None:  # use Pearson's X^2
-                 dispersion = ((y - self.loglikes[j].saturated_loss.mean_function(
-                     Xfeat.dot(observed_target))) ** 2 / W).sum() / (n - Xfeat.shape[1])
-             else:
-                 dispersion = dispersions[j]
-
-             observed_targets.extend(observed_target)
-             crosscov_target_scores = block_diag(crosscov_target_scores, crosscov_target_score.T * dispersion)
-             cov_targets = block_diag(cov_targets, cov_target * dispersion)
-
-         return (np.asarray(observed_targets),
-                 cov_targets[1:, :],
-                 crosscov_target_scores[1:, :])
-
      def _solve_randomized_problem(self,
                                    penalty,
                                    solve_args={'tol': 1.e-12, 'min_its': 50}):
@@ -558,7 +558,7 @@ class multi_task_lasso(gaussian_query):
             self._initial_omega = np.array([self.randomizers[i].sample() for i in range(self.ntask)]).T
 
         penalty_init = rr.weighted_l1norm(self.feature_weight, lagrange=1.)
-        solution_init = self._solve_randomized_problem(penalty= penalty_init)
+        solution_init = self._solve_randomized_problem(penalty=penalty_init)
         beta = solution_init[0].T
 
         for itercount in range(num_iter):

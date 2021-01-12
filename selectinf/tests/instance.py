@@ -390,7 +390,8 @@ def gaussian_multitask_instance(ntask,
                                 equicorrelated=True):
 
 
-    predictor_vars = {i: _design(nsamples[i], p, rhos[i], equicorrelated)[0] for i in range(ntask)}
+    predictor_vars= {i: _design(nsamples[i], p, rhos[i], equicorrelated)[0] for i in range(ntask)}
+
     cov_matrices = [_design(nsamples[i], p, rhos[i], equicorrelated)[1] for i in range(ntask)]
 
     if center:
@@ -410,8 +411,8 @@ def gaussian_multitask_instance(ntask,
         nsignal = int(round(global_sparsity * p))
         global_nulls = np.random.choice(p, nsignal, replace=False)
         beta[global_nulls, :] = np.zeros((ntask,))
+        non_nulls = np.setdiff1d(np.arange(p), global_nulls)
         for j in range(ntask):
-            non_nulls = np.setdiff1d(np.arange(p), global_nulls)
             beta[non_nulls, j] = np.linspace(float(signal[0]), float(signal[1]), num=p-nsignal)
 
         for i in np.delete(range(p), global_nulls):
@@ -425,7 +426,7 @@ def gaussian_multitask_instance(ntask,
     if scale:
         scalings = {i: predictor_vars[i].std(0) * np.sqrt(nsamples[i]) for i in range(ntask)}
         predictor_vars = {i: predictor_vars[i]/scalings[i][None, :] for i in range(ntask)}
-        beta *= np.sqrt(np.asarray(nsamples))
+        beta *= [np.sqrt(nsamples[i]) for i in range(len(nsamples))]
         cov_matrices = {i: cov_matrices[i] / np.multiply.outer(scalings[i], scalings[i]) for i in range(ntask)}
 
     active = np.zeros((p, ntask), np.bool)
@@ -439,6 +440,6 @@ def gaussian_multitask_instance(ntask,
             sd_t = np.std(tdist.rvs(df, size=50000))
         return tdist.rvs(df, size=n) / sd_t
 
-    response_vars = {i: (predictor_vars[i].dot(beta[:,i]) + _noise(nsamples[i], df)) * sigma[i] for i in range(ntask)}
+    response_vars = {i: (predictor_vars[i].dot(beta[:, i]) + _noise(nsamples[i], df)) * sigma[i] for i in range(ntask)}
 
     return response_vars, predictor_vars, beta * sigma, np.nonzero(active), sigma, cov_matrices

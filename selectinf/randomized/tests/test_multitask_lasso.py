@@ -31,7 +31,7 @@ def test_multitask_lasso_global(ntask=2,
 
     sigmas_ = np.array([np.std(response_vars[i]) for i in range(ntask)])
 
-    randomizer_scales = 0.71 * sigmas_
+    randomizer_scales = 1. * sigmas_
 
     #ridge_terms = np.array([np.std(response_vars[i]) * np.sqrt(np.mean((predictor_vars[i] ** 2).sum(0)))/ np.sqrt(nsamples[i] - 1)
     #                          for i in range(ntask)])
@@ -91,7 +91,7 @@ def test_multitask_lasso_hetero(ntask=2,
     feature_weight = weight * np.sqrt(2 * np.log(p)) * np.ones(p)
 
     sigmas_ = np.array([np.std(response_vars[i]) for i in range(ntask)])
-
+    #sigmas_ = sigma
     randomizer_scales = 0.71 * sigmas_
 
     multi_lasso = multi_task_lasso.gaussian(predictor_vars,
@@ -139,11 +139,11 @@ def test_coverage(nsim=100):
 
         coverage, length = test_multitask_lasso_hetero(ntask=ntask,
                                                        nsamples=3000 * np.ones(ntask),
-                                                       p=100,
-                                                       global_sparsity=.80,
+                                                       p=200,
+                                                       global_sparsity=.90,
                                                        task_sparsity=0.50,
                                                        sigma=1.*np.ones(ntask),
-                                                       signal_fac=np.array([0.2, 1.]),
+                                                       signal_fac=np.array([0.2, 0.5]),
                                                        rhos=0.30*np.ones(ntask),
                                                        weight=1.)
 
