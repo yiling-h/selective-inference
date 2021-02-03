@@ -1533,6 +1533,7 @@ def _solve_barrier_affine_py(conjugate_arg,
         if itercount % 4 == 0:
             step *= 2
 
+    print("NSTEP + STEP", itercount, step, tol)
     hess = np.linalg.inv(precision + barrier_hessian(current))
     return current_value, current, hess
 
@@ -1680,12 +1681,12 @@ def selective_MLE(observed_target,
     prec_opt = np.linalg.inv(cond_cov)
 
     conjugate_arg = prec_opt.dot(cond_mean)
-
+    useC = False
     if useC:
         solver = solve_barrier_affine_C
     else:
         solver = _solve_barrier_affine_py
-
+    print("check ", useC)
     val, soln, hess = solver(conjugate_arg,
                              prec_opt,
                              init_soln,

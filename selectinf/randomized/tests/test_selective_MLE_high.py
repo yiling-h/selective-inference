@@ -83,10 +83,10 @@ def test_full_targets(n=200,
 
 def test_selected_targets(n=2000, 
                           p=200, 
-                          signal_fac=10.,
+                          signal_fac=0.5,
                           s=5, 
                           sigma=3, 
-                          rho=0.4, 
+                          rho=0.2,
                           randomizer_scale=1,
                           full_dispersion=True):
     """
@@ -114,6 +114,7 @@ def test_selected_targets(n=2000,
 
         sigma_ = np.std(Y)
         W = np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
+        #W = np.append(np.ones(10) * 0.8* np.sqrt(2 * np.log(p)) * sigma_, np.ones(90) * np.sqrt(2 * np.log(p)) * sigma_ * (10 ** 10))
 
         conv = const(X,
                      Y,
@@ -142,19 +143,23 @@ def test_selected_targets(n=2000,
                                         cov_target_score)[0]
             estimate = result['MLE']
             pval = result['pvalue']
+            se = result['SE']
             intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
             
             beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+            pivot = (estimate - beta_target) / se
 
             coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
-            return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
+            return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals, pivot
 
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def main(nsim=500, full=False):
-    P0, PA, cover, length_int = [], [], [], []
+    P0, PA, cover, length_int, pivot = [], [], [], [], []
     from statsmodels.distributions import ECDF
 
-    n, p, s = 500, 100, 5
+    n, p, s = 500, 100, 10
 
     for i in range(nsim):
         if full:
@@ -166,16 +171,29 @@ def main(nsim=500, full=False):
             avg_length = intervals[:, 1] - intervals[:, 0]
         else:
             full_dispersion = True
-            p0, pA, cover_, intervals = test_selected_targets(n=n, p=p, s=s,
+            p0, pA, cover_, intervals, pivot_ = test_selected_targets(n=n, p=p, s=s,
                                                               full_dispersion=full_dispersion)
             avg_length = intervals[:, 1] - intervals[:, 0]
 
         cover.extend(cover_)
+        pivot.extend(pivot_)
         P0.extend(p0)
         PA.extend(pA)
-        print(
-            np.array(PA) < 0.1, np.mean(P0), np.std(P0), np.mean(np.array(P0) < 0.1), np.mean(np.array(PA) < 0.1), np.mean(cover),
-            np.mean(avg_length), 'null pvalue + power + length')
+        print(np.mean(cover), np.mean(avg_length), 'coverage + length')
+        # print(
+        #     np.array(PA) < 0.1, np.mean(P0), np.std(P0), np.mean(np.array(P0) < 0.1), np.mean(np.array(PA) < 0.1), np.mean(cover),
+        #     np.mean(avg_length), 'null pvalue + power + length')
+
+    sns.distplot(np.asarray(pivot))
+    plt.show()
+
+if __name__ == "__main__":
+    main(nsim=500)
+
+
+
+
+
 
 
 def test_instance():
@@ -218,14 +236,12 @@ def test_instance():
 
     return coverage
 
-def main(nsim=500):
+# def main(nsim=500):
+#
+#     cover = []
+#     for i in range(nsim):
+#
+#         cover_ = test_instance()
+#         cover.extend(cover_)
+#         print(np.mean(cover), 'coverage so far ')
 
-    cover = []
-    for i in range(nsim):
-
-        cover_ = test_instance()
-        cover.extend(cover_)
-        print(np.mean(cover), 'coverage so far ')
-
-if __name__ == "__main__":
-    main(nsim=1)
