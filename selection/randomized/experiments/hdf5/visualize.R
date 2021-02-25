@@ -195,7 +195,7 @@ og$Setting <- 'Overlapping'
 
 res <- rbind(atom,bal,het,std,og)
 res$SNR <- as.factor(res$Signal_Fac)
-res$Method <- recode(res$method, naive = 'Naive', posi = 'PoSI', split50 = 'Split (1:1)', split67= 'Split (2:1)')
+res$Method <- recode(res$method, naive = 'Naive', posi = 'Selection-informed', split50 = 'Split (1:1)', split67= 'Split (2:1)')
 
 snr.labels <- as_labeller(c('0.2' = 'Low SNR', '0.5' = 'Medium SNR', '1.5' = 'High SNR'))
 
