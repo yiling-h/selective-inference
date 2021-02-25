@@ -277,4 +277,4 @@ cmp.cov.len.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length')
     theme(axis.text.x=element_blank())
 
 ggsave('canonical-coverage-punchline.png', cmp.cov.can.punch, width = 19.20, height = 10.80, units = 'in')
-ggsave('canonical-length-punchline.png', cmp.len.can, width = 19.20, height = 10.80, units = 'in')
+ggsave('canonical-length-punchline.png', cmp.len.can.punch, width = 19.20, height = 10.80, units = 'in')
