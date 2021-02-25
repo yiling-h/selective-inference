@@ -247,3 +247,34 @@ ggsave('canonical-coverage.png', cmp.cov.can, width = 19.20, height = 10.80, uni
 ggsave('canonical-length.png', cmp.len.can, width = 19.20, height = 10.80, units = 'in')
 ggsave('extensions-coverage.png', cmp.cov.ext, width = 19.20, height = 10.80, units = 'in')
 ggsave('extensions-length.png', cmp.len.ext, width = 19.20, height = 10.80, units = 'in')
+
+## punchline plots for talks (simplified; just hetero case)
+
+cmp.cov.can.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage') %>%
+    filter(Setting %in% c('Heterogeneous')) %>%
+    ggplot(aes(x = Method, y = value, fill = Method)) +
+    stat_summary(fun.data = mean_se, geom = 'col', size = 2, position='dodge') +
+    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position='dodge') +
+    facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
+    geom_hline(yintercept=0.9, linetype='dashed') +
+    coord_cartesian(ylim=c(0.5, 1.0)) +
+    ylab('Coverage') +
+    theme_bw(base_size = 50) +
+    guides(fill = guide_legend(override.aes = list(size=20))) +
+    theme(axis.text.x=element_blank())
+
+cmp.cov.len.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length') %>%
+    filter(Setting %in% c('Heterogeneous')) %>%
+    ggplot(aes(x = Method, y = value, fill = Method)) +
+    stat_summary(fun.data = mean_se, geom = 'col', size = 2, position='dodge') +
+    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position='dodge') +
+    facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
+    geom_hline(yintercept=0.9, linetype='dashed') +
+    coord_cartesian(ylim=c(9, NA)) +
+    ylab('Length') +
+    theme_bw(base_size = 50) +
+    guides(fill = guide_legend(override.aes = list(size=20))) +
+    theme(axis.text.x=element_blank())
+
+ggsave('canonical-coverage-punchline.png', cmp.cov.can.punch, width = 19.20, height = 10.80, units = 'in')
+ggsave('canonical-length-punchline.png', cmp.len.can, width = 19.20, height = 10.80, units = 'in')
