@@ -259,7 +259,7 @@ cmp.cov.can.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage
     geom_hline(yintercept=0.9, linetype='dashed') +
     coord_cartesian(ylim=c(0.5, 1.0)) +
     ylab('Coverage') +
-    theme_bw(base_size = 50) +
+    theme_bw(base_size = 30) +
     guides(fill = guide_legend(override.aes = list(size=20))) +
     theme(axis.text.x=element_blank())
 
@@ -272,7 +272,7 @@ cmp.cov.len.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length')
     geom_hline(yintercept=0.9, linetype='dashed') +
     coord_cartesian(ylim=c(9, NA)) +
     ylab('Length') +
-    theme_bw(base_size = 50) +
+    theme_bw(base_size = 30) +
     guides(fill = guide_legend(override.aes = list(size=20))) +
     theme(axis.text.x=element_blank())
 
