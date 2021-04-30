@@ -254,6 +254,8 @@ class multi_task_lasso():
          self.cond_cov = cond_cov
          self.cond_precision = cond_precision
          self.logdens_linear = logdens_linear
+         self.score_offset = self.observed_score_states + self.opt_offsets
+         self.precs = precs
 
          return cond_mean, cond_cov, cond_precision, logdens_linear
 
@@ -272,9 +274,32 @@ class multi_task_lasso():
          cond_precision = self.cond_precision
          logdens_linear = self.logdens_linear
 
-         target_lin = -logdens_linear.dot(cov_target_score.T.dot(prec_target))
-
          prec_opt = cond_precision
+
+         ntarget = prec_target.shape[0]
+         nopt = prec_opt.shape[0]
+
+         target_linear = cov_target_score.T.dot(prec_target)
+         target_offset = self.score_offset - cov_target_score.T.dot(prec_target).dot(observed_target)
+         target_lin = - logdens_linear.dot(target_linear)
+
+         implied_precision = np.zeros((ntarget + nopt, ntarget + nopt))
+
+         implied_precision[:ntarget][:, :ntarget] = prec_target + (target_linear.T.dot(self.precs).dot(target_linear))
+
+         implied_precision[ntarget:][:, :ntarget] = -prec_opt.dot(target_lin)
+
+         implied_precision[:ntarget][:, ntarget:] = implied_precision[ntarget:][:, :ntarget].T
+
+         implied_precision[ntarget:][:, ntarget:] = prec_opt
+
+         implied_cov = np.linalg.inv(implied_precision)
+
+         _Q = prec_opt.dot(logdens_linear).dot(target_offset)
+         _P = (target_linear.T.dot(self.precs).dot(target_offset))
+         _prec = np.linalg.inv(implied_cov[:ntarget][:, :ntarget])
+         C = cov_target.dot(_P + _prec.dot(implied_cov[:ntarget][:, ntarget:]).dot(_Q))
+
          conjugate_arg = prec_opt.dot(cond_mean)
 
          val, soln, hess = solve_barrier_affine_py(conjugate_arg,
@@ -287,10 +312,11 @@ class multi_task_lasso():
                                                    min_its=5000,
                                                    tol=1.e-12)
 
-         final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
+         final_estimator = cov_target.dot(_prec).dot(observed_target) \
+                           + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln))) + C
 
          L = target_lin.T.dot(prec_opt)
-         observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
+         observed_info_natural = _prec + L.dot(target_lin) - L.dot(hess.dot(L.T))
          observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
 
          Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
@@ -308,7 +334,6 @@ class multi_task_lasso():
                                 dispersions=None):
 
          observed_targets = []
-         #ancillary_stats = []
          cov_targets = np.array([])
          crosscov_target_scores = np.array([])
 
@@ -360,194 +385,6 @@ class multi_task_lasso():
                                      for i in range(self.ntask)])
 
         return initial_solns, initial_subgrads
-
-     def multitask_inference_global(self,
-                                    dispersions=None,
-                                    step=1,
-                                    nstep=1000,
-                                    min_its=200,
-                                    tol=1.e-8,
-                                    level=0.9):
-         self._set_marginal_parameters(dispersions=dispersions)
-
-         current = self.initial_estimate_mle
-         current_value = np.inf
-
-         log_lik_current, grad_lik_current, hess_lik_current = self.multitask_likelihood_global(current)
-
-         for itercount in range(nstep):
-             newton_step = -grad_lik_current
-
-             count = 0
-
-             while True:
-                 count += 1
-                 proposal = current - step * newton_step
-
-                 log_lik_proposal, grad_lik_proposal, hess_lik_proposal = self.multitask_likelihood_global(proposal)
-                 proposed_value = -log_lik_proposal
-
-                 if proposed_value <= current_value:
-                     break
-                 step *= 0.5
-
-                 if count >= 20:
-                     if not (np.isnan(proposed_value) or np.isnan(current_value)):
-                         break
-                     else:
-                         raise ValueError('value is NaN: %f, %f' % (proposed_value, current_value))
-
-             if np.fabs(current_value - proposed_value) < tol * np.fabs(current_value) and itercount >= min_its:
-                 current = proposal
-                 current_value = proposed_value
-
-                 grad_lik_current = grad_lik_proposal
-                 hess_lik_current = hess_lik_proposal
-                 break
-
-             current = proposal
-             current_value = proposed_value
-             grad_lik_current = grad_lik_proposal
-             hess_lik_current = hess_lik_proposal
-
-             if itercount % 4 == 0:
-                 step *= 2
-
-         final_estimator = current
-         observed_info_mean = np.linalg.inv(-hess_lik_current)
-
-         Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
-         pvalues = ndist.cdf(Z_scores)
-         pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
-
-         alpha = 1. - level
-         quantile = ndist.ppf(1 - alpha / 2.)
-         intervals = np.vstack([final_estimator - quantile * np.sqrt(np.diag(observed_info_mean)),
-                                final_estimator + quantile * np.sqrt(np.diag(observed_info_mean))]).T
-
-         return final_estimator, observed_info_mean, Z_scores, pvalues, intervals
-
-
-     def multitask_target_global(self,
-                                 dispersions=None,
-                                 solve_args={'tol': 1.e-12, 'min_its': 50}):
-         observed_targets = []
-         cov_targets = np.array([])
-         crosscov_target_scores = np.array([])
-
-         features = self.active_global
-
-         for i in range(self.ntask):
-
-             X, y = self.loglikes[i].data
-             n, p = X.shape
-             W = self.loglikes[i].saturated_loss.hessian(X.dot(self.beta_bar[:, i]))
-
-             Xfeat = X[:, features]
-             Qfeat = Xfeat.T.dot(W[:, None] * Xfeat)
-
-             observed_target = restricted_estimator(self.loglikes[i], features, solve_args=solve_args)
-             observed_targets.extend(observed_target)
-
-             cov_target = np.linalg.inv(Qfeat)
-             _score_linear = -Xfeat.T.dot(W[:, None] * X).T
-
-             crosscov_target_score = _score_linear.dot(cov_target)
-
-             if dispersions is None:
-                 dispersion = ((y - self.loglikes[i].saturated_loss.mean_function(
-                     Xfeat.dot(observed_target))) ** 2 / W).sum() / (n - Xfeat.shape[1])
-             else:
-                 dispersion = dispersions[i]
-
-             crosscov_target_scores = block_diag(crosscov_target_scores, crosscov_target_score.T * dispersion)
-             cov_targets = block_diag(cov_targets, cov_target * dispersion)
-
-         return (np.asarray(observed_targets),
-                 cov_targets[1:, :],
-                 crosscov_target_scores[1:, :])
-
-     def _set_marginal_parameters(self,
-                                  dispersions=None):
-         observed_target, cov_target, cov_target_score = self.multitask_target_global(dispersions=dispersions)
-         ntarget = observed_target.shape[0]
-
-         prec_target = np.linalg.inv(cov_target)
-
-         cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian()
-         nopt = cond_cov.shape[0]
-
-         target_linear = -logdens_linear.dot(cov_target_score.T.dot(prec_target))
-
-         implied_precision = np.zeros((ntarget + nopt, ntarget + nopt))
-         implied_precision[:ntarget][:, :ntarget] = (prec_target + target_linear.T.dot(cond_precision.dot(target_linear)))
-         implied_precision[:ntarget][:, ntarget:] = -target_linear.T.dot(cond_precision)
-         implied_precision[ntarget:][:, :ntarget] = (-target_linear.T.dot(cond_precision)).T
-
-         implied_precision[ntarget:][:, ntarget:] = cond_precision
-
-         implied_cov = np.linalg.inv(implied_precision)
-
-         self.linear_coef = implied_cov[ntarget:][:, :ntarget].dot(prec_target)
-
-         target_offset = cond_mean - target_linear.dot(observed_target)
-         M = implied_cov[ntarget:][:, ntarget:].dot(cond_precision.dot(target_offset))
-         N = -target_linear.T.dot(cond_precision).dot(target_offset)
-
-         self.offset_coef = implied_cov[ntarget:][:, :ntarget].dot(N) + M
-
-         self.cov_marginal = implied_cov[ntarget:][:, ntarget:]
-         self.prec_marginal = np.linalg.inv(self.cov_marginal)
-
-         self.observed_target = observed_target
-         self.prec_target = prec_target
-
-         D = np.identity(self.active_global.shape[0])
-         for i in range(self.ntask - 1):
-             D = np.block([[D], [np.identity(self.active_global.shape[0])]])
-
-         self.W_coef = np.linalg.inv(D.T.dot(self.prec_target).dot(D)).dot(D.T.dot(self.prec_target))
-
-         self.initial_estimate_mle = self.W_coef.dot(self.observed_target)
-
-         self.D = D
-
-
-     def multitask_likelihood_global(self,
-                                     target_parameter):
-         ##this is the O problem
-
-         par = self.D.dot(target_parameter)
-         mean_marginal = self.linear_coef.dot(par) + self.offset_coef
-         prec_marginal = self.prec_marginal
-         conjugate_marginal = prec_marginal.dot(mean_marginal)
-
-         val, soln, hess = solve_barrier_affine_py(conjugate_marginal,
-                                                   prec_marginal,
-                                                   self.observed_opt_states,
-                                                   self.linear_con,
-                                                   self.offset_con,
-                                                   step=1,
-                                                   nstep=5000,
-                                                   min_its=1000,
-                                                   tol=1.e-12)
-
-         log_normalizer = -val - mean_marginal.T.dot(prec_marginal).dot(mean_marginal) / 2.
-
-         ## based on the O problem, we now write the log-likelihood, its gradient and hessian
-
-         log_lik = -(
-             (self.observed_target - par).T.dot(self.prec_target).dot(self.observed_target - par)) / 2. - log_normalizer
-
-         grad_lik = self.D.T.dot(self.prec_target.dot(self.observed_target) -
-                                 self.prec_target.dot(par) - self.linear_coef.T.dot(
-             prec_marginal.dot(soln) - conjugate_marginal))
-
-         hess_lik = self.D.T.dot(-self.prec_target + self.linear_coef.T.dot(prec_marginal).dot(self.linear_coef) -
-                                 self.linear_coef.T.dot(prec_marginal).dot(hess).dot(
-                                     prec_marginal.dot(self.linear_coef))).dot(self.D)
-
-         return log_lik, grad_lik, hess_lik
 
      def _solve_multitask_problem(self, perturbations=None, num_iter=1000, atol=1.e-5):
 
@@ -702,6 +539,7 @@ def solve_barrier_affine_py(conjugate_arg,
             step *= 2
 
     hess = np.linalg.inv(precision + barrier_hessian(current))
+
     return current_value, current, hess
 
 
