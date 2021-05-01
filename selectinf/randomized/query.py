@@ -1609,13 +1609,13 @@ def _solve_barrier_nonneg(conjugate_arg,
     return current_value, current, hess
 
 
-def selective_MLE(observed_target, 
-                  target_cov, 
-                  target_score_cov, 
-                  init_soln, # initial (observed) value of
-                             # optimization variables -- used as a
-                             # feasible point.  precise value used
-                             # only for independent estimator
+def selective_MLE(observed_target,
+                  target_cov,
+                  target_score_cov,
+                  init_soln,  # initial (observed) value of
+                  # optimization variables -- used as a
+                  # feasible point.  precise value used
+                  # only for independent estimator
                   cond_mean,
                   cond_cov,
                   logdens_linear,
@@ -1623,7 +1623,7 @@ def selective_MLE(observed_target,
                   offset,
                   randomizer_prec,
                   score_offset,
-                  solve_args={'tol':1.e-12}, 
+                  solve_args={'tol': 1.e-12},
                   level=0.9,
                   useC=False):
     """
@@ -1638,10 +1638,10 @@ def selective_MLE(observed_target,
 
     target_cov : ndarray
         Estimated covaraince of target.
-       
+
     target_score_cov : ndarray
         Estimated covariance of target and score of randomized query.
-    
+
     init_soln : ndarray
         Feasible point for optimization problem.
 
@@ -1650,11 +1650,11 @@ def selective_MLE(observed_target,
 
     cond_cov : ndarray
         Conditional covariance of optimization variables given target.
-    
+
     logdens_linear : ndarray
         Describes how conditional mean of optimization
         variables varies with target.
-    
+
     linear_part : ndarray
         Linear part of affine constraints: $\{o:Ao \leq b\}$
 
@@ -1669,7 +1669,7 @@ def selective_MLE(observed_target,
 
     useC : bool, optional
         Use python or C solver.
-        
+
     """
 
     if np.asarray(observed_target).shape in [(), (0,)]:
@@ -1679,9 +1679,6 @@ def selective_MLE(observed_target,
     prec_target = np.linalg.inv(target_cov)
 
     prec_opt = np.linalg.inv(cond_cov)
-
-    ntarget = prec_target.shape[0]
-    nopt = prec_opt.shape[0]
 
     # target_lin determines how the conditional mean of optimization variables
     # vary with target
@@ -1696,7 +1693,8 @@ def selective_MLE(observed_target,
 
     _P = target_linear.T.dot(target_offset) * randomizer_prec
 
-    _prec = prec_target + (target_linear.T.dot(target_linear) * randomizer_prec) - target_lin.T.dot(prec_opt).dot(target_lin)
+    _prec = prec_target + (target_linear.T.dot(target_linear) * randomizer_prec) - target_lin.T.dot(prec_opt).dot(
+        target_lin)
 
     C = target_cov.dot(_P - target_lin.T.dot(prec_opt).dot(target_off))
 
@@ -1706,7 +1704,7 @@ def selective_MLE(observed_target,
         solver = solve_barrier_affine_C
     else:
         solver = _solve_barrier_affine_py
-    
+
     val, soln, hess = solver(conjugate_arg,
                              prec_opt,
                              init_soln,
@@ -1714,19 +1712,19 @@ def selective_MLE(observed_target,
                              offset,
                              **solve_args)
 
-    #final_estimator = observed_target + target_cov.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
+    # final_estimator = observed_target + target_cov.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
 
     final_estimator = target_cov.dot(_prec).dot(observed_target) \
                       + target_cov.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln))) + C
 
     ind_unbiased_estimator = observed_target + target_cov.dot(target_lin.T.dot(prec_opt.dot(cond_mean
-                                                                                            - init_soln))) ##not correct
+                                                                                            - init_soln)))  ##not correct
 
     L = target_lin.T.dot(prec_opt)
-    #observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
+    # observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
     observed_info_natural = _prec + L.dot(target_lin) - L.dot(hess.dot(L.T))
 
-    #observed_info_mean = target_cov.dot(observed_info_natural_0.dot(target_cov))
+    # observed_info_mean = target_cov.dot(observed_info_natural_0.dot(target_cov))
     observed_info_mean = target_cov.dot(observed_info_natural.dot(target_cov))
 
     Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
@@ -1736,19 +1734,19 @@ def selective_MLE(observed_target,
     alpha = 1 - level
     quantile = ndist.ppf(1 - alpha / 2.)
 
-    intervals = np.vstack([final_estimator - 
+    intervals = np.vstack([final_estimator -
                            quantile * np.sqrt(np.diag(observed_info_mean)),
-                           final_estimator + 
+                           final_estimator +
                            quantile * np.sqrt(np.diag(observed_info_mean))]).T
 
-    log_ref = val + conjugate_arg.T.dot(cond_cov).dot(conjugate_arg)/2.
-    result = pd.DataFrame({'MLE':final_estimator,
-                           'SE':np.sqrt(np.diag(observed_info_mean)),
-                           'Zvalue':Z_scores,
-                           'pvalue':pvalues,
-                           'lower_confidence':intervals[:,0],
-                           'upper_confidence':intervals[:,1],
-                           'unbiased':ind_unbiased_estimator})
+    log_ref = val + conjugate_arg.T.dot(cond_cov).dot(conjugate_arg) / 2.
+    result = pd.DataFrame({'MLE': final_estimator,
+                           'SE': np.sqrt(np.diag(observed_info_mean)),
+                           'Zvalue': Z_scores,
+                           'pvalue': pvalues,
+                           'lower_confidence': intervals[:, 0],
+                           'upper_confidence': intervals[:, 1],
+                           'unbiased': ind_unbiased_estimator})
     return result, observed_info_mean, log_ref
 
 def normalizing_constant(target_parameter,
