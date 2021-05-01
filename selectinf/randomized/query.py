@@ -1690,31 +1690,18 @@ def selective_MLE(observed_target,
 
     target_linear = target_score_cov.T.dot(prec_target)
     target_offset = score_offset - target_score_cov.T.dot(prec_target).dot(observed_target)
+
     target_lin = - logdens_linear.dot(target_linear)
+    target_off = cond_mean - target_lin.dot(observed_target)
 
-    ##compute the full implied covariance of target and optimization
+    _P = target_linear.T.dot(target_offset) * randomizer_prec
 
-    implied_precision = np.zeros((ntarget + nopt, ntarget + nopt))
+    _prec = prec_target + (target_linear.T.dot(target_linear) * randomizer_prec) - target_lin.T.dot(prec_opt).dot(target_lin)
 
-    implied_precision[:ntarget][:, :ntarget] = prec_target + (target_linear.T.dot(target_linear) * randomizer_prec)
-
-    implied_precision[ntarget:][:, :ntarget] = -prec_opt.dot(target_lin)
-
-    implied_precision[:ntarget][:, ntarget:] = implied_precision[ntarget:][:, :ntarget].T
-
-    implied_precision[ntarget:][:, ntarget:] = prec_opt
-
-    implied_cov = np.linalg.inv(implied_precision)
-
-    _Q = prec_opt.dot(logdens_linear).dot(target_offset)
-    _P = (target_linear.T.dot(target_offset) * randomizer_prec)
-    _prec = np.linalg.inv(implied_cov[:ntarget][:, :ntarget])
-    C = target_cov.dot(_P + _prec.dot(implied_cov[:ntarget][:, ntarget:]).dot(_Q))
+    C = target_cov.dot(_P - target_lin.T.dot(prec_opt).dot(target_off))
 
     conjugate_arg = prec_opt.dot(cond_mean)
 
-    useC= False
-    print("useC", useC)
     if useC:
         solver = solve_barrier_affine_C
     else:

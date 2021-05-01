@@ -290,8 +290,7 @@ def main(nsim=500, full=False):
             avg_length = intervals[:, 1] - intervals[:, 0]
         else:
             full_dispersion = True
-            p0, pA, cover_, intervals = test_selected_targets_disperse(n=n, p=p, s=s,
-                                                              full_dispersion=full_dispersion)
+            p0, pA, cover_, intervals = test_selected_targets(n=n, p=p, s=s, full_dispersion=full_dispersion)
             avg_length = intervals[:, 1] - intervals[:, 0]
 
         cover.extend(cover_)
