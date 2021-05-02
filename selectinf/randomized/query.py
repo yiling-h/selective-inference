@@ -1686,7 +1686,7 @@ def selective_MLE(observed_target,
     # depends on the score, not how the mean depends on score, hence the minus sign
 
     target_linear = target_score_cov.T.dot(prec_target)
-    target_offset = score_offset - target_score_cov.T.dot(prec_target).dot(observed_target)
+    target_offset = score_offset - target_linear.dot(observed_target)
 
     target_lin = - logdens_linear.dot(target_linear)
     target_off = cond_mean - target_lin.dot(observed_target)

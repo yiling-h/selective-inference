@@ -74,6 +74,27 @@ def test_Langevin(n=500,
 
     return np.mean(coverage), np.mean(length)
 
+def test_coverage(nsim = 100):
+
+    cov, len = 0., 0.
+
+    for i in range(nsim):
+
+        cov_ , len_ = test_Langevin(n=500,
+                                    p=100,
+                                    signal_fac=1.,
+                                    s=5,
+                                    sigma=3.,
+                                    rho=0.4,
+                                    randomizer_scale=1.,
+                                    nsample=1500,
+                                    nburnin=100)
+
+        cov += cov_
+        len += len_
+
+        print("coverage and lengths ", i, cov/(i+1.), len/(i+1.))
+
 def test_instance(nsample=100, nburnin=50):
 
     n, p, s = 500, 100, 5
@@ -340,6 +361,7 @@ def test_hiv_data(nsample=10000,
     return output, scale_interval, _sigma
 
 if __name__ == "__main__":
-    test_hiv_data(split_proportion=0.50)
+    #test_hiv_data(split_proportion=0.50)
+    test_coverage(nsim=100)
 
 
