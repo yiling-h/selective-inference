@@ -7,9 +7,10 @@ from selectinf.tests.instance import gaussian_instance
 def test_full_targets(n=200, 
                       p=1000, 
                       signal_fac=0.5, 
-                      s=5, sigma=3, 
+                      s=5,
+                      sigma=3,
                       rho=0.4, 
-                      randomizer_scale=0.5,
+                      randomizer_scale=0.7,
                       full_dispersion=False):
     """
     Compare to R randomized lasso
@@ -22,7 +23,7 @@ def test_full_targets(n=200,
                           p=p,
                           signal=signal,
                           s=s,
-                          equicorrelated=False,
+                          equicorrelated=True,
                           rho=rho,
                           sigma=sigma,
                           random_signs=True)[:3]
@@ -302,4 +303,4 @@ def main(nsim=500, full=False):
         print("coverage and lengths ", np.mean(cover), np.mean(avg_length))
 
 if __name__ == "__main__":
-    main(nsim=500)
+    main(nsim=500, full=True)

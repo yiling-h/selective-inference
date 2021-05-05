@@ -196,13 +196,13 @@ def main(nsim=300, CI = False):
     if CI is False:
         _pivot = []
         for i in range(nsim):
-            _pivot.extend(test_approx_pivot(n=200,
-                                            p=100,
+            _pivot.extend(test_approx_pivot(n=100,
+                                            p=400,
                                             signal_fac=1.,
-                                            s=5,
-                                            sigma=3.,
-                                            rho=0.20,
-                                            randomizer_scale=1.))
+                                            s=0,
+                                            sigma=1.,
+                                            rho=0.30,
+                                            randomizer_scale=0.7))
 
             print("iteration completed ", i)
 

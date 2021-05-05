@@ -37,6 +37,7 @@ def test_approx_pivot(n=500,
     conv = const(X,
                  Y,
                  lam_theory * np.ones(p),
+                 ridge_term=0.,
                  randomizer_scale=randomizer_scale * dispersion)
 
     signs = conv.fit()
