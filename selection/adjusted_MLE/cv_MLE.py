@@ -114,7 +114,7 @@ def BHfilter(pval, q=0.2):
 
 
 def relative_risk(est, truth, Sigma):
-    if (truth != 0).sum > 0:
+    if np.sum(truth != 0) > 0:
         return (est - truth).T.dot(Sigma).dot(est - truth) / truth.T.dot(Sigma).dot(truth)
     else:
         return (est - truth).T.dot(Sigma).dot(est - truth)
@@ -253,7 +253,7 @@ def comparison_cvmetrics_selected(n=500, p=100, nval=500, rho=0.35, s=5, beta_ty
                                           nonzero,
                                           dispersion=dispersion)
 
-        MLE_estimate, _, _, MLE_pval, MLE_intervals, ind_unbiased_estimator = randomized_lasso.selective_MLE(observed_target,
+        MLE_estimate, _, _, MLE_pval, MLE_intervals, ind_unbiased_estimator, _ = randomized_lasso.selective_MLE(observed_target,
                                                                                                              cov_target,
                                                                                                              cov_target_score,
                                                                                                              alternatives)
@@ -322,6 +322,7 @@ def comparison_cvmetrics_full(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1
         sigma_ = np.sqrt(dispersion)
     else:
         dispersion = None
+        #dispersion = sigma_ ** 2.
         sigma_ = np.std(y)
     print("estimated and true sigma", sigma, sigma_)
 
@@ -351,7 +352,7 @@ def comparison_cvmetrics_full(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1
     if nactive_LASSO > 0:
         rel_LASSO[active_LASSO] = np.linalg.pinv(X[:, active_LASSO]).dot(y)
         Lee_target = beta[active_LASSO]
-        Lee_intervals, Lee_pval = selInf_R(X, y, glm_LASSO, n * lam_LASSO, sigma_, Type=1, alpha=0.1)
+        Lee_intervals, Lee_pval = selInf_R(X, y, glm_LASSO, n * lam_LASSO, sigma_, Type=0, alpha=0.1)
 
         if (Lee_pval.shape[0] == Lee_target.shape[0]):
 
@@ -463,7 +464,7 @@ def comparison_cvmetrics_full(n=500, p=100, nval=500, rho=0.35, s=5, beta_type=1
                                       randomized_lasso._W,
                                       nonzero,
                                       dispersion=dispersion)
-        MLE_estimate, _, _, MLE_pval, MLE_intervals, ind_unbiased_estimator = randomized_lasso.selective_MLE(observed_target,
+        MLE_estimate, _, _, MLE_pval, MLE_intervals, ind_unbiased_estimator, _ = randomized_lasso.selective_MLE(observed_target,
                                                                                                              cov_target,
                                                                                                              cov_target_score,
                                                                                                              alternatives)
