@@ -85,6 +85,7 @@ def test_approx_pivot(n=500,
     conv = const(X,
                  Y,
                  W,
+                 ridge_term = 0.,
                  randomizer_scale=randomizer_scale * dispersion)
 
     signs = conv.fit()
@@ -191,18 +192,21 @@ def test_approx_ci(n=500,
 
 def main(nsim=300, CI = False):
 
+    import matplotlib as mpl
+    mpl.use('tkagg')
     import matplotlib.pyplot as plt
     from statsmodels.distributions.empirical_distribution import ECDF
+
     if CI is False:
         _pivot = []
         for i in range(nsim):
-            _pivot.extend(test_approx_pivot(n=100,
-                                            p=400,
+            _pivot.extend(test_approx_pivot(n=400,
+                                            p=100,
                                             signal_fac=1.,
-                                            s=0,
+                                            s=5,
                                             sigma=1.,
                                             rho=0.30,
-                                            randomizer_scale=0.7))
+                                            randomizer_scale=1.))
 
             print("iteration completed ", i)
 

@@ -224,6 +224,8 @@ class lasso(gaussian_query):
         if num_opt_var > 0:
             self._setup_sampler(*self._setup_sampler_data)
 
+        self.opt_linear = opt_linear
+
         return active_signs
 
     def _solve_randomized_problem(self, 

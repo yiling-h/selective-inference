@@ -62,6 +62,9 @@ class approximate_grid_inference(object):
 
         self.init_soln = query.observed_opt_state
 
+        self.randomizer_prec = query.sampler.randomizer_prec
+        self.score_offset = query.sampler.logdens_transform[1]
+
         self.ntarget = ntarget = target_cov.shape[0]
         _scale = 4 * np.sqrt(np.diag(inverse_info))
         ngrid = 40
@@ -164,9 +167,16 @@ class approximate_grid_inference(object):
         for m in range(self.ntarget):
             p = self.target_score_cov.shape[1]
             observed_target_uni = (self.observed_target[m]).reshape((1,))
+
             target_cov_uni = (np.diag(self.target_cov)[m]).reshape((1, 1))
-            var_target = target_cov_uni[0, 0]
+            prec_target = 1./target_cov_uni
             target_score_cov_uni = self.target_score_cov[m, :].reshape((1, p))
+
+            target_linear = target_score_cov_uni.T.dot(prec_target)
+            target_lin = -self.logdens_linear.dot(target_linear)
+            _prec = prec_target + (target_linear.T.dot(target_linear) * self.randomizer_prec) - target_lin.T.dot(self.prec_opt).dot(target_lin)
+
+            var_target = 1./_prec[0, 0]
 
             approx_log_ref = self._approx_log_reference(observed_target_uni,
                                                         target_cov_uni,
@@ -216,13 +226,34 @@ class approximate_grid_inference(object):
 
         for m in range(self.ntarget):
             family = self._families[m]
-            observed_target = self.observed_target[m]
-            var_target = self.target_cov[m, m]
 
+            p = self.target_score_cov.shape[1]
+
+            observed_target_uni = (self.observed_target[m]).reshape((1,))
+            target_cov_uni = (np.diag(self.target_cov)[m]).reshape((1, 1))
+            prec_target = 1. / target_cov_uni
+            target_score_cov_uni = self.target_score_cov[m, :].reshape((1, p))
+
+            target_linear = target_score_cov_uni.T.dot(prec_target)
+            target_offset = self.score_offset - target_linear.dot(observed_target_uni)
+
+            target_lin = -self.logdens_linear.dot(target_linear)
+            target_off = self.cond_mean - target_lin.dot(observed_target_uni)
+
+            _prec = prec_target + (target_linear.T.dot(target_linear) * self.randomizer_prec) - target_lin.T.dot(self.prec_opt).dot(target_lin)
+
+            var_target = 1./_prec[0, 0]
+
+            _P = target_linear.T.dot(target_offset) * self.randomizer_prec
+            r = (1./_prec).dot(target_lin.T.dot(self.prec_opt).dot(target_off) - _P)
+            S = np.linalg.inv(_prec).dot(prec_target)
+
+            mean = S.dot(mean_parameter[m].reshape((1,))) + r
+            print("mean ", np.allclose(mean[0], mean_parameter[m]), mean[0], mean_parameter[m], r, S)
             # construction of pivot from families follows `selectinf.learning.core`
 
-            _cdf = family.cdf((mean_parameter[m] - observed_target) / var_target,
-                              x=observed_target)
+            _cdf = family.cdf((mean[0] - self.observed_target[m]) / var_target, x=self.observed_target[m])
+
             if alternatives[m] == 'twosided':
                 pivot.append(2 * min(_cdf, 1 - _cdf))
             elif alternatives[m] == 'greater':

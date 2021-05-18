@@ -1697,7 +1697,8 @@ def selective_MLE(observed_target,
         target_lin)
 
     C = target_cov.dot(_P - target_lin.T.dot(prec_opt).dot(target_off))
-
+    #print("check ", target_lin.T.dot(prec_opt)- (target_linear.T.dot(target_linear)* randomizer_prec))
+    print("check ", _P - target_lin.T.dot(prec_opt).dot(target_off))
     conjugate_arg = prec_opt.dot(cond_mean)
 
     if useC:
