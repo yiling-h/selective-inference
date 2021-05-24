@@ -73,7 +73,7 @@ def test_approx_pivot(n=500,
                       equicorrelated=False,
                       rho=rho,
                       sigma=sigma,
-                      random_signs=True)[:3]
+                      random_signs=False)[:3]
 
     n, p = X.shape
 
@@ -90,6 +90,7 @@ def test_approx_pivot(n=500,
 
     signs = conv.fit()
     nonzero = signs != 0
+    X_E = X[:, nonzero]
 
     if nonzero.sum()>0:
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
@@ -109,7 +110,9 @@ def test_approx_pivot(n=500,
         approximate_grid_inf = approximate_grid_inference(conv,
                                                           observed_target,
                                                           cov_target,
-                                                          cov_target_score)
+                                                          cov_target_score,
+                                                          X,
+                                                          X_E)
 
         pivot = approximate_grid_inf._approx_pivots(beta_target)
 
