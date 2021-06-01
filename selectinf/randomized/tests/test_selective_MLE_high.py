@@ -1,16 +1,49 @@
 import numpy as np
-import nose.tools as nt
+from scipy.stats import norm as ndist
 
-from selectinf.randomized.lasso import lasso, full_targets, selected_targets, debiased_targets
-from selectinf.tests.instance import gaussian_instance
+from rpy2 import robjects
+import rpy2.robjects.numpy2ri
+rpy2.robjects.numpy2ri.activate()
 
-def test_full_targets(n=200, 
+from ..lasso import lasso, full_targets, selected_targets, debiased_targets
+from ...tests.instance import gaussian_instance
+
+
+def glmnet_lasso(X, y):
+    robjects.r('''
+                library(glmnet)
+                glmnet_LASSO = function(X,y){
+                y = as.matrix(y)
+                X = as.matrix(X)
+                n = nrow(X)
+
+                fit.cv = cv.glmnet(X, y, standardize=TRUE, intercept=FALSE, thresh=1.e-10)
+                estimate.1se = coef(fit.cv, s='lambda.1se', exact=TRUE, x=X, y=y)[-1]
+                estimate.min = coef(fit.cv, s='lambda.min', exact=TRUE, x=X, y=y)[-1]
+                return(list(estimate.1se = estimate.1se, estimate.min = estimate.min, lam.min = fit.cv$lambda.min, lam.1se = fit.cv$lambda.1se))
+                }''')
+
+    lambda_R = robjects.globalenv['glmnet_LASSO']
+    n, p = X.shape
+    r_X = robjects.r.matrix(X, nrow=n, ncol=p)
+    r_y = robjects.r.matrix(y, nrow=n, ncol=1)
+
+    estimate_1se = np.array(lambda_R(r_X, r_y).rx2('estimate.1se'))
+    estimate_min = np.array(lambda_R(r_X, r_y).rx2('estimate.min'))
+    lam_min = np.asscalar(np.array(lambda_R(r_X, r_y).rx2('lam.min')))
+    lam_1se = np.asscalar(np.array(lambda_R(r_X, r_y).rx2('lam.1se')))
+    return estimate_1se, estimate_min, lam_min, lam_1se
+
+
+def test_Full_targets(n=200,
                       p=1000, 
-                      signal_fac=0.5, 
-                      s=5, sigma=3, 
+                      signal_fac=0.5,
+                      s=5,
+                      sigma=1.,
                       rho=0.4, 
                       randomizer_scale=0.5,
-                      full_dispersion=False):
+                      full_dispersion=False,
+                      CV=False):
     """
     Compare to R randomized lasso
     """
@@ -27,23 +60,27 @@ def test_full_targets(n=200,
                           sigma=sigma,
                           random_signs=True)[:3]
 
-        idx = np.arange(p)
-        sigmaX = rho ** np.abs(np.subtract.outer(idx, idx))
-        print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
-
         n, p = X.shape
 
         sigma_ = np.std(Y)
-        W = np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
+
+        if CV == False:
+            eps = np.random.standard_normal((n, 2000)) * sigma_
+            lam_theory = 1. * np.median(np.abs(X.T.dot(eps)).max(1))
+            lam = lam_theory
+        else:
+            lam_1se = glmnet_lasso(X, Y)[3]
+            lam = np.sqrt(n)*lam_1se
 
         conv = const(X,
                      Y,
-                     W,
+                     lam * np.ones(p),
                      randomizer_scale=randomizer_scale * sigma_)
 
         signs = conv.fit()
         nonzero = signs != 0
-        print("dimensions", n, p, nonzero.sum())
+
+        print("check ", nonzero.sum())
 
         if nonzero.sum() > 0:
             if full_dispersion:
@@ -69,26 +106,30 @@ def test_full_targets(n=200,
                                                   penalty=conv.penalty,
                                                   dispersion=dispersion)
 
-            result = conv.selective_MLE(observed_target,
-                                        cov_target,
-                                        cov_target_score)[0]
-            pval = result['pvalue']
+            result = conv.selective_MLE_inference(observed_target,
+                                                  cov_target,
+                                                  cov_target_score)[0]
+
             estimate = result['MLE']
+            se = result['SE']
             intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
-            print("estimate, intervals", estimate, intervals)
 
             coverage = (beta[nonzero] > intervals[:, 0]) * (beta[nonzero] < intervals[:, 1])
-            return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
+            pivot_ = ndist.cdf((estimate - beta[nonzero]) / se)
+            pivot = 2 * np.minimum(pivot_, 1. - pivot_)
+
+            return pivot, coverage, intervals
 
 
-def test_selected_targets(n=2000, 
-                          p=200, 
-                          signal_fac=1.,
-                          s=5, 
-                          sigma=3, 
-                          rho=0.4, 
-                          randomizer_scale=1,
-                          full_dispersion=True):
+def test_Partial_targets(n=2000,
+                         p=200,
+                         signal_fac=1.,
+                         s=5,
+                         sigma=1,
+                         rho=0.4,
+                         randomizer_scale=1,
+                         full_dispersion=True,
+                         CV=False):
     """
     Compare to R randomized lasso
     """
@@ -106,28 +147,34 @@ def test_selected_targets(n=2000,
                           sigma=sigma,
                           random_signs=True)[:3]
 
-        idx = np.arange(p)
-        sigmaX = rho ** np.abs(np.subtract.outer(idx, idx))
-        print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
-
         n, p = X.shape
 
         sigma_ = np.std(Y)
-        W = np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
+
+        if CV == False:
+            eps = np.random.standard_normal((n, 2000)) * sigma_
+            lam_theory = 1. * np.median(np.abs(X.T.dot(eps)).max(1))
+            lam = lam_theory
+        else:
+            lam_1se = glmnet_lasso(X, Y)[3]
+            lam = np.sqrt(n)*lam_1se
 
         conv = const(X,
                      Y,
-                     W,
+                     lam * np.ones(p),
                      randomizer_scale=randomizer_scale * sigma_)
 
         signs = conv.fit()
         nonzero = signs != 0
-        print("dimensions", n, p, nonzero.sum())
+
+        print("check ", nonzero.sum())
 
         if nonzero.sum() > 0:
-            dispersion = None
+
             if full_dispersion:
                 dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+            else:
+                dispersion = None
 
             (observed_target,
              cov_target,
@@ -137,147 +184,27 @@ def test_selected_targets(n=2000,
                                               nonzero, 
                                               dispersion=dispersion)
 
-            result = conv.selective_MLE(observed_target,
-                                        cov_target,
-                                        cov_target_score)[0]
+            result = conv.selective_MLE_inference(observed_target,
+                                                  cov_target,
+                                                  cov_target_score)[0]
+
             estimate = result['MLE']
-            pval = result['pvalue']
+            se = result['SE']
             intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
             
             beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
             coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
 
-            print("observed_opt_state ", conv.observed_opt_state)
-            # print("check ", np.asarray(result['MLE']), np.asarray(result['unbiased']))
+            pivot_ = ndist.cdf((estimate - beta_target)/se)
+            pivot = 2 * np.minimum(pivot_, 1. - pivot_)
 
-            return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
-
-def test_instance():
-
-    n, p, s = 500, 100, 5
-    X = np.random.standard_normal((n, p))
-    beta = np.zeros(p)
-    beta[:s] = np.sqrt(2 * np.log(p) / n)
-    Y = X.dot(beta) + np.random.standard_normal(n)
-
-    scale_ = np.std(Y)
-    # uses noise of variance n * scale_ / 4 by default
-    L = lasso.gaussian(X, Y, 3 * scale_ * np.sqrt(2 * np.log(p) * np.sqrt(n)))
-    signs = L.fit()
-    E = (signs != 0)
-
-    M = E.copy()
-    M[-3:] = 1
-    dispersion = np.linalg.norm(Y - X[:, M].dot(np.linalg.pinv(X[:, M]).dot(Y))) ** 2 / (n - M.sum())
-    (observed_target,
-     cov_target,
-     cov_target_score,
-     alternatives) = selected_targets(L.loglike,
-                                      L._W,
-                                      M,
-                                      dispersion=dispersion)
-
-    print("check shapes", observed_target.shape, E.sum())
-
-    result = L.selective_MLE(observed_target,
-                             cov_target,
-                             cov_target_score)[0]
-    estimate = result['MLE']
-    pval = result['pvalue']
-    intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
-
-    beta_target = np.linalg.pinv(X[:, M]).dot(X.dot(beta))
-
-    coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
-    print("observed_opt_state ", L.observed_opt_state)
-    #print("check ", np.asarray(result['MLE']), np.asarray(result['unbiased']))
-
-    return coverage
-
-# def main(nsim=500):
-#
-#     cover = []
-#     for i in range(nsim):
-#
-#         cover_ = test_instance()
-#         cover.extend(cover_)
-#         print(np.mean(cover), 'coverage so far ')
+            return pivot, coverage, intervals
 
 
-def test_selected_targets_disperse(n=500,
-                                   p=100,
-                                   signal_fac=1.,
-                                   s=5,
-                                   sigma=1.,
-                                   rho=0.4,
-                                   randomizer_scale=1,
-                                   full_dispersion=True):
-    """
-    Compare to R randomized lasso
-    """
+def main(nsim=500, full=False, plot_ECDF=False):
 
-    inst, const = gaussian_instance, lasso.gaussian
-    signal = 1.
-
-    while True:
-        X, Y, beta = inst(n=n,
-                          p=p,
-                          signal=signal,
-                          s=s,
-                          equicorrelated=False,
-                          rho=rho,
-                          sigma=sigma,
-                          random_signs=True)[:3]
-
-        idx = np.arange(p)
-        sigmaX = rho ** np.abs(np.subtract.outer(idx, idx))
-        print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
-
-        n, p = X.shape
-
-        sigma_ = np.std(Y)
-        W = np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
-
-        conv = const(X,
-                     Y,
-                     W,
-                     randomizer_scale=randomizer_scale * sigma_)
-
-        signs = conv.fit()
-        nonzero = signs != 0
-        print("dimensions", n, p, nonzero.sum())
-
-        if nonzero.sum() > 0:
-            dispersion = None
-            if full_dispersion:
-                dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
-
-            (observed_target,
-             cov_target,
-             cov_target_score,
-             alternatives) = selected_targets(conv.loglike,
-                                              conv._W,
-                                              nonzero,
-                                              dispersion=dispersion)
-
-            result = conv.selective_MLE(observed_target,
-                                        cov_target,
-                                        cov_target_score)[0]
-
-            pval = result['pvalue']
-            intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
-
-            beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
-
-            coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
-
-            return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
-
-
-def main(nsim=500, full=False):
-    P0, PA, cover, length_int = [], [], [], []
-    from statsmodels.distributions import ECDF
+    pivot, cover, length_int = [], [], []
 
     n, p, s = 500, 100, 5
 
@@ -287,21 +214,32 @@ def main(nsim=500, full=False):
                 full_dispersion = True
             else:
                 full_dispersion = False
-            p0, pA, cover_, intervals = test_full_targets(n=n, p=p, s=s, full_dispersion=full_dispersion)
+            p0, cover_, intervals = test_Full_targets(n=n, p=p, s=s, full_dispersion=full_dispersion, CV=True)
             avg_length = intervals[:, 1] - intervals[:, 0]
         else:
             full_dispersion = True
-            p0, pA, cover_, intervals = test_selected_targets_disperse(n=n, p=p, s=int(p/2),
-                                                              full_dispersion=full_dispersion)
+            p0, cover_, intervals = test_Partial_targets(n=n, p=p, s=s, full_dispersion=full_dispersion, CV=True)
             avg_length = intervals[:, 1] - intervals[:, 0]
 
         cover.extend(cover_)
-        P0.extend(p0)
-        PA.extend(pA)
-        # print(
-        #     np.array(PA) < 0.1, np.mean(P0), np.std(P0), np.mean(np.array(P0) < 0.1), np.mean(np.array(PA) < 0.1), np.mean(cover),
-        #     np.mean(avg_length), 'null pvalue + power + length')
-        print("coverage and lengths ", np.mean(cover), np.mean(avg_length))
+        pivot.extend(p0)
+        print("iteration", i, " coverage and lengths ", np.mean(cover), np.mean(avg_length))
+
+    if plot_ECDF == True:
+        import matplotlib as mpl
+        mpl.use('tkagg')
+        import matplotlib.pyplot as plt
+        from statsmodels.distributions.empirical_distribution import ECDF
+
+        plt.clf()
+
+        ecdf_MLE = ECDF(np.asarray(pivot))
+
+        grid = np.linspace(0, 1, 101)
+        plt.plot(grid, ecdf_MLE(grid), c='blue', linewidth=5)
+        plt.plot(grid, grid, 'k--')
+        plt.show()
+
 
 if __name__ == "__main__":
-    main(nsim=100)
+    main(nsim=100, full=True, plot_ECDF=True)

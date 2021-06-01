@@ -16,9 +16,6 @@ from ..base import restricted_estimator
 from ..algorithms.debiased_lasso import (debiasing_matrix,
                                          pseudoinverse_debiasing_matrix)
 
-#### High dimensional version
-#### - parametric covariance
-#### - Gaussian randomization
 
 class lasso(gaussian_query):
 
@@ -206,8 +203,7 @@ class lasso(gaussian_query):
                                            j in np.nonzero(unpenalized)[0]]).T
         if unpenalized.sum():
             opt_linear[:, unpenalized_slice] = (_hessian_unpen
-                                                + self.ridge_term *
-                                                unpenalized_directions)
+                                                + self.ridge_term * unpenalized_directions)
 
         opt_offset = self.initial_subgrad
         self.opt_linear = opt_linear
@@ -217,12 +213,12 @@ class lasso(gaussian_query):
         A_scaling = -np.identity(num_opt_var)
         b_scaling = np.zeros(num_opt_var)
 
-        self._setup_sampler_data = (A_scaling[:active.sum()],
-                                    b_scaling[:active.sum()],
-                                    opt_linear,
-                                    opt_offset)
+        self._setup_query_data = (A_scaling[:active.sum()],
+                                  b_scaling[:active.sum()],
+                                  opt_linear,
+                                  opt_offset)
         if num_opt_var > 0:
-            self._setup_sampler(*self._setup_sampler_data)
+            self._setup_query(*self._setup_query_data)
 
         return active_signs
 
