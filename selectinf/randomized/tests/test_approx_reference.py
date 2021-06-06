@@ -70,7 +70,7 @@ def test_approx_pivot(n=500,
                       p=p,
                       signal=signal,
                       s=s,
-                      equicorrelated=False,
+                      equicorrelated=True,
                       rho=rho,
                       sigma=sigma,
                       random_signs=False)[:3]
@@ -78,15 +78,18 @@ def test_approx_pivot(n=500,
     n, p = X.shape
 
     sigma_ = np.std(Y)
-    dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+    if n > (2*p):
+        dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+    else:
+        dispersion = sigma_**2
 
-    W = 1 * np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
+    W = 0.7 * np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
 
     conv = const(X,
                  Y,
                  W,
-                 ridge_term = 0.,
-                 randomizer_scale=randomizer_scale * dispersion)
+                 ridge_term = 0.)
+                 #randomizer_scale=randomizer_scale * dispersion)
 
     signs = conv.fit()
     nonzero = signs != 0
@@ -206,7 +209,7 @@ def main(nsim=300, CI = False):
             _pivot.extend(test_approx_pivot(n=400,
                                             p=100,
                                             signal_fac=1.,
-                                            s=5,
+                                            s=0,
                                             sigma=1.,
                                             rho=0.30,
                                             randomizer_scale=1.))

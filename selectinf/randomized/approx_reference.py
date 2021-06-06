@@ -49,7 +49,6 @@ class approximate_grid_inference(object):
                                                    target_cov,
                                                    target_score_cov,
                                                    solve_args=solve_args)[:2]
-        mle = result['MLE']
         
         self.linear_part = query.sampler.affine_con.linear_part
         self.offset = query.sampler.affine_con.offset
@@ -66,7 +65,7 @@ class approximate_grid_inference(object):
         self.init_soln = query.observed_opt_state
 
         self.randomizer_prec = query.sampler.randomizer_prec
-        self.score_offset = query.sampler.logdens_transform[1]
+        self.score_offset = query.observed_score_state + query.sampler.logdens_transform[1]
 
         self.ntarget = ntarget = target_cov.shape[0]
         _scale = 4 * np.sqrt(np.diag(inverse_info))
@@ -242,8 +241,8 @@ class approximate_grid_inference(object):
             target_offset = (self.score_offset - target_linear.dot(observed_target_uni)).reshape((target_linear.shape[0],))
 
             target_lin = -self.logdens_linear.dot(target_linear)
-            #target_off = (self.cond_mean - target_lin.dot(observed_target_uni)).reshape((target_lin.shape[0],))
-            target_off = -np.linalg.inv(self.prec_opt).dot(self.opt_linear.T).dot(target_offset)*self.randomizer_prec
+            target_off = (self.cond_mean - target_lin.dot(observed_target_uni)).reshape((target_lin.shape[0],))
+            #target_off = -np.linalg.inv(self.prec_opt).dot(self.opt_linear.T).dot(target_offset)*self.randomizer_prec
 
             _prec = prec_target + (target_linear.T.dot(target_linear) * self.randomizer_prec) - target_lin.T.dot(self.prec_opt).dot(target_lin)
 
