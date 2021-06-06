@@ -1691,10 +1691,14 @@ def selective_MLE(observed_target,
     target_lin = - logdens_linear.dot(target_linear)
     target_off = cond_mean - target_lin.dot(observed_target)
 
-    _P = target_linear.T.dot(target_offset) * randomizer_prec
-
-    _prec = prec_target + (target_linear.T.dot(target_linear) * randomizer_prec) - target_lin.T.dot(prec_opt).dot(
-        target_lin)
+    if np.asarray(randomizer_prec).shape in [(), (0,)]:
+        _P = target_linear.T.dot(target_offset) * randomizer_prec
+        _prec = prec_target + (target_linear.T.dot(target_linear) * randomizer_prec) - target_lin.T.dot(prec_opt).dot(
+            target_lin)
+    else:
+        _P = target_linear.T.dot(randomizer_prec).dot(target_offset)
+        _prec = prec_target + (target_linear.T.dot(randomizer_prec).dot(target_linear)) - target_lin.T.dot(
+            prec_opt).dot(target_lin)
 
     C = target_cov.dot(_P - target_lin.T.dot(prec_opt).dot(target_off))
 
@@ -1712,23 +1716,20 @@ def selective_MLE(observed_target,
                              offset,
                              **solve_args)
 
-    # final_estimator = observed_target + target_cov.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
-
     final_estimator = target_cov.dot(_prec).dot(observed_target) \
                       + target_cov.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln))) + C
 
-    ind_unbiased_estimator = observed_target + target_cov.dot(target_lin.T.dot(prec_opt.dot(cond_mean
-                                                                                            - init_soln)))  ##not correct
+    unbiased_estimator = target_cov.dot(_prec) .dot(observed_target) + target_cov.dot(_P - target_lin.T.dot(prec_opt).dot(target_off))
 
     L = target_lin.T.dot(prec_opt)
-    # observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
     observed_info_natural = _prec + L.dot(target_lin) - L.dot(hess.dot(L.T))
 
-    # observed_info_mean = target_cov.dot(observed_info_natural_0.dot(target_cov))
     observed_info_mean = target_cov.dot(observed_info_natural.dot(target_cov))
 
     Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
+
     pvalues = ndist.cdf(Z_scores)
+
     pvalues = 2 * np.minimum(pvalues, 1 - pvalues)
 
     alpha = 1 - level
@@ -1740,13 +1741,14 @@ def selective_MLE(observed_target,
                            quantile * np.sqrt(np.diag(observed_info_mean))]).T
 
     log_ref = val + conjugate_arg.T.dot(cond_cov).dot(conjugate_arg) / 2.
+
     result = pd.DataFrame({'MLE': final_estimator,
                            'SE': np.sqrt(np.diag(observed_info_mean)),
                            'Zvalue': Z_scores,
                            'pvalue': pvalues,
                            'lower_confidence': intervals[:, 0],
                            'upper_confidence': intervals[:, 1],
-                           'unbiased': ind_unbiased_estimator})
+                           'unbiased': unbiased_estimator})
     return result, observed_info_mean, log_ref
 
 def normalizing_constant(target_parameter,

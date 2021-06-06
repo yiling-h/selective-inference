@@ -197,14 +197,14 @@ def test_instance():
 
     return coverage
 
-def main(nsim=500):
-
-    cover = []
-    for i in range(nsim):
-
-        cover_ = test_instance()
-        cover.extend(cover_)
-        print(np.mean(cover), 'coverage so far ')
+# def main(nsim=500):
+#
+#     cover = []
+#     for i in range(nsim):
+#
+#         cover_ = test_instance()
+#         cover.extend(cover_)
+#         print(np.mean(cover), 'coverage so far ')
 
 
 def test_selected_targets_disperse(n=500,
@@ -277,32 +277,32 @@ def test_selected_targets_disperse(n=500,
             return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
 
 
-# def main(nsim=500, full=False):
-#     P0, PA, cover, length_int = [], [], [], []
-#     from statsmodels.distributions import ECDF
-#
-#     n, p, s = 500, 100, 0
-#
-#     for i in range(nsim):
-#         if full:
-#             if n > p:
-#                 full_dispersion = True
-#             else:
-#                 full_dispersion = False
-#             p0, pA, cover_, intervals = test_full_targets(n=n, p=p, s=s, full_dispersion=full_dispersion)
-#             avg_length = intervals[:, 1] - intervals[:, 0]
-#         else:
-#             full_dispersion = True
-#             p0, pA, cover_, intervals = test_selected_targets(n=n, p=p, s=s, full_dispersion=full_dispersion)
-#             avg_length = intervals[:, 1] - intervals[:, 0]
-#
-#         cover.extend(cover_)
-#         P0.extend(p0)
-#         PA.extend(pA)
-#         # print(
-#         #     np.array(PA) < 0.1, np.mean(P0), np.std(P0), np.mean(np.array(P0) < 0.1), np.mean(np.array(PA) < 0.1), np.mean(cover),
-#         #     np.mean(avg_length), 'null pvalue + power + length')
-#         print("coverage and lengths ", np.mean(cover), np.mean(avg_length))
+def main(nsim=500, full=False):
+    P0, PA, cover, length_int = [], [], [], []
+    from statsmodels.distributions import ECDF
+
+    n, p, s = 500, 100, 0
+
+    for i in range(nsim):
+        if full:
+            if n > p:
+                full_dispersion = True
+            else:
+                full_dispersion = False
+            p0, pA, cover_, intervals = test_full_targets(n=n, p=p, s=s, full_dispersion=full_dispersion)
+            avg_length = intervals[:, 1] - intervals[:, 0]
+        else:
+            full_dispersion = True
+            p0, pA, cover_, intervals = test_selected_targets(n=n, p=p, s=s, full_dispersion=full_dispersion)
+            avg_length = intervals[:, 1] - intervals[:, 0]
+
+        cover.extend(cover_)
+        P0.extend(p0)
+        PA.extend(pA)
+        # print(
+        #     np.array(PA) < 0.1, np.mean(P0), np.std(P0), np.mean(np.array(P0) < 0.1), np.mean(np.array(PA) < 0.1), np.mean(cover),
+        #     np.mean(avg_length), 'null pvalue + power + length')
+        print("coverage and lengths ", np.mean(cover), np.mean(avg_length))
 
 if __name__ == "__main__":
-    main(nsim=1)
+    main(nsim=50)
