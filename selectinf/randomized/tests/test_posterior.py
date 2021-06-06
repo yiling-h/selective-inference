@@ -39,6 +39,7 @@ def test_Langevin(n=500,
     conv = const(X,
                  Y,
                  W,
+                 ridge_term= 0.,
                  randomizer_scale=randomizer_scale * dispersion)
 
     signs = conv.fit()
