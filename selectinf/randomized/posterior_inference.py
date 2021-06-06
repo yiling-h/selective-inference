@@ -151,17 +151,24 @@ class posterior(object):
         self.linear_coef = target_lin
         self.offset_coef = self.cond_mean - target_lin.dot(self.observed_target)
 
-        _prec = self.prec_target + (target_linear.T.dot(target_linear) * self.randomizer_prec) - target_lin.T.dot(self.cond_precision).dot(target_lin)
+        if np.asarray(self.randomizer_prec).shape in [(), (0,)]:
+            _prec = self.prec_target + (target_linear.T.dot(target_linear) * self.randomizer_prec) \
+                    - target_lin.T.dot(self.cond_precision).dot(target_lin)
+            _P = target_linear.T.dot(target_offset) * self.randomizer_prec
+        else:
+            _prec = self.prec_target + (target_linear.T.dot(self.randomizer_prec).dot(target_linear)) \
+                    - target_lin.T.dot(self.cond_precision).dot(target_lin)
+            _P = target_linear.T.dot(self.randomizer_prec).dot(target_offset)
+
         _Q = np.linalg.inv(_prec + target_lin.T.dot(self.cond_precision).dot(target_lin))
         self.prec_marginal = self.cond_precision - self.cond_precision.dot(target_lin).dot(_Q).dot(target_lin.T).dot(self.cond_precision)
 
-        _P = target_linear.T.dot(target_offset) * self.randomizer_prec
         r = np.linalg.inv(_prec).dot(target_lin.T.dot(self.cond_precision).dot(target_off) - _P)
         S = np.linalg.inv(_prec).dot(self.prec_target)
 
         self.r = r
         self.S = S
-        print("check parameters for selected+lasso ", np.allclose(np.diag(S), np.ones(S.shape[0])), np.allclose(r, np.zeros(r.shape[0])))
+        #print("check parameters for selected+lasso ", np.allclose(np.diag(S), np.ones(S.shape[0])), np.allclose(r, np.zeros(r.shape[0])))
         self._prec = _prec
 
 ### sampling methods
