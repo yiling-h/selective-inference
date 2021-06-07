@@ -4,7 +4,7 @@ import numpy as np
 from scipy.stats import norm as ndist, invgamma
 from scipy.linalg import fractional_matrix_power
 
-from .selective_MLE_utils import solve_barrier_affine as solve_barrier_affine_C
+from ..algorithms.barrier_affine import solve_barrier_affine_py
 
 class posterior(object):
 
@@ -108,11 +108,7 @@ class posterior(object):
         prec_marginal = self.prec_marginal
         conjugate_marginal = prec_marginal.dot(mean_marginal)
 
-        useC = True
-        if useC:
-            solver = solve_barrier_affine_C
-        else:
-            solver = _solve_barrier_affine_py
+        solver = solve_barrier_affine_py
 
         val, soln, hess = solver(conjugate_marginal,
                                  prec_marginal,

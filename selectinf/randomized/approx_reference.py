@@ -3,9 +3,8 @@ from __future__ import division, print_function
 import numpy as np, pandas as pd
 from scipy.interpolate import interp1d
 
-from .selective_MLE_utils import solve_barrier_affine as solve_barrier_affine_C
-
 from ..distributions.discrete_family import discrete_family
+from ..algorithms.barrier_affine import solve_barrier_affine_py
 
 class approximate_grid_inference(object):
 
@@ -14,8 +13,6 @@ class approximate_grid_inference(object):
                  observed_target,
                  target_cov,
                  target_score_cov,
-                 X,
-                 X_E,
                  solve_args={'tol':1.e-12}):
 
         """
@@ -77,8 +74,6 @@ class approximate_grid_inference(object):
                                               observed_target[j] + 1.5*_scale[j],
                                               num=ngrid)
 
-        self.X = X
-        self.X_E = X_E
         self.opt_linear = query.opt_linear
 
     def summary(self,
@@ -142,7 +137,7 @@ class approximate_grid_inference(object):
         target_lin = - self.logdens_linear.dot(target_score_cov.T.dot(prec_target))
 
         ref_hat = []
-        solver = _solve_barrier_affine_py
+        solver = solve_barrier_affine_py
         for k in range(grid.shape[0]):
             # in the usual D = N + Gamma theta.hat,
             # target_lin is "something" times Gamma,
@@ -167,20 +162,18 @@ class approximate_grid_inference(object):
 
     def _construct_families(self):
 
+        self._construct_density()
+
         self._families = []
+
         for m in range(self.ntarget):
             p = self.target_score_cov.shape[1]
             observed_target_uni = (self.observed_target[m]).reshape((1,))
 
             target_cov_uni = (np.diag(self.target_cov)[m]).reshape((1, 1))
-            prec_target = 1./target_cov_uni
             target_score_cov_uni = self.target_score_cov[m, :].reshape((1, p))
 
-            target_linear = target_score_cov_uni.T.dot(prec_target)
-            target_lin = -self.logdens_linear.dot(target_linear)
-            _prec = prec_target + (target_linear.T.dot(target_linear) * self.randomizer_prec) - target_lin.T.dot(self.prec_opt).dot(target_lin)
-
-            var_target = 1./_prec[0, 0]
+            var_target = 1./((self.precs[m])[0,0])
 
             approx_log_ref = self._approx_log_reference(observed_target_uni,
                                                         target_cov_uni,
@@ -230,30 +223,12 @@ class approximate_grid_inference(object):
         p = self.target_score_cov.shape[1]
 
         for m in range(self.ntarget):
+
             family = self._families[m]
+            var_target = 1. / ((self.precs[m])[0,0])
 
-            observed_target_uni = (self.observed_target[m]).reshape((1,))
-            target_cov_uni = (np.diag(self.target_cov)[m]).reshape((1, 1))
-            prec_target = 1. / target_cov_uni
-            target_score_cov_uni = self.target_score_cov[m, :].reshape((1, p))
-
-            target_linear = target_score_cov_uni.T.dot(prec_target)
-            target_offset = (self.score_offset - target_linear.dot(observed_target_uni)).reshape((target_linear.shape[0],))
-
-            target_lin = -self.logdens_linear.dot(target_linear)
-            target_off = (self.cond_mean - target_lin.dot(observed_target_uni)).reshape((target_lin.shape[0],))
-            #target_off = -np.linalg.inv(self.prec_opt).dot(self.opt_linear.T).dot(target_offset)*self.randomizer_prec
-
-            _prec = prec_target + (target_linear.T.dot(target_linear) * self.randomizer_prec) - target_lin.T.dot(self.prec_opt).dot(target_lin)
-
-            var_target = 1./_prec[0, 0]
-
-            _P = target_linear.T.dot(target_offset) * self.randomizer_prec
-            r = (1./_prec).dot(target_lin.T.dot(self.prec_opt).dot(target_off) - _P)
-            S = np.linalg.inv(_prec).dot(prec_target)
-
-            mean = S.dot(mean_parameter[m].reshape((1,))) + r
-            print("mean ", np.allclose(mean[0], mean_parameter[m]), r, S)
+            mean = self.S[m].dot(mean_parameter[m].reshape((1,))) + self.r[m]
+            print("mean ", np.allclose(mean[0], mean_parameter[m]), self.r[m], self.S[m])
             # construction of pivot from families follows `selectinf.learning.core`
 
             _cdf = family.cdf((mean[0] - self.observed_target[m]) / var_target, x=self.observed_target[m])
@@ -280,82 +255,51 @@ class approximate_grid_inference(object):
             # construction of intervals from families follows `selectinf.learning.core`
             family = self._families[m]
             observed_target = self.observed_target[m]
+
             l, u = family.equal_tailed_interval(observed_target,
-                                                        alpha=1-level)
-            var_target = self.target_cov[m, m]
-            lower.append(l *  var_target + observed_target)
+                                                alpha=1-level)
+
+            var_target = 1. / ((self.precs[m])[0, 0])
+
+            lower.append(l * var_target + observed_target)
             upper.append(u * var_target + observed_target)
 
         return np.asarray(lower), np.asarray(upper)
 
-def _solve_barrier_affine_py(conjugate_arg,
-                             precision,
-                             feasible_point,
-                             con_linear,
-                             con_offset,
-                             step=1,
-                             nstep=1000,
-                             min_its=200,
-                             tol=1.e-10):
+    ### Private method
+    def _construct_density(self):
 
-    scaling = np.sqrt(np.diag(con_linear.dot(precision).dot(con_linear.T)))
+        precs = {}
+        S = {}
+        r = {}
 
-    if feasible_point is None:
-        feasible_point = 1. / scaling
+        p = self.target_score_cov.shape[1]
 
-    objective = lambda u: -u.T.dot(conjugate_arg) + u.T.dot(precision).dot(u)/2. \
-                          + np.log(1.+ 1./((con_offset - con_linear.dot(u))/ scaling)).sum()
-    grad = lambda u: -conjugate_arg + precision.dot(u) - con_linear.T.dot(1./(scaling + con_offset - con_linear.dot(u)) -
-                                                                       1./(con_offset - con_linear.dot(u)))
-    barrier_hessian = lambda u: con_linear.T.dot(np.diag(-1./((scaling + con_offset-con_linear.dot(u))**2.)
-                                                 + 1./((con_offset-con_linear.dot(u))**2.))).dot(con_linear)
+        for m in range(self.ntarget):
 
-    current = feasible_point
-    current_value = np.inf
+            observed_target_uni = (self.observed_target[m]).reshape((1,))
+            target_cov_uni = (np.diag(self.target_cov)[m]).reshape((1, 1))
+            prec_target = 1. / target_cov_uni
+            target_score_cov_uni = self.target_score_cov[m, :].reshape((1, p))
 
-    for itercount in range(nstep):
-        cur_grad = grad(current)
+            target_linear = target_score_cov_uni.T.dot(prec_target)
+            target_offset = (self.score_offset - target_linear.dot(observed_target_uni)).reshape(
+                (target_linear.shape[0],))
 
-        # make sure proposal is feasible
+            target_lin = -self.logdens_linear.dot(target_linear)
+            target_off = (self.cond_mean - target_lin.dot(observed_target_uni)).reshape((target_lin.shape[0],))
 
-        count = 0
-        while True:
-            count += 1
-            proposal = current - step * cur_grad
-            if np.all(con_offset-con_linear.dot(proposal) > 0):
-                break
-            step *= 0.5
-            if count >= 40:
-                raise ValueError('not finding a feasible point')
+            _prec = prec_target + (target_linear.T.dot(target_linear) * self.randomizer_prec) - target_lin.T.dot(
+                self.prec_opt).dot(target_lin)
 
-        # make sure proposal is a descent
+            _P = target_linear.T.dot(target_offset) * self.randomizer_prec
+            _r = (1. / _prec).dot(target_lin.T.dot(self.prec_opt).dot(target_off) - _P)
+            _S = np.linalg.inv(_prec).dot(prec_target)
 
-        count = 0
-        while True:
-            count += 1
-            proposal = current - step * cur_grad
-            proposed_value = objective(proposal)
-            if proposed_value <= current_value:
-                break
-            step *= 0.5
-            if count >= 20:
-                if not (np.isnan(proposed_value) or np.isnan(current_value)):
-                    break
-                else:
-                    raise ValueError('value is NaN: %f, %f' % (proposed_value, current_value))
+            S[m] = _S
+            r[m] = _r
+            precs[m] = _prec
 
-        # stop if relative decrease is small
-
-        if np.fabs(current_value - proposed_value) < tol * np.fabs(current_value) and itercount >= min_its:
-            current = proposal
-            current_value = proposed_value
-            break
-
-        current = proposal
-        current_value = proposed_value
-
-        if itercount % 4 == 0:
-            step *= 2
-
-    hess = np.linalg.inv(precision + barrier_hessian(current))
-    return current_value, current, hess
+        self.precs = precs
+        self.S = S
+        self.r = r

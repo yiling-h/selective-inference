@@ -66,60 +66,57 @@ def test_approx_pivot(n=500,
     inst, const = gaussian_instance, lasso.gaussian
     signal = np.sqrt(signal_fac * 2 * np.log(p))
 
-    X, Y, beta = inst(n=n,
-                      p=p,
-                      signal=signal,
-                      s=s,
-                      equicorrelated=True,
-                      rho=rho,
-                      sigma=sigma,
-                      random_signs=False)[:3]
+    while True:
 
-    n, p = X.shape
+        X, Y, beta = inst(n=n,
+                          p=p,
+                          signal=signal,
+                          s=s,
+                          equicorrelated=True,
+                          rho=rho,
+                          sigma=sigma,
+                          random_signs=False)[:3]
 
-    sigma_ = np.std(Y)
-    if n > (2*p):
-        dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
-    else:
-        dispersion = sigma_**2
+        n, p = X.shape
 
-    W = 0.7 * np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
+        sigma_ = np.std(Y)
+        if n > (2 * p):
+            dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+        else:
+            dispersion = sigma_ ** 2
 
-    conv = const(X,
-                 Y,
-                 W,
-                 ridge_term = 0.)
-                 #randomizer_scale=randomizer_scale * dispersion)
+        eps = np.random.standard_normal((n, 2000)) * Y.std()
+        lam_theory = 0.6 * np.median(np.abs(X.T.dot(eps)).max(1))
+        W = lam_theory * np.ones(p)
 
-    signs = conv.fit()
-    nonzero = signs != 0
-    X_E = X[:, nonzero]
+        conv = const(X,
+                     Y,
+                     W,
+                     ridge_term=0.,
+                     randomizer_scale=randomizer_scale * dispersion)
 
-    if nonzero.sum()>0:
-        beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+        signs = conv.fit()
+        nonzero = signs != 0
 
-        (observed_target,
-         cov_target,
-         cov_target_score,
-         alternatives) = selected_targets(conv.loglike,
-                                          conv._W,
-                                          nonzero,
-                                          dispersion=dispersion)
+        if nonzero.sum() > 0:
+            beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
-        inverse_info = conv.selective_MLE(observed_target,
-                                          cov_target,
-                                          cov_target_score)[1]
+            (observed_target,
+             cov_target,
+             cov_target_score,
+             alternatives) = selected_targets(conv.loglike,
+                                              conv._W,
+                                              nonzero,
+                                              dispersion=dispersion)
 
-        approximate_grid_inf = approximate_grid_inference(conv,
-                                                          observed_target,
-                                                          cov_target,
-                                                          cov_target_score,
-                                                          X,
-                                                          X_E)
+            approximate_grid_inf = approximate_grid_inference(conv,
+                                                              observed_target,
+                                                              cov_target,
+                                                              cov_target_score)
 
-        pivot = approximate_grid_inf._approx_pivots(beta_target)
+            pivot = approximate_grid_inf._approx_pivots(beta_target)
 
-        return pivot
+            return pivot
 
 
 def test_approx_ci(n=500,
@@ -242,4 +239,4 @@ def main(nsim=300, CI = False):
             print("iteration completed ", n + 1)
 
 if __name__ == "__main__":
-    main(nsim=40, CI = False)
+    main(nsim=100, CI = False)
