@@ -16,7 +16,6 @@ def test_posterior_inference(n=500,
                              weight_frac=1.2):
 
     inst = gaussian_group_instance
-    #inst = gaussian_instance
     signal = np.sqrt(signal_fac * 2 * np.log(p))
 
     X, Y, beta = inst(n=n,
@@ -28,15 +27,6 @@ def test_posterior_inference(n=500,
                       rho=rho,
                       sigma=sigma,
                       random_signs=True)[:3]
-
-    # X, Y, beta = inst(n=n,
-    #                   p=p,
-    #                   signal=signal,
-    #                   s=s,
-    #                   equicorrelated=False,
-    #                   rho=rho,
-    #                   sigma=sigma,
-    #                   random_signs=True)[:3]
 
     n, p = X.shape
 
@@ -72,7 +62,9 @@ def test_posterior_inference(n=500,
 
         posterior_inf = posterior(conv,
                                   prior=prior,
-                                  dispersion=dispersion)
+                                  dispersion=dispersion,
+                                  XrawE=False,
+                                  useJacobian=True)
 
         samples = posterior_inf.langevin_sampler(nsample=1500,
                                                  nburnin=100,
@@ -94,11 +86,11 @@ def main(ndraw=10):
     for n in range(ndraw):
         cov, len = test_posterior_inference(n=500,
                                             p=100,
-                                            signal_fac=1.2,
+                                            signal_fac=1.5,
                                             sgroup=3,
                                             s=5,
-                                            groups=np.arange(50).repeat(4),
-                                            sigma=3.,
+                                            groups=np.arange(25).repeat(4),
+                                            sigma=1.,
                                             rho=0.40,
                                             randomizer_scale=0.5,
                                             weight_frac=1.2)
@@ -112,4 +104,4 @@ def main(ndraw=10):
 
 
 if __name__ == "__main__":
-    main(ndraw=20)
+    main(ndraw=10)
