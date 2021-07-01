@@ -166,8 +166,6 @@ class group_lasso(object):
         self.linear_part = -np.eye(self.observed_opt_state.shape[0])
         self.offset = np.zeros(self.observed_opt_state.shape[0])
 
-        # print("K.K.T. map", np.allclose(self._initial_omega, self.observed_score_state + self.opt_linear.dot(self.observed_opt_state)
-        #                                + self.opt_offset, rtol=1e-03))
         return active_signs, soln
 
     def _solve_randomized_problem(self,
@@ -745,7 +743,6 @@ class posterior():
 
         self.r = r
         self.S = S
-        # print("check parameters for selected+lasso ", np.allclose(np.diag(S), np.ones(S.shape[0])), np.allclose(r, np.zeros(r.shape[0])))
         self._prec = _prec
 
     def langevin_sampler(self,
