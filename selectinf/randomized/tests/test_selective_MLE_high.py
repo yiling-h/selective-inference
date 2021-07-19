@@ -153,7 +153,8 @@ def test_selected_targets(n=2000,
 
             # print("check ", np.asarray(result['MLE']), np.asarray(result['unbiased']))
 
-            return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
+            #return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
+            return result['MLE'], result['lower_confidence'], result['upper_confidence']
 
 
 def test_instance():
@@ -279,7 +280,7 @@ def test_selected_targets_disperse(n=500,
             return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
 
 
-def main(nsim=500, full=False):
+def test_inf(nsim=500, full=False):
     P0, PA, cover, length_int = [], [], [], []
     from statsmodels.distributions import ECDF
 
@@ -306,6 +307,35 @@ def main(nsim=500, full=False):
         #     np.mean(avg_length), 'null pvalue + power + length')
         print("coverage and lengths ", np.mean(cover), np.mean(avg_length))
 
+
+def main(nsim =50):
+
+    import pandas as pd
+    column_names = ["Experiment Replicate", "MLE", "Lower Conf", "Upper Conf"]
+    master_DF = pd.DataFrame(columns=column_names)
+    DF = pd.DataFrame(columns=column_names)
+
+    n, p, s = 500, 100, 5
+    for i in range(nsim):
+        np.random.seed(seed=i)
+        full_dispersion = True
+        mle, lower_conf, upper_conf = test_selected_targets(n=n, p=p, s=s, signal_fac=1.2, full_dispersion=full_dispersion)
+        #print("check ", mle, lower_conf, upper_conf)
+        DF["MLE"] = pd.Series(mle)
+        DF["Lower Conf"] = pd.Series(lower_conf)
+        DF["Upper Conf"] = pd.Series(upper_conf)
+        DF["Experiment Replicate"] = pd.Series((i*np.ones(len(mle),int)).tolist())
+
+        master_DF = DF.append(master_DF, ignore_index=True)
+
+    import os
+    outpath = os.path.dirname(__file__)
+
+    outfile_mse_html = os.path.join(outpath, "compare_mle.html")
+    outfile_mse_csv = os.path.join(outpath, "compare_mle.csv")
+
+    master_DF.to_html(outfile_mse_html, index=False)
+    master_DF.to_csv(outfile_mse_csv, index=False)
 
 if __name__ == "__main__":
     main(nsim=50)
