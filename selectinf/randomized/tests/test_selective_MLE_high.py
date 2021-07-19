@@ -83,7 +83,8 @@ def test_full_targets(n=200,
             return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
 
 
-def test_selected_targets(n=2000,
+def test_selected_targets(seedn,
+                          n=2000,
                           p=200,
                           signal_fac=1.2,
                           s=5,
@@ -99,6 +100,7 @@ def test_selected_targets(n=2000,
     signal = np.sqrt(signal_fac * 2 * np.log(p))
 
     while True:
+        np.random.seed(seed=seedn)
         X, Y, beta = inst(n=n,
                           p=p,
                           signal=signal,
@@ -317,9 +319,8 @@ def main(nsim =50):
 
     n, p, s = 500, 100, 5
     for i in range(nsim):
-        np.random.seed(seed=i)
         full_dispersion = True
-        mle, lower_conf, upper_conf = test_selected_targets(n=n, p=p, s=s, signal_fac=1.2, full_dispersion=full_dispersion)
+        mle, lower_conf, upper_conf = test_selected_targets(n=n, p=p, s=s, signal_fac=1.2, full_dispersion=full_dispersion, seedn=i)
         #print("check ", mle, lower_conf, upper_conf)
         DF["MLE"] = pd.Series(mle)
         DF["Lower Conf"] = pd.Series(lower_conf)
@@ -331,8 +332,8 @@ def main(nsim =50):
     import os
     outpath = os.path.dirname(__file__)
 
-    outfile_mse_html = os.path.join(outpath, "compare_mle.html")
-    outfile_mse_csv = os.path.join(outpath, "compare_mle.csv")
+    outfile_mse_html = os.path.join(outpath, "compare_mle_old.html")
+    outfile_mse_csv = os.path.join(outpath, "compare_mle_old.csv")
 
     master_DF.to_html(outfile_mse_html, index=False)
     master_DF.to_csv(outfile_mse_csv, index=False)
