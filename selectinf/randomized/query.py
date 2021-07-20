@@ -1446,6 +1446,8 @@ def selective_MLE(observed_target,
     final_estimator = target_cov.dot(_prec).dot(observed_target) \
                       + target_cov.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln))) + C
 
+    T11 = target_cov.dot(target_lin.T.dot(prec_opt))
+
     unbiased_estimator = target_cov.dot(_prec).dot(observed_target) + target_cov.dot(
         _P - target_lin.T.dot(prec_opt).dot(target_off))
 
@@ -1477,7 +1479,8 @@ def selective_MLE(observed_target,
                            'lower_confidence': intervals[:, 0],
                            'upper_confidence': intervals[:, 1],
                            'unbiased': unbiased_estimator})
-    return result, observed_info_mean, log_ref
+    return result, observed_info_mean, log_ref, \
+           T11[:,0], cond_mean - soln, target_cov.dot(_prec).dot(observed_target), C
 
 
 def normalizing_constant(target_parameter,
