@@ -295,3 +295,9 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
 
         traj.f_add_result(f'split{splitrat}.mean.coverage', np.nan)
         traj.f_add_result(f'split{splitrat}.mean.length', np.nan)
+
+def compute_mse_target(betahat, beta):
+    pass
+
+def compute_mse_truth(betahat, beta, nonzero):
+   pass
