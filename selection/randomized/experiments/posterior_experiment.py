@@ -148,15 +148,17 @@ def naive_inference(traj, X, Y, beta):
     traj.f_add_result('naive.sigdet.fn', np.logical_and(~nonzero, nz_true).sum())
 
     if nonzero.sum() > 0:
+        prior_var = 100 * dispersion
+
+        mupos, sigmapos = compute_posterior_distribution(prior_var,
+                                                         dispersion,
+                                                         X[:, nonzero],
+                                                         Y)
+
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
-        QI = np.linalg.inv(X[:, nonzero].T.dot(X[:, nonzero]))
 
-        observed_target = np.linalg.pinv(X[:, nonzero]).dot(Y)
-
-        cov_target = QI * dispersion
-
-        intervals = naive_confidence_intervals(np.diag(cov_target), observed_target)
+        intervals = naive_confidence_intervals(np.diag(sigmapos), mupos)
 
         lci = intervals[:, 0]
         uci = intervals[:, 1]
@@ -268,15 +270,17 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
     traj.f_add_result(f'split{splitrat}.sigdet.fn', np.logical_and(~nonzero, nz_true).sum())
 
     if nonzero.sum() > 0:
+        prior_var = 100 * dispersion
+
+        mupos, sigmapos = compute_posterior_distribution(prior_var,
+                                                         dispersion,
+                                                         X[:, nonzero],
+                                                         Y)
+
         beta_target = np.linalg.pinv(X_test[:, nonzero]).dot(X_test.dot(beta))
 
-        QI = np.linalg.inv(X_test[:, nonzero].T.dot(X_test[:, nonzero]))
 
-        observed_target = np.linalg.pinv(X_test[:, nonzero]).dot(Y_test)
-
-        cov_target = QI * dispersion
-
-        intervals = naive_confidence_intervals(np.diag(cov_target), observed_target)
+        intervals = naive_confidence_intervals(np.diag(sigmapos), mupos)
 
         lci = intervals[:, 0]
         uci = intervals[:, 1]
@@ -308,3 +312,12 @@ def compute_mse_truth(betahat, beta, nonzero):
     betahat_augment[nonzero] = betahat
     mse = compute_mse_target(betahat_augment, beta)
     return mse
+
+
+def compute_posterior_distribution(prior_var, dispersion, X, Y):
+    p = X.shape[1]
+    Q = X.T.dot(X)
+    prior_cov = prior_var * np.eye(p)
+    sigmapos = np.linalg.inv(prior_cov + 1/dispersion * Q)
+    mupos = 1./dispersion * sigmapos.dot(X.T).dot(Y)
+    return mupos, sigmapos
