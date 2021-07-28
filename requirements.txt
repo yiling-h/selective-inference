@@ -6,5 +6,5 @@ mpmath
 pyinter
 statsmodels
 sklearn
-regreg
+git+https://github.com/regreg/regreg.git#egg=regreg
 rpy2
