@@ -1,8 +1,7 @@
 # Requirements for conducting simulation studies
 numpy
 scipy
-tables
 pandas
 pypet
 matplotlib
-git+git://github.com/soravux/scoop.git@3c0357c32cec3169a19c822a3857c968a48775c5#egg=scoop
+scoop
