@@ -157,6 +157,8 @@ def naive_inference(traj, X, Y, beta):
 
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
+        traj.f_add_result('naive.mse.target', compute_mse_target(mupos, beta_target))
+        traj.f_add_result('naive.mse.truth', compute_mse_truth(mupos, beta, nonzero))
 
         intervals = naive_confidence_intervals(np.diag(sigmapos), mupos)
 
@@ -225,6 +227,11 @@ def posi(traj, X, Y, beta):
                                                  step=1.,
                                                  verbose=0)
 
+        mupos = np.mean(samples, 0)
+
+        traj.f_add_result('posi.mse.target', compute_mse_target(mupos, beta_target))
+        traj.f_add_result('posi.mse.truth', compute_mse_truth(mupos, beta, nonzero))
+
         traj.f_add_result('samples', samples)
 
         lci = np.percentile(samples, 5, axis=0)
@@ -279,6 +286,8 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
 
         beta_target = np.linalg.pinv(X_test[:, nonzero]).dot(X_test.dot(beta))
 
+        traj.f_add_result(f'split{splitrat}.mse.target', compute_mse_target(mupos, beta_target))
+        traj.f_add_result(f'split{splitrat}.mse.truth', compute_mse_truth(mupos, beta, nonzero))
 
         intervals = naive_confidence_intervals(np.diag(sigmapos), mupos)
 
