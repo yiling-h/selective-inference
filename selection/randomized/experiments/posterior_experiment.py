@@ -2,6 +2,7 @@ import numpy as np
 from selection.randomized.query import naive_confidence_intervals
 from selection.tests.instance import gaussian_group_instance
 from selection.randomized.group_lasso import group_lasso, posterior
+from time import perf_counter as clk
 
 
 def coverage_experiment(traj):
@@ -136,7 +137,7 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
 
 
 def naive_inference(traj, X, Y, beta):
-
+    tic = clk()
     nonzero, conv, dispersion = grp_lasso_selection(X, Y, traj, randomize=False)
     traj.f_add_result('naive.nonzero.mask', nonzero)
     traj.f_add_result('naive.nonzero.nnz', nonzero.sum())
@@ -180,8 +181,11 @@ def naive_inference(traj, X, Y, beta):
         traj.f_add_result('naive.mean.coverage', np.nan)
         traj.f_add_result('naive.mean.length', np.nan)
 
+    toc = clk()
+    traj.f_add_result('naive.runtime', toc - tic)
 
 def posi(traj, X, Y, beta):
+    tic = clk()
     nonzero, conv, dispersion = grp_lasso_selection(X, Y, traj, randomize=True)
     traj.f_add_result('posi.nonzero.mask', nonzero)
     traj.f_add_result('posi.nonzero.nnz', nonzero.sum())
@@ -251,8 +255,12 @@ def posi(traj, X, Y, beta):
         traj.f_add_result('posi.mean.coverage', np.nan)
         traj.f_add_result('posi.mean.length', np.nan)
 
+    toc = clk()
+    traj.f_add_result('posi.runtime', toc - tic)
+
 
 def data_splitting(traj, X, Y, beta, splitrat=.5):
+    tic = clk()
     n = X.shape[0]
     n_train = int(np.floor(n*splitrat))
 
@@ -309,6 +317,8 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
         traj.f_add_result(f'split{splitrat}.mean.coverage', np.nan)
         traj.f_add_result(f'split{splitrat}.mean.length', np.nan)
 
+    toc = clk()
+    traj.f_add_result(f'split{splitrat}.runtime', toc - tic)
 
 def compute_mse_target(betahat, beta):
     p = betahat.shape[0]

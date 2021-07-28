@@ -12,6 +12,7 @@ def make_df(traj):
     fn_naive = list(traj.f_get_from_runs(name='naive.sigdet.fn', fast_access=True, auto_load=True, shortcuts=False).values())
     mse_target_naive = list(traj.f_get_from_runs(name='naive.mse.target', fast_access=True, auto_load=True, shortcuts=False).values())
     mse_truth_naive = list(traj.f_get_from_runs(name='naive.mse.truth', fast_access=True, auto_load=True, shortcuts=False).values())
+    runtime_naive = list(traj.f_get_from_runs(name='naive.runtime', fast_access=True, auto_load=True, shortcuts=False).values())
 
     coverage_split50 = list(traj.f_get_from_runs(name='split0.5.mean.coverage', fast_access=True, auto_load=True, shortcuts=False).values())
     length_split50 = list(traj.f_get_from_runs(name='split0.5.mean.length', fast_access=True, auto_load=True, shortcuts=False).values())
@@ -22,6 +23,7 @@ def make_df(traj):
     fn_split50 = list(traj.f_get_from_runs(name='split0.5.sigdet.fn', fast_access=True, auto_load=True, shortcuts=False).values())
     mse_target_split50 = list(traj.f_get_from_runs(name='split0.5.mse.target', fast_access=True, auto_load=True, shortcuts=False).values())
     mse_truth_split50 = list(traj.f_get_from_runs(name='split0.5.mse.truth', fast_access=True, auto_load=True, shortcuts=False).values())
+    runtime_split50 = list(traj.f_get_from_runs(name='split0.5.runtime', fast_access=True, auto_load=True, shortcuts=False).values())
 
     coverage_split67 = list(traj.f_get_from_runs(name='split0.67.mean.coverage', fast_access=True, auto_load=True, shortcuts=False).values())
     length_split67 = list(traj.f_get_from_runs(name='split0.67.mean.length', fast_access=True, auto_load=True, shortcuts=False).values())
@@ -32,6 +34,7 @@ def make_df(traj):
     fn_split67 = list(traj.f_get_from_runs(name='split0.67.sigdet.fn', fast_access=True, auto_load=True, shortcuts=False).values())
     mse_target_split67 = list(traj.f_get_from_runs(name='split0.67.mse.target', fast_access=True, auto_load=True, shortcuts=False).values())
     mse_truth_split67 = list(traj.f_get_from_runs(name='split0.67.mse.truth', fast_access=True, auto_load=True, shortcuts=False).values())
+    runtime_split67 = list(traj.f_get_from_runs(name='split0.67.runtime', fast_access=True, auto_load=True, shortcuts=False).values())
 
     coverage_posi = list(traj.f_get_from_runs(name='posi.mean.coverage', fast_access=True, auto_load=True, shortcuts=False).values())
     length_posi = list(traj.f_get_from_runs(name='posi.mean.length', fast_access=True, auto_load=True, shortcuts=False).values())
@@ -42,6 +45,7 @@ def make_df(traj):
     fn_posi = list(traj.f_get_from_runs(name='posi.sigdet.fn', fast_access=True, auto_load=True, shortcuts=False).values())
     mse_target_posi = list(traj.f_get_from_runs(name='posi.mse.target', fast_access=True, auto_load=True, shortcuts=False).values())
     mse_truth_posi = list(traj.f_get_from_runs(name='posi.mse.truth', fast_access=True, auto_load=True, shortcuts=False).values())
+    runtime_posi = list(traj.f_get_from_runs(name='posi.runtime', fast_access=True, auto_load=True, shortcuts=False).values())
 
     signal_fac = traj.f_get('signal_fac').f_get_range()
 
@@ -84,6 +88,10 @@ def make_df(traj):
                        'mse_truth_split50': mse_truth_split50,
                        'mse_truth_split67': mse_truth_split67,
                        'mse_truth_posi': mse_truth_posi,
+                       'runtime_naive': runtime_naive,
+                       'runtime_split50': runtime_split50,
+                       'runtime_split67': runtime_split67,
+                       'runtime_posi': runtime_posi
                        })
 
     if isinstance(traj.signal_fac, tuple):
