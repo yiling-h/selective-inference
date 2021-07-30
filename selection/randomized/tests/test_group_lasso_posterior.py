@@ -1,7 +1,7 @@
 import numpy as np
 
 from selection.randomized.group_lasso import group_lasso, posterior
-from selection.tests.instance import gaussian_group_instance, gaussian_instance
+from selection.tests.instance import gaussian_group_instance
 
 
 def test_posterior_inference(n=500,
@@ -14,64 +14,58 @@ def test_posterior_inference(n=500,
                              randomizer_scale=1,
                              weight_frac=1.2):
 
-    inst = gaussian_group_instance
-    #inst = gaussian_instance
-    signal = np.sqrt(signal_fac * 2 * np.log(p))
+    while True:
 
-    X, Y, beta = inst(n=n,
-                      p=p,
-                      signal=signal,
-                      sgroup=sgroup,
-                      groups=groups,
-                      equicorrelated=False,
-                      rho=rho,
-                      sigma=sigma,
-                      random_signs=True)[:3]
+        inst = gaussian_group_instance
+        signal = np.sqrt(signal_fac * 2 * np.log(p))
 
-    # X, Y, beta = inst(n=n,
-    #                   p=p,
-    #                   signal=signal,
-    #                   s=s,
-    #                   equicorrelated=False,
-    #                   rho=rho,
-    #                   sigma=sigma,
-    #                   random_signs=True)[:3]
+        X, Y, beta = inst(n=n,
+                          p=p,
+                          signal=signal,
+                          sgroup=sgroup,
+                          groups=groups,
+                          equicorrelated=False,
+                          rho=rho,
+                          sigma=sigma,
+                          random_signs=True)[:3]
 
-    n, p = X.shape
+        n, p = X.shape
 
-    sigma_ = np.std(Y)
-    if n > p:
-        dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
-    else:
-        dispersion = sigma_ ** 2
+        sigma_ = np.std(Y)
+        if n > p:
+            dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+        else:
+            dispersion = sigma_ ** 2
 
-    sigma_ = np.sqrt(dispersion)
-    print("check dispersion ", dispersion)
+        sigma_ = np.sqrt(dispersion)
+        print("check dispersion ", dispersion)
 
-    weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
-    conv = group_lasso.gaussian(X,
-                                Y,
-                                groups,
-                                weights,
-                                randomizer_scale=randomizer_scale * sigma_)
+        weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
+        conv = group_lasso.gaussian(X,
+                                    Y,
+                                    groups,
+                                    weights,
+                                    randomizer_scale=randomizer_scale * sigma_)
 
-    signs, _ = conv.fit()
-    nonzero = signs != 0
-    print("dimensions ", nonzero.sum())
+        signs, _ = conv.fit()
+        nonzero = signs != 0
+        print("dimensions ", nonzero.sum())
 
-    conv._setup_implied_gaussian()
+        conv._setup_implied_gaussian()
 
-    def prior(target_parameter, prior_var=100):
-        grad_prior = -target_parameter / prior_var
-        log_prior = -np.linalg.norm(target_parameter) ** 2 / (2. * prior_var)
-        return grad_prior, log_prior
+        def prior(target_parameter, prior_var=100):
+            grad_prior = -target_parameter / prior_var
+            log_prior = -np.linalg.norm(target_parameter) ** 2 / (2. * prior_var)
+            return grad_prior, log_prior
 
-    if nonzero.sum() > 0:
-        beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+        if nonzero.sum() > 0:
+            beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
-        posterior_inf = posterior(conv,
-                                  prior=prior,
-                                  dispersion=dispersion)
+            posterior_inf = posterior(conv,
+                                      prior=prior,
+                                      dispersion=dispersion,
+                                      XrawE=False,
+                                      useJacobian=True)
 
         samples = posterior_inf.langevin_sampler(nsample=1500,
                                                  nburnin=100,
@@ -83,7 +77,6 @@ def test_posterior_inference(n=500,
         length = uci - lci
 
         return np.mean(coverage), np.mean(length), samples
-
 
 
 def main(ndraw=10):

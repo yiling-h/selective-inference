@@ -21,7 +21,6 @@ from scipy.linalg import block_diag
 from regreg.api import (glm,
                         weighted_l1norm,
                         simple_problem,
-                        coxph as coxph_obj,
                         smooth_sum,
                         squared_error,
                         identity_quadratic,

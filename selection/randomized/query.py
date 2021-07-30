@@ -226,7 +226,12 @@ class two_stage_gaussian_query(query):
         if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
             raise ValueError('constraints not satisfied')
 
-        cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian(opt_linear, opt_offset)
+        (cond_mean,
+         cond_cov,
+         cond_precision,
+         logdens_linear,
+         randomizer_prec) = self._setup_implied_gaussian(opt_linear,
+                                                         opt_offset)
 
         def log_density(logdens_linear, offset, cond_prec, score, opt):
             if score.ndim == 1:
@@ -255,7 +260,7 @@ class two_stage_gaussian_query(query):
         if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
             raise ValueError('constraints not satisfied')
 
-        cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian(opt_linear, opt_offset)
+        cond_mean, cond_cov, cond_precision, logdens_linear, randomizer_prec = self._setup_implied_gaussian(opt_linear, opt_offset)
 
         def log_density(logdens_linear, offset, cond_prec, score, opt):
             if score.ndim == 1:
@@ -290,7 +295,7 @@ class two_stage_gaussian_query(query):
 
         cond_mean = -logdens_linear.dot(self.observed_score_state + opt_offset)
 
-        return cond_mean, cond_cov, cond_precision, logdens_linear
+        return cond_mean, cond_cov, cond_precision, logdens_linear, prec
 
 class gaussian_query(query):
 
@@ -320,7 +325,7 @@ class gaussian_query(query):
         if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
             raise ValueError('constraints not satisfied')
 
-        cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian(opt_linear, opt_offset)
+        cond_mean, cond_cov, cond_precision, logdens_linear, randomizer_prec = self._setup_implied_gaussian(opt_linear, opt_offset)
 
         def log_density(logdens_linear, offset, cond_prec, score, opt):
             if score.ndim == 1:
@@ -332,7 +337,7 @@ class gaussian_query(query):
 
         log_density = functools.partial(log_density, logdens_linear, opt_offset, cond_precision)
 
-        self.cond_mean, self.cond_cov = cond_mean, cond_cov
+        self.cond_mean, self.cond_cov, self.randomizer_prec = cond_mean, cond_cov, randomizer_prec
 
         affine_con = constraints(A_scaling,
                                  b_scaling,
@@ -344,6 +349,7 @@ class gaussian_query(query):
                                                 self.observed_score_state,
                                                 log_density,
                                                 (logdens_linear, opt_offset),
+                                                self.randomizer_prec,
                                                 selection_info=self.selection_variable,
                                                 useC=useC)
 
@@ -356,7 +362,7 @@ class gaussian_query(query):
         if not np.all(A_scaling.dot(self.observed_opt_state) - b_scaling <= 0):
             raise ValueError('constraints not satisfied')
 
-        cond_mean, cond_cov, cond_precision, logdens_linear = self._setup_implied_gaussian(opt_linear, opt_offset)
+        cond_mean, cond_cov, cond_precision, logdens_linear, randomizer_prec = self._setup_implied_gaussian(opt_linear, opt_offset)
 
         def log_density(logdens_linear, offset, cond_prec, score, opt):
             if score.ndim == 1:
@@ -368,7 +374,7 @@ class gaussian_query(query):
 
         log_density = functools.partial(log_density, logdens_linear, opt_offset, cond_precision)
 
-        self.cond_mean, self.cond_cov, self.logdens_linear = cond_mean.copy(), cond_cov.copy(), logdens_linear.copy()
+        self.cond_mean, self.cond_cov, self.logdens_linear, self.randomizer_prec = cond_mean.copy(), cond_cov.copy(), logdens_linear.copy(), randomizer_prec.copy()
 
         affine_con = constraints(A_scaling,
                                  b_scaling,
@@ -383,6 +389,7 @@ class gaussian_query(query):
                                                self.observed_score_state,
                                                log_density,
                                                (logdens_linear, opt_offset),
+                                               self.randomizer_prec,
                                                selection_info=self.selection_variable)
 
         self.cond_mean_vec, self.cond_cov_vec, self.linear_coef_vec = self._setup_implied_gaussian_univariate(opt_linear, opt_offset)
@@ -402,7 +409,7 @@ class gaussian_query(query):
 
         cond_mean = -logdens_linear.dot(self.observed_score_state + opt_offset)
 
-        return cond_mean, cond_cov, cond_precision, logdens_linear
+        return cond_mean, cond_cov, cond_precision, logdens_linear, prec
 
     def _setup_implied_gaussian_univariate(self, opt_linear, opt_offset):
 
@@ -986,6 +993,7 @@ class affine_gaussian_sampler(optimization_sampler):
                  observed_score_state,
                  log_density,
                  logdens_transform, # described how score enters log_density.
+                 randomizer_prec,
                  selection_info=None):
 
         '''
@@ -1005,6 +1013,7 @@ class affine_gaussian_sampler(optimization_sampler):
         self.selection_info = selection_info
         self.log_density = log_density
         self.logdens_transform = logdens_transform
+        self.randomizer_prec = randomizer_prec
 
     def sample(self, ndraw, burnin):
         '''
@@ -1040,6 +1049,9 @@ class affine_gaussian_sampler(optimization_sampler):
         Selective MLE based on approximation of
         CGF.
         """
+
+        score_offset = self.observed_score_state + self.logdens_transform[1]
+
         return selective_MLE(observed_target,
                              cov_target,
                              cov_target_score,
@@ -1049,6 +1061,8 @@ class affine_gaussian_sampler(optimization_sampler):
                              self.logdens_transform[0],
                              self.affine_con.linear_part,
                              self.affine_con.offset,
+                             self.randomizer_prec,
+                             score_offset,
                              solve_args=solve_args,
                              level=level)
 
@@ -1730,6 +1744,8 @@ def selective_MLE(observed_target,
                   logdens_linear,
                   linear_part,
                   offset,
+                  randomizer_prec,
+                  score_offset,
                   solve_args={'tol':1.e-12}, 
                   level= 0.9):
                   #useC=False):
@@ -1738,30 +1754,33 @@ def selective_MLE(observed_target,
     CGF.
 
     """
-    if np.asarray(observed_target).shape in [(), (0,)]:
-        raise ValueError('no target specified')
-
-    observed_target = np.atleast_1d(observed_target)
-    prec_target = np.linalg.inv(cov_target)
-
     # target_lin determines how the conditional mean of optimization variables
     # vary with target
     # logdens_linear determines how the argument of the optimization density
     # depends on the score, not how the mean depends on score, hence the minus sign
 
-    target_lin = - logdens_linear.dot(cov_target_score.T.dot(prec_target)) 
-    target_offset = cond_mean - target_lin.dot(observed_target)
+    if np.asarray(observed_target).shape in [(), (0,)]:
+                      raise ValueError('no target specified')
+
+    observed_target = np.atleast_1d(observed_target)
+    prec_target = np.linalg.inv(cov_target)
 
     prec_opt = np.linalg.inv(cond_cov)
 
+    target_linear = cov_target_score.T.dot(prec_target)
+    target_offset = score_offset - target_linear.dot(observed_target)
+
+    target_lin = - logdens_linear.dot(target_linear)
+    target_off = cond_mean - target_lin.dot(observed_target)
+
+    _P = target_linear.T.dot(target_offset) * randomizer_prec
+
+    _prec = prec_target + (target_linear.T.dot(target_linear) * randomizer_prec) - target_lin.T.dot(prec_opt).dot(target_lin)
+
+    C = cov_target.dot(_P - target_lin.T.dot(prec_opt).dot(target_off))
+
     conjugate_arg = prec_opt.dot(cond_mean)
 
-    # if useC:
-    #     print("using C")
-    #     solver = solve_barrier_affine_C
-    # else:
-    #     print("not using C")
-    #     solver = solve_barrier_affine_py
     solver = _solve_barrier_affine_py
 
     val, soln, hess = solver(conjugate_arg,
@@ -1773,11 +1792,12 @@ def selective_MLE(observed_target,
 
     log_ref = val + conjugate_arg.T.dot(cond_cov).dot(conjugate_arg) / 2.
 
-    final_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln)))
+    final_estimator = cov_target.dot(_prec).dot(observed_target) + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean - soln))) + C
+
     ind_unbiased_estimator = observed_target + cov_target.dot(target_lin.T.dot(prec_opt.dot(cond_mean
                                                                                             - init_soln)))
     L = target_lin.T.dot(prec_opt)
-    observed_info_natural = prec_target + L.dot(target_lin) - L.dot(hess.dot(L.T))
+    observed_info_natural = _prec + L.dot(target_lin) - L.dot(hess.dot(L.T))
     observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
 
     Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
