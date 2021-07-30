@@ -336,7 +336,7 @@ def compute_mse_truth(betahat, beta, nonzero):
 def compute_posterior_distribution(prior_var, dispersion, X, Y):
     p = X.shape[1]
     Q = X.T.dot(X)
-    prior_cov = prior_var * np.eye(p)
-    sigmapos = np.linalg.inv(prior_cov + 1/dispersion * Q)
+    prior_prec = 1./prior_var * np.eye(p)
+    sigmapos = np.linalg.inv(prior_prec + 1/dispersion * Q)
     mupos = 1./dispersion * sigmapos.dot(X.T).dot(Y)
     return mupos, sigmapos
