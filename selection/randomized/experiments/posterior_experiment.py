@@ -175,6 +175,9 @@ def naive_inference(traj, X, Y, beta):
         traj.f_add_result('naive.mean.coverage', np.mean(coverage))
         traj.f_add_result('naive.mean.length', np.mean(length))
     else:
+        traj.f_add_result('naive.mse.target', np.nan)
+        traj.f_add_result('naive.mse.truth', compute_mse_truth(0, beta, nonzero))
+
         traj.f_add_result('naive.componentwise.coverage', np.nan)
         traj.f_add_result('naive.componentwise.length', np.nan)
 
@@ -249,6 +252,9 @@ def posi(traj, X, Y, beta):
         traj.f_add_result('posi.mean.coverage', np.mean(coverage))
         traj.f_add_result('posi.mean.length', np.mean(length))
     else:
+        traj.f_add_result('posi.mse.target', np.nan)
+        traj.f_add_result('posi.mse.truth', compute_mse_truth(0, beta, nonzero))
+
         traj.f_add_result('posi.componentwise.coverage', np.nan)
         traj.f_add_result('posi.componentwise.length', np.nan)
 
@@ -311,6 +317,9 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
         traj.f_add_result(f'split{splitrat}.mean.coverage', np.mean(coverage))
         traj.f_add_result(f'split{splitrat}.mean.length', np.mean(length))
     else:
+        traj.f_add_result(f'split{splitrat}.mse.target', np.nan)
+        traj.f_add_result(f'split{splitrat}.mse.truth', compute_mse_truth(0, beta, nonzero))
+
         traj.f_add_result(f'split{splitrat}.componentwise.coverage', np.nan)
         traj.f_add_result(f'split{splitrat}.componentwise.length', np.nan)
 
