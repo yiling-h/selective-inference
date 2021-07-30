@@ -201,44 +201,36 @@ snr.labels <- as_labeller(c('0.2' = 'Low SNR', '0.5' = 'Medium SNR', '1.5' = 'Hi
 
 cmp.cov.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage') %>%
     filter(Setting %in% c('Atomic','Balanced','Heterogeneous')) %>%
-    ggplot(aes(x = Setting, y = value, fill = Method)) +
-    stat_summary(fun.data = mean_se, geom = 'col', size = 2, position='dodge') +
-    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position='dodge') +
+    ggplot(aes(x = Setting, y = value, color = Method)) +
+    geom_boxplot() +
     facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
     geom_hline(yintercept=0.9, linetype='dashed') +
-    coord_cartesian(ylim=c(0.5, 1.0)) +
     ylab('Coverage') +
     theme_bw(base_size = 30)
 
 cmp.len.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length') %>%
     filter(Setting %in% c('Atomic','Balanced','Heterogeneous')) %>%
-    ggplot(aes(x = Setting, y = value, fill = Method)) +
-    stat_summary(fun.data = mean_se, geom = 'col', size = 2, position='dodge') +
-    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position='dodge') +
+    ggplot(aes(x = Setting, y = value, color = Method)) +
+    geom_boxplot() +
     facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
-    coord_cartesian(ylim = c(9,NA)) +
     ylab('Length') +
     theme_bw(base_size = 30)
 
 
 cmp.cov.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage') %>%
     filter(Setting %in% c('Standardized','Overlapping')) %>%
-    ggplot(aes(x = Setting, y = value, fill = Method)) +
-    stat_summary(fun.data = mean_se, geom = 'col', size = 2, position='dodge') +
-    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position='dodge') +
+    ggplot(aes(x = Setting, y = value, color = Method)) +
+    geom_boxplot() +
     facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
     geom_hline(yintercept=0.9, linetype='dashed') +
-    coord_cartesian(ylim=c(0.5, 1.0)) +
     ylab('Coverage') +
     theme_bw(base_size = 30)
 
 cmp.len.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length') %>%
     filter(Setting %in% c('Standardized','Overlapping')) %>%
-    ggplot(aes(x = Setting, y = value, fill = Method)) +
-    stat_summary(fun.data = mean_se, geom = 'col', size = 2, position='dodge') +
-    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position='dodge') +
+    ggplot(aes(x = Setting, y = value, color = Method)) +
+    geom_boxplot() +
     facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
-    coord_cartesian(ylim=c(9,NA)) +
     ylab('Length') +
     theme_bw(base_size = 30)
 
@@ -252,25 +244,20 @@ ggsave('extensions-length.png', cmp.len.ext, width = 19.20, height = 10.80, unit
 
 cmp.cov.can.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage') %>%
     filter(Setting %in% c('Heterogeneous')) %>%
-    ggplot(aes(x = Method, y = value, fill = Method)) +
-    stat_summary(fun.data = mean_se, geom = 'col', size = 2, position='dodge') +
-    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position='dodge') +
+    ggplot(aes(x = Method, y = value, color = Method)) +
+    geom_boxplot() +
     facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
     geom_hline(yintercept=0.9, linetype='dashed') +
-    coord_cartesian(ylim=c(0.5, 1.0)) +
     ylab('Coverage') +
     theme_bw(base_size = 30) +
     guides(fill = guide_legend(override.aes = list(size=20))) +
     theme(axis.text.x=element_blank())
 
-cmp.cov.len.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length') %>%
+cmp.len.can.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length') %>%
     filter(Setting %in% c('Heterogeneous')) %>%
-    ggplot(aes(x = Method, y = value, fill = Method)) +
-    stat_summary(fun.data = mean_se, geom = 'col', size = 2, position='dodge') +
-    stat_summary(fun.data = mean_se, geom = 'errorbar', size = 2, position='dodge') +
+    ggplot(aes(x = Method, y = value, color = Method)) +
+    geom_boxplot() +
     facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
-    geom_hline(yintercept=0.9, linetype='dashed') +
-    coord_cartesian(ylim=c(9, NA)) +
     ylab('Length') +
     theme_bw(base_size = 30) +
     guides(fill = guide_legend(override.aes = list(size=20))) +
