@@ -288,3 +288,52 @@ ggsave('canonical-coverage-punchline.png', cmp.cov.can.punch, width = 19.20, hei
 ggsave('canonical-length-punchline.png', cmp.len.can.punch, width = 19.20, height = 10.80, units = 'in')
 ggsave("og-coverage-punchline.png", cmp.cov.og.punch, width = 19.20, height = 10.80, units = "in")
 ggsave("og-length-punchline.png", cmp.len.og.punch, width = 19.20, height = 10.80, units = "in")
+
+
+## alternate style punchline plots
+cmp.cov.can.punch.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
+  filter(Setting %in% c("Heterogeneous")) %>%
+  ggplot(aes(x = SNR, y = value, color = Method)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 0.9, linetype = "dashed") +
+  ylab("Coverage") +
+  theme_bw(base_size = 30) +
+  guides(fill = guide_legend(override.aes = list(size = 20))) +
+  scale_x_discrete(labels = snr.labels) +
+  xlab("")
+
+cmp.len.can.punch.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
+  filter(Setting %in% c("Heterogeneous")) %>%
+  ggplot(aes(x = SNR, y = value, color = Method)) +
+  geom_boxplot() +
+  ylab("Length") +
+  theme_bw(base_size = 30) +
+  guides(fill = guide_legend(override.aes = list(size = 20))) +
+  scale_x_discrete(labels = snr.labels) +
+  xlab("")
+
+cmp.cov.og.punch.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
+  filter(Setting %in% c("Overlapping")) %>%
+  ggplot(aes(x = SNR, y = value, color = Method)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 0.9, linetype = "dashed") +
+  ylab("Coverage") +
+  theme_bw(base_size = 30) +
+  guides(fill = guide_legend(override.aes = list(size = 20))) +
+  scale_x_discrete(labels = snr.labels) +
+  xlab("")
+
+cmp.len.og.punch.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
+  filter(Setting %in% c("Overlapping")) %>%
+  ggplot(aes(x = SNR, y = value, color = Method)) +
+  geom_boxplot() +
+  ylab("Length") +
+  theme_bw(base_size = 30) +
+  guides(fill = guide_legend(override.aes = list(size = 20))) +
+  scale_x_discrete(labels = snr.labels) +
+  xlab("")
+
+ggsave("canonical-coverage-punchline-alt.png", cmp.cov.can.punch.alt, width = 19.20, height = 10.80, units = "in")
+ggsave("canonical-length-punchline-alt.png", cmp.len.can.punch.alt, width = 19.20, height = 10.80, units = "in")
+ggsave("og-coverage-punchline-alt.png", cmp.cov.og.punch.alt, width = 19.20, height = 10.80, units = "in")
+ggsave("og-length-punchline-alt.png", cmp.len.og.punch.alt, width = 19.20, height = 10.80, units = "in")
