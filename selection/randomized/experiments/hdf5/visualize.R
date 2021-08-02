@@ -240,7 +240,7 @@ ggsave('canonical-length.png', cmp.len.can, width = 19.20, height = 10.80, units
 ggsave('extensions-coverage.png', cmp.cov.ext, width = 19.20, height = 10.80, units = 'in')
 ggsave('extensions-length.png', cmp.len.ext, width = 19.20, height = 10.80, units = 'in')
 
-## punchline plots for talks (simplified; just hetero case)
+## punchline plots for talks (simplified; just hetero and OG case)
 
 cmp.cov.can.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage') %>%
     filter(Setting %in% c('Heterogeneous')) %>%
@@ -263,5 +263,28 @@ cmp.len.can.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length')
     guides(fill = guide_legend(override.aes = list(size=20))) +
     theme(axis.text.x=element_blank())
 
+cmp.cov.og.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
+  filter(Setting %in% c("Overlapping")) %>%
+  ggplot(aes(x = Method, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  geom_hline(yintercept = 0.9, linetype = "dashed") +
+  ylab("Coverage") +
+  theme_bw(base_size = 30) +
+  guides(fill = guide_legend(override.aes = list(size = 20))) +
+  theme(axis.text.x = element_blank())
+
+cmp.len.og.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
+  filter(Setting %in% c("Overlapping")) %>%
+  ggplot(aes(x = Method, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("Length") +
+  theme_bw(base_size = 30) +
+  guides(fill = guide_legend(override.aes = list(size = 20))) +
+  theme(axis.text.x = element_blank())
+
 ggsave('canonical-coverage-punchline.png', cmp.cov.can.punch, width = 19.20, height = 10.80, units = 'in')
 ggsave('canonical-length-punchline.png', cmp.len.can.punch, width = 19.20, height = 10.80, units = 'in')
+ggsave("og-coverage-punchline.png", cmp.cov.og.punch, width = 19.20, height = 10.80, units = "in")
+ggsave("og-length-punchline.png", cmp.len.og.punch, width = 19.20, height = 10.80, units = "in")
