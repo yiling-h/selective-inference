@@ -6,7 +6,7 @@ atom.wide <- read.csv('posterior-atomic.csv')
 
 atom <- tidyr::pivot_longer(
                        atom.wide,
-                       cols = coverage_naive:fn_posi,
+                       cols = coverage_naive:fn_posi|msetarget_naive:runtime_posi,
                        names_to = c('metric','method'),
                        names_sep = '_')
 
@@ -15,7 +15,7 @@ bal.wide <- read.csv('posterior-balanced.csv')
 
 bal <- tidyr::pivot_longer(
                        bal.wide,
-                       cols = coverage_naive:fn_posi,
+                       cols = coverage_naive:fn_posi|msetarget_naive:runtime_posi,
                        names_to = c('metric','method'),
                        names_sep = '_')
 
@@ -24,7 +24,7 @@ het.wide <- read.csv('posterior-hetero.csv')
 
 het <- tidyr::pivot_longer(
                        het.wide,
-                       cols = coverage_naive:fn_posi,
+                       cols = coverage_naive:fn_posi|msetarget_naive:runtime_posi,
                        names_to = c('metric','method'),
                        names_sep = '_')
 
@@ -33,7 +33,7 @@ std.wide <- read.csv('posterior-stdized.csv')
 
 std <- tidyr::pivot_longer(
                        std.wide,
-                       cols = coverage_naive:fn_posi,
+                       cols = coverage_naive:fn_posi|msetarget_naive:runtime_posi,
                        names_to = c('metric','method'),
                        names_sep = '_')
 
@@ -42,7 +42,7 @@ og.wide <- read.csv('posterior-og.csv')
 
 og <- tidyr::pivot_longer(
                        og.wide,
-                       cols = coverage_naive:fn_posi,
+                       cols = coverage_naive:fn_posi|msetarget_naive:runtime_posi,
                        names_to = c('metric','method'),
                        names_sep = '_')
 
