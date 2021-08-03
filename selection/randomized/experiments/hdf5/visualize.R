@@ -290,11 +290,22 @@ ggsave("og-coverage-punchline.png", cmp.cov.og.punch, width = 19.20, height = 10
 ggsave("og-length-punchline.png", cmp.len.og.punch, width = 19.20, height = 10.80, units = "in")
 
 
-## alternate style punchline plots
+## alternate style punchline plots, no outliers in boxplots
+## use approach from https://stackoverflow.com/a/57825639/288545
+
+skinnybox <- function(x) {
+  coef <- 1.5
+  stats <- quantile(x, probs = c())
+  # calculate quantiles
+  stats <- quantile(x, probs = c(0.1, 0.25, 0.5, 0.75, 0.9))
+  names(stats) <- c("ymin", "lower", "middle", "upper", "ymax")
+  return(stats)
+}
+
 cmp.cov.can.punch.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
   filter(Setting %in% c("Heterogeneous")) %>%
   ggplot(aes(x = SNR, y = value, color = Method)) +
-  geom_boxplot() +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
   geom_hline(yintercept = 0.9, linetype = "dashed") +
   ylab("Coverage") +
   theme_bw(base_size = 30) +
@@ -305,7 +316,7 @@ cmp.cov.can.punch.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "cove
 cmp.len.can.punch.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   filter(Setting %in% c("Heterogeneous")) %>%
   ggplot(aes(x = SNR, y = value, color = Method)) +
-  geom_boxplot() +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
   ylab("Length") +
   theme_bw(base_size = 30) +
   guides(fill = guide_legend(override.aes = list(size = 20))) +
@@ -315,7 +326,7 @@ cmp.len.can.punch.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "leng
 cmp.cov.og.punch.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
   filter(Setting %in% c("Overlapping")) %>%
   ggplot(aes(x = SNR, y = value, color = Method)) +
-  geom_boxplot() +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
   geom_hline(yintercept = 0.9, linetype = "dashed") +
   ylab("Coverage") +
   theme_bw(base_size = 30) +
@@ -326,7 +337,7 @@ cmp.cov.og.punch.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "cover
 cmp.len.og.punch.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   filter(Setting %in% c("Overlapping")) %>%
   ggplot(aes(x = SNR, y = value, color = Method)) +
-  geom_boxplot() +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
   ylab("Length") +
   theme_bw(base_size = 30) +
   guides(fill = guide_legend(override.aes = list(size = 20))) +
