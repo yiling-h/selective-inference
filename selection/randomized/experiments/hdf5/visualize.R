@@ -78,6 +78,29 @@ cmp.len.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length') %>%
     ylab('Length') +
     theme_bw(base_size = 30)
 
+cmp.runtime.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "runtime") %>%
+  filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("Runtime (seconds)") +
+  theme_bw(base_size = 30)
+
+cmp.msetarget.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "msetarget") %>%
+  filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("MSE (Projected Target)") +
+  theme_bw(base_size = 30)
+
+cmp.msetruth.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "msetruth") %>%
+  filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("MSE (True Target)") +
+  theme_bw(base_size = 30)
 
 cmp.cov.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage') %>%
     filter(Setting %in% c('Standardized','Overlapping')) %>%
@@ -96,11 +119,40 @@ cmp.len.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length') %>%
     ylab('Length') +
     theme_bw(base_size = 30)
 
+cmp.runtime.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "runtime") %>%
+  filter(Setting %in% c('Standardized','Overlapping')) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("Runtime (seconds)") +
+  theme_bw(base_size = 30)
+
+cmp.msetarget.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "msetarget") %>%
+  filter(Setting %in% c('Standardized','Overlapping')) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("MSE (Projected Target)") +
+  theme_bw(base_size = 30)
+
+cmp.msetruth.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "msetruth") %>%
+  filter(Setting %in% c('Standardized','Overlapping')) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("MSE (True Target)") +
+  theme_bw(base_size = 30)
 
 ggsave('canonical-coverage.png', cmp.cov.can, width = 19.20, height = 10.80, units = 'in')
 ggsave('canonical-length.png', cmp.len.can, width = 19.20, height = 10.80, units = 'in')
+ggsave("canonical-runtime.png", cmp.runtime.can, width = 19.20, height = 10.80, units = "in")
+ggsave("canonical-msetarget.png", cmp.msetarget.can, width = 19.20, height = 10.80, units = "in")
+ggsave("canonical-msetruth.png", cmp.msetruth.can, width = 19.20, height = 10.80, units = "in")
 ggsave('extensions-coverage.png', cmp.cov.ext, width = 19.20, height = 10.80, units = 'in')
 ggsave('extensions-length.png', cmp.len.ext, width = 19.20, height = 10.80, units = 'in')
+ggsave("extensions-runtime.png", cmp.runtime.ext, width = 19.20, height = 10.80, units = "in")
+ggsave("extensions-msetarget.png", cmp.msetarget.ext, width = 19.20, height = 10.80, units = "in")
+ggsave("extensions-msetruth.png", cmp.msetruth.ext, width = 19.20, height = 10.80, units = "in")
 
 ## punchline plots for talks (simplified; just hetero and OG case)
 
