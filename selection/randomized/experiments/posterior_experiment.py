@@ -295,7 +295,7 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
 
         mupos, sigmapos = compute_posterior_distribution(prior_var,
                                                          dispersion,
-                                                         X[:, nonzero],
+                                                         X_test[:, nonzero],
                                                          Y)
 
         beta_target = np.linalg.pinv(X_test[:, nonzero]).dot(X_test.dot(beta))
