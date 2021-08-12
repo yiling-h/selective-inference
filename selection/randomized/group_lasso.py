@@ -671,12 +671,13 @@ class posterior():
 
         sigmasq = sigma ** 2
         target = self.S.dot(target_parameter) + self.r
-        mean_marginal = self.linear_coef.dot(target) + self.offset_coef
-        prec_marginal = self.prec_marginal
+        mean_marginal = self.linear_coef.dot(target) + self.offset_coef ##\bar{P}target_parameter + \bar{q}; defined in Theorem 2
+        prec_marginal = self.prec_marginal ##\bar{\Sigma}^{-1} ; defined in Theorem 2
         conjugate_marginal = prec_marginal.dot(mean_marginal)
 
         solver = _solve_barrier_affine_py
 
+        ##solves optimization problem in Theorem 2
         val, soln, hess = solver(conjugate_marginal,
                                  prec_marginal,
                                  self.feasible_point,
@@ -716,34 +717,34 @@ class posterior():
         implied mean as a function of the true parameters.
         """
 
-        target_linear = self.target_score_cov.T.dot(self.prec_target)
-        target_offset = self.score_offset - target_linear.dot(self.observed_target)
+        target_linear = self.target_score_cov.T.dot(self.prec_target) ##A
+        target_offset = self.score_offset - target_linear.dot(self.observed_target) ##c
 
-        target_lin = -self.logdens_linear.dot(target_linear)
-        target_off = self.cond_mean - target_lin.dot(self.observed_target)
+        target_lin = -self.logdens_linear.dot(target_linear) ## \bar{A}
+        target_off = self.cond_mean - target_lin.dot(self.observed_target) ## \bar{b}
 
-        self.linear_coef = target_lin
-        self.offset_coef = target_off
+        self.linear_coef = target_lin ## \bar{A}
+        self.offset_coef = target_off ## \bar{b}
 
         if np.asarray(self.randomizer_prec).shape in [(), (0,)]:
             _prec = self.prec_target + (target_linear.T.dot(target_linear) * self.randomizer_prec) \
-                    - target_lin.T.dot(self.cond_precision).dot(target_lin)
+                    - target_lin.T.dot(self.cond_precision).dot(target_lin) ## \bar{\Theta}^{-1}
             _P = target_linear.T.dot(target_offset) * self.randomizer_prec
         else:
             _prec = self.prec_target + (target_linear.T.dot(self.randomizer_prec).dot(target_linear)) \
                     - target_lin.T.dot(self.cond_precision).dot(target_lin)
-            _P = target_linear.T.dot(self.randomizer_prec).dot(target_offset)
+            _P = target_linear.T.dot(self.randomizer_prec).dot(target_offset) ## \bar{\Theta}^{-1}
 
         _Q = np.linalg.inv(_prec + target_lin.T.dot(self.cond_precision).dot(target_lin))
         self.prec_marginal = self.cond_precision - self.cond_precision.dot(target_lin).dot(_Q).dot(target_lin.T).dot(
             self.cond_precision)
 
-        r = np.linalg.inv(_prec).dot(target_lin.T.dot(self.cond_precision).dot(target_off) - _P)
-        S = np.linalg.inv(_prec).dot(self.prec_target)
+        r = np.linalg.inv(_prec).dot(target_lin.T.dot(self.cond_precision).dot(target_off) - _P) ## \bar{s}
+        S = np.linalg.inv(_prec).dot(self.prec_target) ## \bar{R}
 
-        self.r = r
-        self.S = S
-        self._prec = _prec
+        self.r = r ## \bar{s}
+        self.S = S ## \bar{R}
+        self._prec = _prec ## \bar{\Sigma}^{-1}
 
     def langevin_sampler(self,
                          nsample=2000,
