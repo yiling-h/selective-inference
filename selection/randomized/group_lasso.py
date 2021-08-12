@@ -670,9 +670,9 @@ class posterior():
         """
 
         sigmasq = sigma ** 2
-        target = self.S.dot(target_parameter) + self.r
-        mean_marginal = self.linear_coef.dot(target) + self.offset_coef ##\bar{P}target_parameter + \bar{q}; defined in Theorem 2
-        prec_marginal = self.prec_marginal ##\bar{\Sigma}^{-1} ; defined in Theorem 2
+        target = self.S.dot(target_parameter) + self.r ## marginal mean for target
+        mean_marginal = self.linear_coef.dot(target) + self.offset_coef ## \bar{P}target_parameter + \bar{q}; defined in Theorem 2
+        prec_marginal = self.prec_marginal ## \bar{\Sigma}^{-1} ; defined in Theorem 2
         conjugate_marginal = prec_marginal.dot(mean_marginal)
 
         solver = _solve_barrier_affine_py
@@ -690,7 +690,7 @@ class posterior():
         log_normalizer = -val - mean_marginal.T.dot(prec_marginal).dot(mean_marginal) / 2. + log_jacob[0]
 
         log_lik = -((self.observed_target - target).T.dot(self._prec).dot(self.observed_target - target)) / 2. \
-                  - log_normalizer
+                  - log_normalizer ##value of posterior in Theorem 2 ignoring prior
 
         if log_jacob[1] is 0:  # need to check literal since sometimes it's an array
             grad_lik = self.S.T.dot((self.prec_target.dot(self.observed_target) -
@@ -699,7 +699,7 @@ class posterior():
         else:
             grad_lik = self.S.T.dot(self._prec.dot(self.observed_target) - self._prec.dot(target)
                                     - self.linear_coef.T.dot(prec_marginal.dot(soln) - conjugate_marginal) - \
-                       self.linear_coef.T.dot(prec_marginal).dot(hess).dot(log_jacob[1])) ##check this!
+                       self.linear_coef.T.dot(prec_marginal).dot(hess).dot(log_jacob[1]))
 
         grad_prior, log_prior = self.prior(target_parameter)
 
