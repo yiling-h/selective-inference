@@ -1,6 +1,7 @@
 import numpy as np, sys
 from selection.randomized.selective_MLE_utils import solve_barrier_affine as solve_barrier_affine_C
 from scipy.stats import norm as ndist
+from scipy.linalg import fractional_matrix_power
 
 class langevin(object):
 
@@ -15,20 +16,26 @@ class langevin(object):
          self.stepsize) = (np.copy(initial_condition),
                            gradient_map,
                            stepsize)
+
         self._shape = self.state.shape[0]
         self._sqrt_step = np.sqrt(self.stepsize)
         self._noise = ndist(loc=0,scale=1)
         self.sample = np.copy(initial_condition)
         self.max_jump = max_jump
 
+
     def __iter__(self):
         return self
 
     def next(self):
+        return self.__next__()
+
+    def __next__(self):
+
         while True:
             grad_posterior = self.gradient_map(self.state)
             candidate = (self.state + self.stepsize * grad_posterior[0]
-                        + np.sqrt(2.)* self._noise.rvs(self._shape) * self._sqrt_step)
+                         + np.sqrt(2.) * self._noise.rvs(self._shape) * self._sqrt_step)
 
             if not np.all(np.isfinite(self.gradient_map(candidate)[0])):
                 print(candidate, self._sqrt_step, grad_posterior[0])
@@ -51,8 +58,9 @@ class MA_langevin(object):
         (self.state,
          self.gradient_map,
          self.stepsize) = (np.copy(initial_condition),
-                           gradient_map,
-                           stepsize)
+                                 gradient_map,
+                                 stepsize)
+
         self._shape = self.state.shape[0]
         self._sqrt_step = np.sqrt(self.stepsize)
         self._noise = ndist(loc=0,scale=1)
@@ -259,7 +267,7 @@ class inference_lasso_hierarchical():
 
     def hierarchical_prior(self, target_parameter, var_parameter, lam):
         std_parameter = np.sqrt(var_parameter)
-        grad_prior_par = -np.true_divide(target_parameter, 2.* (var_parameter))
+        grad_prior_par = -np.true_divide(target_parameter,  var_parameter)
         grad_prior_std = np.true_divide(target_parameter**2. , 2.*(var_parameter**2))- (lam/2.)-1./(2.*var_parameter)
         log_prior = -(np.linalg.norm(target_parameter)**2.) / (2.*var_parameter) - (lam * (np.linalg.norm(std_parameter)**2)/2.)-np.log(std_parameter)
         return grad_prior_par, grad_prior_std, log_prior
@@ -364,6 +372,7 @@ class inference_lasso_hierarchical():
             samples = np.zeros((nsample, 2*self.target_size))
             if count == 2:
                 raise ValueError('sampler escaping')
+                break
             for i in range(nsample):
                 sampler.next()
                 next_sample = sampler.sample.copy()

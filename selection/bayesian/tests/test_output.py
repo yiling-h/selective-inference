@@ -5,7 +5,7 @@ from selection.bayesian.posterior_lasso import inference_lasso, inference_lasso_
 from scipy.stats import norm as ndist
 from selection.bayesian.generative_instance import generate_signals
 import pandas as pd
-from selection.algorithms.lasso import lasso_full
+import timeit
 
 def naive_inf(X,
               y,
@@ -254,31 +254,18 @@ def sampler_inf(X,
 
     if nonzero.sum() > 0 and nonzero.sum() < model_size:
         try:
-            if target == "selected":
-                beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
-                (observed_target,
-                 cov_target,
-                 cov_target_score,
-                 alternatives) = selected_targets(conv.loglike,
-                                                  conv._W,
-                                                  nonzero,
-                                                  dispersion=dispersion)
-
-            else:
-                beta_target = beta[nonzero]
-                (observed_target,
-                 cov_target,
-                 cov_target_score,
-                 alternatives) = debiased_targets(conv.loglike,
-                                                  conv._W,
-                                                  nonzero,
-                                                  penalty=conv.penalty,
-                                                  dispersion=dispersion)
+            beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+            (observed_target,
+             cov_target,
+             cov_target_score,
+             alternatives) = selected_targets(conv.loglike,
+                                              conv._W,
+                                              nonzero,
+                                              dispersion=dispersion)
 
             active_screenset = np.asarray([r for r in range(p) if nonzero[r]])
             true_screen, false_screen, tot_screen = discoveries_count(active_screenset, true_signals, false_signals,
                                                                       X)
-
             if true_signals.shape[0] > 0:
                 power_screen = true_screen / max(float(true_signals.shape[0]), 1.)
             else:
@@ -286,7 +273,7 @@ def sampler_inf(X,
 
             false_screen = false_screen / float(tot_screen)
 
-            initial_par, _, _, _, _, _ = conv.selective_MLE(observed_target,
+            initial_par, observed_info_mean, _, _, _, _ = conv.selective_MLE(observed_target,
                                                             cov_target,
                                                             cov_target_score,
                                                             alternatives)
@@ -302,8 +289,13 @@ def sampler_inf(X,
                                                          conv.b_scaling,
                                                          initial_par)
 
+            tic= timeit.default_timer()
+
             samples, count = posterior_inf.posterior_sampler(nsample=2200, nburnin=200, step=step_size, start=None,
                                                              Metropolis=False)
+
+            toc = timeit.default_timer()
+            time_ = toc - tic
 
             samples = samples[:, :nactive]
 
@@ -341,14 +333,15 @@ def sampler_inf(X,
                               power_selective * np.ones(nactive),
                               ndiscoveries * np.ones(nactive),
                               true_dtotal * np.ones(nactive),
-                              true_signals.shape[0] * np.ones(nactive)))
+                              true_signals.shape[0] * np.ones(nactive),
+                              time_* np.ones(nactive)))
 
         except np.linalg.LinAlgError as e:
             if 'Singular matrix' in str(e):
-                return np.zeros(12)
+                return np.zeros(13)
 
     else:
-        return np.zeros(12)
+        return np.zeros(13)
 
 
 def create_output(V_values,
@@ -398,7 +391,7 @@ def create_output(V_values,
                 df_sel = pd.DataFrame(data=output_selective, columns=['coverage', 'length', 'nactive',
                                                                       'true_screen', 'power_screen', 'false_screen',
                                                                       'power_total', 'false_total', 'power_selective',
-                                                                      'ndiscoveries', 'true_dtotal', 'true_total'])
+                                                                      'ndiscoveries', 'true_dtotal', 'true_total', 'run_time'])
 
                 df_sel = df_sel.assign(simulation=ndraw,
                                        method="selective",
@@ -419,7 +412,6 @@ def create_output(V_values,
     outfile_inf_html = os.path.join(outpath, "realX_low_PF" + "_inference_35_90_" + target + ".html")
     df_master.to_csv(outfile_inf_csv, index=False)
     df_master.to_html(outfile_inf_html)
-
 
 def create_split_output(V_values,
                         nsim,
@@ -466,7 +458,8 @@ def create_split_output(V_values,
             df_split_1 = df_split_1.assign(simulation=ndraw,
                                            method="split (50%)",
                                            snr=V,
-                                           null_probab=null_prob)
+                                           null_probab=null_prob,
+                                           runtime=0)
 
             output_split = (split_inf(X=X,
                                       y=y,
@@ -486,7 +479,8 @@ def create_split_output(V_values,
             df_split_2 = df_split_2.assign(simulation=ndraw,
                                            method="split (60%)",
                                            snr=V,
-                                           null_probab=null_prob)
+                                           null_probab=null_prob,
+                                           runtime=0)
 
             output_split = (split_inf(X=X,
                                       y=y,
@@ -506,7 +500,8 @@ def create_split_output(V_values,
             df_split_3 = df_split_3.assign(simulation=ndraw,
                                            method="split (70%)",
                                            snr=V,
-                                           null_probab=null_prob)
+                                           null_probab=null_prob,
+                                           runtime=0)
 
             output_split = (split_inf(X=X,
                                       y=y,
@@ -526,7 +521,8 @@ def create_split_output(V_values,
             df_split_4 = df_split_4.assign(simulation=ndraw,
                                            method="split (80%)",
                                            snr=V,
-                                           null_probab=null_prob)
+                                           null_probab=null_prob,
+                                           runtime=0)
 
             output_split = (split_inf(X=X,
                                       y=y,
@@ -546,7 +542,8 @@ def create_split_output(V_values,
             df_split_5 = df_split_5.assign(simulation=ndraw,
                                            method="split (90%)",
                                            snr=V,
-                                           null_probab=null_prob)
+                                           null_probab=null_prob,
+                                           runtime=0)
 
             df_master = df_master.append(df_split_1, ignore_index=True)
             df_master = df_master.append(df_split_2, ignore_index=True)
@@ -608,7 +605,8 @@ def create_naive_output(V_values,
             df_naive = df_naive.assign(simulation=ndraw,
                                        method="naive",
                                        snr=V,
-                                       null_probab=null_prob)
+                                       null_probab=null_prob,
+                                       runtime=0)
 
             df_master = df_master.append(df_naive, ignore_index=True)
 
