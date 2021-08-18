@@ -175,6 +175,9 @@ def naive_inference(traj, X, Y, beta):
 
         traj.f_add_result('naive.mean.coverage', np.mean(coverage))
         traj.f_add_result('naive.mean.length', np.mean(length))
+
+        post_coverage = compute_coverage(lci, uci, beta, nonzero)
+        traj.f_add_result('naive.postcoverage', np.mean(post_coverage))
     else:
         traj.f_add_result('naive.mse.target', np.nan)
         traj.f_add_result('naive.mse.truth', compute_mse_truth(0, beta, nonzero))
@@ -184,6 +187,8 @@ def naive_inference(traj, X, Y, beta):
 
         traj.f_add_result('naive.mean.coverage', np.nan)
         traj.f_add_result('naive.mean.length', np.nan)
+
+        traj.f_add_result('naive.postcoverage', 1 - np.mean(nz_true))
 
     toc = clk()
     traj.f_add_result('naive.runtime', toc - tic)
@@ -252,6 +257,9 @@ def posi(traj, X, Y, beta):
 
         traj.f_add_result('posi.mean.coverage', np.mean(coverage))
         traj.f_add_result('posi.mean.length', np.mean(length))
+
+        post_coverage = compute_coverage(lci, uci, beta, nonzero)
+        traj.f_add_result('posi.postcoverage', np.mean(post_coverage))
     else:
         traj.f_add_result('posi.mse.target', np.nan)
         traj.f_add_result('posi.mse.truth', compute_mse_truth(0, beta, nonzero))
@@ -261,6 +269,8 @@ def posi(traj, X, Y, beta):
 
         traj.f_add_result('posi.mean.coverage', np.nan)
         traj.f_add_result('posi.mean.length', np.nan)
+
+        traj.f_add_result('posi.postcoverage', 1 - np.mean(nz_true))
 
     toc = clk()
     traj.f_add_result('posi.runtime', toc - tic)
@@ -317,6 +327,9 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
 
         traj.f_add_result(f'split{splitrat}.mean.coverage', np.mean(coverage))
         traj.f_add_result(f'split{splitrat}.mean.length', np.mean(length))
+
+        post_coverage = compute_coverage(lci, uci, beta, nonzero)
+        traj.f_add_result(f'split{splitrat}.postcoverage', np.mean(post_coverage))
     else:
         traj.f_add_result(f'split{splitrat}.mse.target', np.nan)
         traj.f_add_result(f'split{splitrat}.mse.truth', compute_mse_truth(0, beta, nonzero))
@@ -326,6 +339,8 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
 
         traj.f_add_result(f'split{splitrat}.mean.coverage', np.nan)
         traj.f_add_result(f'split{splitrat}.mean.length', np.nan)
+
+        traj.f_add_result(f'split{splitrat}.postcoverage', 1 - np.mean(nz_true))
 
     toc = clk()
     traj.f_add_result(f'split{splitrat}.runtime', toc - tic)
@@ -350,3 +365,21 @@ def compute_posterior_distribution(prior_var, dispersion, X, Y):
     sigmapos = np.linalg.inv(prior_prec + 1/dispersion * Q)
     mupos = 1./dispersion * sigmapos.dot(X.T).dot(Y)
     return mupos, sigmapos
+
+
+def compute_coverage(lci, uci, beta, nonzero):
+    """Compute coverage with respect to the original beta
+
+    Construct "expanded" intervals by setting the interval to {0} for anything
+    that wasn't selected, and then compute coverage with respect to the
+    original beta. As a consequence, anything appropriately *not* selected
+    counts as being covered.
+    """
+    lower = np.zeros(beta.shape)
+    lower[nonzero] = lci
+    upper = np.zeros(beta.shape)
+    upper[nonzero] = uci
+
+    coverage = (lower < beta) * (upper > beta)
+    return coverage
+
