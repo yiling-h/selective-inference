@@ -178,6 +178,12 @@ def naive_inference(traj, X, Y, beta):
 
         post_coverage = compute_coverage(lci, uci, beta, nonzero)
         traj.f_add_result('naive.postcoverage', np.mean(post_coverage))
+
+        tp, tn, fp, fn = compute_post_sigdet(lci, uci, beta, nonzero)
+        traj.f_add_result('naive.postsigdet.tp', tp)
+        traj.f_add_result('naive.postsigdet.tn', tn)
+        traj.f_add_result('naive.postsigdet.fp', fp)
+        traj.f_add_result('naive.postsigdet.fn', fn)
     else:
         traj.f_add_result('naive.mse.target', np.nan)
         traj.f_add_result('naive.mse.truth', compute_mse_truth(0, beta, nonzero))
@@ -189,6 +195,11 @@ def naive_inference(traj, X, Y, beta):
         traj.f_add_result('naive.mean.length', np.nan)
 
         traj.f_add_result('naive.postcoverage', 1 - np.mean(nz_true))
+
+        traj.f_add_result('naive.postsigdet.tp', 0)
+        traj.f_add_result('naive.postsigdet.tn', np.sum(~nz_true))
+        traj.f_add_result('naive.postsigdet.fp', 0)
+        traj.f_add_result('naive.postsigdet.fn', np.sum(nz_true))
 
     toc = clk()
     traj.f_add_result('naive.runtime', toc - tic)
@@ -260,6 +271,12 @@ def posi(traj, X, Y, beta):
 
         post_coverage = compute_coverage(lci, uci, beta, nonzero)
         traj.f_add_result('posi.postcoverage', np.mean(post_coverage))
+
+        tp, tn, fp, fn = compute_post_sigdet(lci, uci, beta, nonzero)
+        traj.f_add_result('posi.postsigdet.tp', tp)
+        traj.f_add_result('posi.postsigdet.tn', tn)
+        traj.f_add_result('posi.postsigdet.fp', fp)
+        traj.f_add_result('posi.postsigdet.fn', fn)
     else:
         traj.f_add_result('posi.mse.target', np.nan)
         traj.f_add_result('posi.mse.truth', compute_mse_truth(0, beta, nonzero))
@@ -271,6 +288,12 @@ def posi(traj, X, Y, beta):
         traj.f_add_result('posi.mean.length', np.nan)
 
         traj.f_add_result('posi.postcoverage', 1 - np.mean(nz_true))
+
+
+        traj.f_add_result('posi.postsigdet.tp', 0)
+        traj.f_add_result('posi.postsigdet.tn', np.sum(~nz_true))
+        traj.f_add_result('posi.postsigdet.fp', 0)
+        traj.f_add_result('posi.postsigdet.fn', np.sum(nz_true))
 
     toc = clk()
     traj.f_add_result('posi.runtime', toc - tic)
@@ -330,6 +353,13 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
 
         post_coverage = compute_coverage(lci, uci, beta, nonzero)
         traj.f_add_result(f'split{splitrat}.postcoverage', np.mean(post_coverage))
+
+
+        tp, tn, fp, fn = compute_post_sigdet(lci, uci, beta, nonzero)
+        traj.f_add_result(f'split{splitrat}.postsigdet.tp', tp)
+        traj.f_add_result(f'split{splitrat}.postsigdet.tn', tn)
+        traj.f_add_result(f'split{splitrat}.postsigdet.fp', fp)
+        traj.f_add_result(f'split{splitrat}.postsigdet.fn', fn)
     else:
         traj.f_add_result(f'split{splitrat}.mse.target', np.nan)
         traj.f_add_result(f'split{splitrat}.mse.truth', compute_mse_truth(0, beta, nonzero))
@@ -341,6 +371,12 @@ def data_splitting(traj, X, Y, beta, splitrat=.5):
         traj.f_add_result(f'split{splitrat}.mean.length', np.nan)
 
         traj.f_add_result(f'split{splitrat}.postcoverage', 1 - np.mean(nz_true))
+
+
+        traj.f_add_result(f'split{splitrat}.postsigdet.tp', 0)
+        traj.f_add_result(f'split{splitrat}.postsigdet.tn', np.sum(~nz_true))
+        traj.f_add_result(f'split{splitrat}.postsigdet.fp', 0)
+        traj.f_add_result(f'split{splitrat}.postsigdet.fn', np.sum(nz_true))
 
     toc = clk()
     traj.f_add_result(f'split{splitrat}.runtime', toc - tic)
@@ -383,3 +419,21 @@ def compute_coverage(lci, uci, beta, nonzero):
     coverage = (lower < beta) * (upper > beta)
     return coverage
 
+
+def compute_post_sigdet(lci, uci, beta, nonzero):
+    """Compute "Signal Detection" metrics based on intervals"""
+    lower = np.zeros(beta.shape)
+    lower[nonzero] = lci
+    upper = np.zeros(beta.shape)
+    upper[nonzero] = uci
+
+    nz_true = beta.astype(bool)
+
+    discoveries = np.logical_or(lower > 0, upper < 0)
+
+    tp = np.logical_and(discoveries, nz_true).sum()
+    tn = np.logical_and(~discoveries, ~nz_true).sum()
+    fp = np.logical_and(discoveries, ~nz_true).sum()
+    fn = np.logical_and(~discoveries, nz_true).sum()
+
+    return tp, tn, fp, fn
