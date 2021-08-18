@@ -16,6 +16,7 @@ def coverage_experiment(traj):
     naive_inference(traj, X, Y, beta)
     data_splitting(traj, X, Y, beta, splitrat=0.5)
     data_splitting(traj, X, Y, beta, splitrat=0.67)
+    data_splitting(traj, X, Y, beta, splitrat=0.33)
     posi(traj, X, Y, beta)
 
 
