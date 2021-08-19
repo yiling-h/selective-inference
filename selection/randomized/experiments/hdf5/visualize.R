@@ -6,7 +6,7 @@ atom.wide <- read.csv('posterior-atomic.csv')
 
 atom <- tidyr::pivot_longer(
                        atom.wide,
-                       cols = coverage_naive:fn_posi|msetarget_naive:runtime_posi,
+                       cols = coverage_naive:postfn_posi|msetarget_naive:postcoverage_posi,
                        names_to = c('metric','method'),
                        names_sep = '_')
 
@@ -15,7 +15,7 @@ bal.wide <- read.csv('posterior-balanced.csv')
 
 bal <- tidyr::pivot_longer(
                        bal.wide,
-                       cols = coverage_naive:fn_posi|msetarget_naive:runtime_posi,
+                       cols = coverage_naive:postfn_posi|msetarget_naive:postcoverage_posi,
                        names_to = c('metric','method'),
                        names_sep = '_')
 
@@ -24,7 +24,7 @@ het.wide <- read.csv('posterior-hetero.csv')
 
 het <- tidyr::pivot_longer(
                        het.wide,
-                       cols = coverage_naive:fn_posi|msetarget_naive:runtime_posi,
+                       cols = coverage_naive:postfn_posi|msetarget_naive:postcoverage_posi,
                        names_to = c('metric','method'),
                        names_sep = '_')
 
@@ -33,7 +33,7 @@ std.wide <- read.csv('posterior-stdized.csv')
 
 std <- tidyr::pivot_longer(
                        std.wide,
-                       cols = coverage_naive:fn_posi|msetarget_naive:runtime_posi,
+                       cols = coverage_naive:postfn_posi|msetarget_naive:postcoverage_posi,
                        names_to = c('metric','method'),
                        names_sep = '_')
 
@@ -42,7 +42,7 @@ og.wide <- read.csv('posterior-og.csv')
 
 og <- tidyr::pivot_longer(
                        og.wide,
-                       cols = coverage_naive:fn_posi|msetarget_naive:runtime_posi,
+                       cols = coverage_naive:postfn_posi|msetarget_naive:postcoverage_posi,
                        names_to = c('metric','method'),
                        names_sep = '_')
 
@@ -57,9 +57,33 @@ og$Setting <- 'Overlapping'
 
 res <- rbind(atom,bal,het,std,og)
 res$SNR <- as.factor(res$Signal_Fac)
-res$Method <- recode(res$method, naive = 'Naive', posi = 'Selection-informed', split50 = 'Split (1:1)', split67= 'Split (2:1)')
+res$Method <- recode(res$method, naive = 'Naive', posi = 'Selection-informed', split50 = 'Split (1:1)', split67= 'Split (2:1)', split33 = 'Split (1:2)')
 
 snr.labels <- as_labeller(c('0.2' = 'Low SNR', '0.5' = 'Medium SNR', '1.5' = 'High SNR'))
+
+## compute TPR and FPR
+tps <- res[res$metric == "posttp", ]$value
+fps <- res[res$metric == "postfp", ]$value
+tns <- res[res$metric == "posttn", ]$value
+fns <- res[res$metric == "postfn", ]$value
+frame <- res[res$metric == "posttp", ]
+
+tpr <- frame
+tpr$metric <- "TPR"
+tpr$value <- tps / (tps + fns)
+
+fpr <- frame
+fpr$metric <- "FPR"
+fpr$value <- fps / (fps + tns)
+
+fdp <- frame
+fdp$metric <- "FDP"
+fdp$value <- fps / max(tps + fps, 1)
+
+res <- rbind(res, tpr, fpr, fdp)
+
+## start making plots
+res <- filter(res, Setting != "Atomic")
 
 cmp.cov.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage') %>%
     filter(Setting %in% c('Atomic','Balanced','Heterogeneous')) %>%
@@ -100,6 +124,38 @@ cmp.msetruth.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "msetruth"
   geom_boxplot() +
   facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
   ylab("MSE (True Target)") +
+  theme_bw(base_size = 30)
+
+cmp.postcov.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "postcoverage") %>%
+  filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("Post Coverage") +
+  theme_bw(base_size = 30)
+
+cmp.tpr.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "TPR") %>%
+  filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("TPR") +
+  theme_bw(base_size = 30)
+
+cmp.fpr.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "FPR") %>%
+  filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("FPR") +
+  theme_bw(base_size = 30)
+
+cmp.fdp.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "FDP") %>%
+  filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("FDP") +
   theme_bw(base_size = 30)
 
 cmp.cov.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage') %>%
@@ -143,16 +199,47 @@ cmp.msetruth.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "msetruth"
   ylab("MSE (True Target)") +
   theme_bw(base_size = 30)
 
+cmp.postcov.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "postcoverage") %>%
+  filter(Setting %in% c('Standardized','Overlapping')) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("Post Coverage") +
+  theme_bw(base_size = 30)
+
+cmp.tpr.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "TPR") %>%
+  filter(Setting %in% c('Standardized','Overlapping')) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("TPR") +
+  theme_bw(base_size = 30)
+
+cmp.fpr.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "FPR") %>%
+  filter(Setting %in% c('Standardized','Overlapping')) %>%
+  ggplot(aes(x = Setting, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
+  ylab("FPR") +
+  theme_bw(base_size = 30)
+
 ggsave('canonical-coverage.png', cmp.cov.can, width = 19.20, height = 10.80, units = 'in')
 ggsave('canonical-length.png', cmp.len.can, width = 19.20, height = 10.80, units = 'in')
 ggsave("canonical-runtime.png", cmp.runtime.can, width = 19.20, height = 10.80, units = "in")
 ggsave("canonical-msetarget.png", cmp.msetarget.can, width = 19.20, height = 10.80, units = "in")
 ggsave("canonical-msetruth.png", cmp.msetruth.can, width = 19.20, height = 10.80, units = "in")
+ggsave("canonical-postcoverage.png", cmp.postcov.can, width = 19.20, height = 10.80, units = "in")
+ggsave("canonical-tpr.png", cmp.tpr.can, width = 19.20, height = 10.80, units = "in")
+ggsave("canonical-fpr.png", cmp.fpr.can, width = 19.20, height = 10.80, units = "in")
+ggsave("canonical-fdp.png", cmp.fdp.can, width = 19.20, height = 10.80, units = "in")
 ggsave('extensions-coverage.png', cmp.cov.ext, width = 19.20, height = 10.80, units = 'in')
 ggsave('extensions-length.png', cmp.len.ext, width = 19.20, height = 10.80, units = 'in')
 ggsave("extensions-runtime.png", cmp.runtime.ext, width = 19.20, height = 10.80, units = "in")
 ggsave("extensions-msetarget.png", cmp.msetarget.ext, width = 19.20, height = 10.80, units = "in")
 ggsave("extensions-msetruth.png", cmp.msetruth.ext, width = 19.20, height = 10.80, units = "in")
+ggsave("extensions-postcoverage.png", cmp.postcov.ext, width = 19.20, height = 10.80, units = "in")
+ggsave("extensions-tpr.png", cmp.tpr.ext, width = 19.20, height = 10.80, units = "in")
+ggsave("extensions-fpr.png", cmp.fpr.ext, width = 19.20, height = 10.80, units = "in")
 
 ## punchline plots for talks (simplified; just hetero and OG case)
 
