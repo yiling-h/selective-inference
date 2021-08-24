@@ -356,10 +356,17 @@ def create_output(V_values,
 
     df_master = pd.DataFrame()
 
+    column_names = ['Regime','Replicate', 'Y']
+    df_Y = pd.DataFrame(columns=column_names)
+    df_y = pd.DataFrame(columns=column_names)
+
+    regimes = np.array([1, 2, 3, 4])
+    seedn = 0
     for j in range(V_values.shape[0]):
         for ndraw in range(nsim):
             V = V_values[j]
             null_prob = null_prob_values[j]
+            np.random.seed(seedn)
             X, y, beta, sigma, true_signals, false_signals, detection_threshold = generate_signals(inpath,
                                                                                                    V=V,
                                                                                                    null_prob=null_prob)
@@ -400,10 +407,16 @@ def create_output(V_values,
 
                 df_master = df_master.append(df_sel, ignore_index=True)
 
+                df_y["Regime"] = (regimes[j] * np.ones(n, int)).tolist()
+                df_y["Replicate"] = (ndraw * np.ones(n, int)).tolist()
+                df_y["Y"] = y.tolist()
+                df_Y = df_Y.append(df_y, ignore_index=True)
+
             except ValueError:
                 pass
 
             print("iteration completed ", ndraw + 1)
+            seedn += 1
 
     if outpath is None:
         outpath = os.path.dirname(__file__)
@@ -412,6 +425,12 @@ def create_output(V_values,
     outfile_inf_html = os.path.join(outpath, "realX_low_PF" + "_inference_35_90_" + target + ".html")
     df_master.to_csv(outfile_inf_csv, index=False)
     df_master.to_html(outfile_inf_html)
+
+    outfile_Y_csv = os.path.join(outpath, "data_simulations.csv")
+    outfile_Y_html = os.path.join(outpath, "data_simulations.html")
+    df_Y.to_csv(outfile_Y_csv, index=False)
+    df_Y.to_html(outfile_Y_html)
+
 
 def create_split_output(V_values,
                         nsim,
