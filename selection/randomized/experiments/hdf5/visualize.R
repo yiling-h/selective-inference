@@ -55,11 +55,52 @@ het$Setting <- 'Heterogeneous'
 std$Setting <- 'Standardized'
 og$Setting <- 'Overlapping'
 
-res <- rbind(atom,bal,het,std,og)
+res <- rbind(atom, bal)
+res <- rbind(atom, bal, het, std, og)
 res$SNR <- as.factor(res$Signal_Fac)
-res$Method <- recode(res$method, naive = 'Naive', posi = 'Selection-informed', split50 = 'Split (1:1)', split67= 'Split (2:1)', split33 = 'Split (1:2)')
 
-snr.labels <- as_labeller(c('0.2' = 'Low SNR', '0.5' = 'Medium SNR', '1.5' = 'High SNR'))
+res$Method <- recode(res$method,
+  naive = "Naive",
+  posi50 = "Selection-informed",
+  posi67 = "Selection-informed",
+  posi33 = "Selection-informed",
+  split50 = "Split",
+  split67 = "Split",
+  split33 = "Split"
+)
+
+
+res$QueryProp <- factor(recode(res$method,
+  naive = 1,
+  posi50 = .5,
+  posi67 = .67,
+  posi33 = .33,
+  split50 = .5,
+  split67 = .67,
+  split33 = .33
+))
+
+
+snr.labels <- as_labeller(c('0.2' = 'Low SNR', '0.5' = 'Medium SNR', '1.5' = 'High SNR',
+                            "Atomic" = "Atomic",
+                            "Balanced" = "Balanced",
+                            "Heterogeneous" = "Heterogeneous",
+                            "Standardized" = "Standardized",
+                            "Overlapping" = "Overlapping"
+                            ))
+
+## compute quality of query
+tps <- res[res$metric == "tp", ]$value
+fps <- res[res$metric == "fp", ]$value
+tns <- res[res$metric == "tn", ]$value
+fns <- res[res$metric == "fn", ]$value
+frame <- res[res$metric == "tp", ]
+
+acc <- frame
+acc$metric <- "Query Accuracy"
+acc$value <- (tps + tns) / (tps + tns + fps + fns)
+
+res <- rbind(res, acc)
 
 ## compute TPR and FPR
 tps <- res[res$metric == "posttp", ]$value
@@ -85,162 +126,147 @@ res <- rbind(res, tpr, fpr, fdp)
 ## start making plots
 res <- filter(res, Setting != "Atomic")
 
-cmp.cov.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage') %>%
-    filter(Setting %in% c('Atomic','Balanced','Heterogeneous')) %>%
-    ggplot(aes(x = Setting, y = value, color = Method)) +
-    geom_boxplot() +
-    facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
-    geom_hline(yintercept=0.9, linetype='dashed') +
-    ylab('Coverage') +
-    theme_bw(base_size = 30)
-
-cmp.len.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length') %>%
-    filter(Setting %in% c('Atomic','Balanced','Heterogeneous')) %>%
-    ggplot(aes(x = Setting, y = value, color = Method)) +
-    geom_boxplot() +
-    facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
-    ylab('Length') +
-    theme_bw(base_size = 30)
-
-cmp.runtime.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "runtime") %>%
+can.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query Accuracy") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
+  ggplot(aes(x = QueryProp, y = value, color = Method)) +
   geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("Runtime (seconds)") +
+  facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
+  ylab("Query Accuracy") +
+  xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
-cmp.msetarget.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "msetarget") %>%
+can.cov <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
+  ggplot(aes(x = QueryProp, y = value, color = Method)) +
   geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("MSE (Projected Target)") +
+  facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
+  geom_hline(yintercept = 0.9, linetype = "dashed") +
+  ylab("Coverage") +
+  xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
-cmp.msetruth.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "msetruth") %>%
+can.len <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
+  ggplot(aes(x = QueryProp, y = value, color = Method)) +
   geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("MSE (True Target)") +
+  facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
+  ylab("Length") +
+  xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
-cmp.postcov.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "postcoverage") %>%
+ext.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query Accuracy") %>%
+  filter(Setting %in% c("Standardized", "Overlapping")) %>%
+  ggplot(aes(x = QueryProp, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
+  ylab("Query Accuracy") +
+  xlab("Proportion of Data Used for Query") +
+  theme_bw(base_size = 30)
+
+ext.cov <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
+  filter(Setting %in% c("Standardized", "Overlapping")) %>%
+  ggplot(aes(x = QueryProp, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
+  geom_hline(yintercept = 0.9, linetype = "dashed") +
+  ylab("Coverage") +
+  xlab("Proportion of Data Used for Query") +
+  theme_bw(base_size = 30)
+
+ext.len <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
+  filter(Setting %in% c("Standardized", "Overlapping")) %>%
+  ggplot(aes(x = QueryProp, y = value, color = Method)) +
+  geom_boxplot() +
+  facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
+  ylab("Length") +
+  xlab("Proportion of Data Used for Query") +
+  theme_bw(base_size = 30)
+
+
+ggsave("canonical-query.png", can.que, width = 19.20, height = 10.80, units = "in")
+ggsave('canonical-coverage.png', can.cov, width = 19.20, height = 10.80, units = 'in')
+ggsave('canonical-length.png', can.len, width = 19.20, height = 10.80, units = 'in')
+ggsave("extensions-query.png", ext.que, width = 19.20, height = 10.80, units = "in")
+ggsave('extensions-coverage.png', ext.cov, width = 19.20, height = 10.80, units = 'in')
+ggsave('extensions-length.png', ext.len, width = 19.20, height = 10.80, units = 'in')
+
+## alternate boxplots (no outliers)
+skinnybox <- function(x) {
+  coef <- 1.5
+  stats <- quantile(x, probs = c())
+  # calculate quantiles
+  stats <- quantile(x, probs = c(0.1, 0.25, 0.5, 0.75, 0.9))
+  names(stats) <- c("ymin", "lower", "middle", "upper", "ymax")
+  return(stats)
+}
+
+can.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query Accuracy") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
-  geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("Post Coverage") +
+  ggplot(aes(x = QueryProp, y = value, color = Method)) +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
+  facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
+  ylab("Query Accuracy") +
+  xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
-cmp.tpr.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "TPR") %>%
+can.cov.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
-  geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("TPR") +
+  ggplot(aes(x = QueryProp, y = value, color = Method)) +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
+  facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
+  geom_hline(yintercept = 0.9, linetype = "dashed") +
+  ylab("Coverage") +
+  xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
-cmp.fpr.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "FPR") %>%
+can.len.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
-  geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("FPR") +
+  ggplot(aes(x = QueryProp, y = value, color = Method)) +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
+  facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
+  ylab("Length") +
+  xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
-cmp.fdp.can <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "FDP") %>%
-  filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
-  geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("FDP") +
+ext.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query Accuracy") %>%
+  filter(Setting %in% c("Standardized", "Overlapping")) %>%
+  ggplot(aes(x = QueryProp, y = value, color = Method)) +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
+  facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
+  ylab("Query Accuracy") +
+  xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
-cmp.cov.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage') %>%
-    filter(Setting %in% c('Standardized','Overlapping')) %>%
-    ggplot(aes(x = Setting, y = value, color = Method)) +
-    geom_boxplot() +
-    facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
-    geom_hline(yintercept=0.9, linetype='dashed') +
-    ylab('Coverage') +
-    theme_bw(base_size = 30)
-
-cmp.len.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'length') %>%
-    filter(Setting %in% c('Standardized','Overlapping')) %>%
-    ggplot(aes(x = Setting, y = value, color = Method)) +
-    geom_boxplot() +
-    facet_wrap(~ SNR, ncol = 1, labeller = snr.labels) +
-    ylab('Length') +
-    theme_bw(base_size = 30)
-
-cmp.runtime.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "runtime") %>%
-  filter(Setting %in% c('Standardized','Overlapping')) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
-  geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("Runtime (seconds)") +
+ext.cov.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
+  filter(Setting %in% c("Standardized", "Overlapping")) %>%
+  ggplot(aes(x = QueryProp, y = value, color = Method)) +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
+  facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
+  geom_hline(yintercept = 0.9, linetype = "dashed") +
+  ylab("Coverage") +
+  xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
-cmp.msetarget.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "msetarget") %>%
-  filter(Setting %in% c('Standardized','Overlapping')) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
-  geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("MSE (Projected Target)") +
+ext.len.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
+  filter(Setting %in% c("Standardized", "Overlapping")) %>%
+  ggplot(aes(x = QueryProp, y = value, color = Method)) +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
+  facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
+  ylab("Length") +
+  xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
-cmp.msetruth.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "msetruth") %>%
-  filter(Setting %in% c('Standardized','Overlapping')) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
-  geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("MSE (True Target)") +
-  theme_bw(base_size = 30)
 
-cmp.postcov.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "postcoverage") %>%
-  filter(Setting %in% c('Standardized','Overlapping')) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
-  geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("Post Coverage") +
-  theme_bw(base_size = 30)
+ggsave("alt-canonical-query.png", can.que.alt, width = 19.20, height = 10.80, units = "in")
+ggsave('alt-canonical-coverage.png', can.cov.alt, width = 19.20, height = 10.80, units = 'in')
+ggsave('alt-canonical-length.png', can.len.alt, width = 19.20, height = 10.80, units = 'in')
+ggsave("alt-extensions-query.png", ext.que.alt, width = 19.20, height = 10.80, units = "in")
+ggsave('alt-extensions-coverage.png', ext.cov.alt, width = 19.20, height = 10.80, units = 'in')
+ggsave('alt-extensions-length.png', ext.len.alt, width = 19.20, height = 10.80, units = 'in')
 
-cmp.tpr.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "TPR") %>%
-  filter(Setting %in% c('Standardized','Overlapping')) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
-  geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("TPR") +
-  theme_bw(base_size = 30)
 
-cmp.fpr.ext <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "FPR") %>%
-  filter(Setting %in% c('Standardized','Overlapping')) %>%
-  ggplot(aes(x = Setting, y = value, color = Method)) +
-  geom_boxplot() +
-  facet_wrap(~SNR, ncol = 1, labeller = snr.labels) +
-  ylab("FPR") +
-  theme_bw(base_size = 30)
 
-ggsave('canonical-coverage.png', cmp.cov.can, width = 19.20, height = 10.80, units = 'in')
-ggsave('canonical-length.png', cmp.len.can, width = 19.20, height = 10.80, units = 'in')
-ggsave("canonical-runtime.png", cmp.runtime.can, width = 19.20, height = 10.80, units = "in")
-ggsave("canonical-msetarget.png", cmp.msetarget.can, width = 19.20, height = 10.80, units = "in")
-ggsave("canonical-msetruth.png", cmp.msetruth.can, width = 19.20, height = 10.80, units = "in")
-ggsave("canonical-postcoverage.png", cmp.postcov.can, width = 19.20, height = 10.80, units = "in")
-ggsave("canonical-tpr.png", cmp.tpr.can, width = 19.20, height = 10.80, units = "in")
-ggsave("canonical-fpr.png", cmp.fpr.can, width = 19.20, height = 10.80, units = "in")
-ggsave("canonical-fdp.png", cmp.fdp.can, width = 19.20, height = 10.80, units = "in")
-ggsave('extensions-coverage.png', cmp.cov.ext, width = 19.20, height = 10.80, units = 'in')
-ggsave('extensions-length.png', cmp.len.ext, width = 19.20, height = 10.80, units = 'in')
-ggsave("extensions-runtime.png", cmp.runtime.ext, width = 19.20, height = 10.80, units = "in")
-ggsave("extensions-msetarget.png", cmp.msetarget.ext, width = 19.20, height = 10.80, units = "in")
-ggsave("extensions-msetruth.png", cmp.msetruth.ext, width = 19.20, height = 10.80, units = "in")
-ggsave("extensions-postcoverage.png", cmp.postcov.ext, width = 19.20, height = 10.80, units = "in")
-ggsave("extensions-tpr.png", cmp.tpr.ext, width = 19.20, height = 10.80, units = "in")
-ggsave("extensions-fpr.png", cmp.fpr.ext, width = 19.20, height = 10.80, units = "in")
-
+## code below here not up-to-date for new data structures
 ## punchline plots for talks (simplified; just hetero and OG case)
 
 cmp.cov.can.punch <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == 'coverage') %>%
