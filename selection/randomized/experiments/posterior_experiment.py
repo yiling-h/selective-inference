@@ -17,7 +17,9 @@ def coverage_experiment(traj):
     data_splitting(traj, X, Y, beta, splitrat=0.5)
     data_splitting(traj, X, Y, beta, splitrat=0.67)
     data_splitting(traj, X, Y, beta, splitrat=0.33)
-    posi(traj, X, Y, beta)
+    posi(traj, X, Y, beta, splitrat=0.5)
+    posi(traj, X, Y, beta, splitrat=0.67)
+    posi(traj, X, Y, beta, splitrat=0.33)
 
 
 def draw_data(traj):
@@ -203,17 +205,18 @@ def naive_inference(traj, X, Y, beta):
     toc = clk()
     traj.f_add_result('naive.runtime', toc - tic)
 
-def posi(traj, X, Y, beta):
+def posi(traj, X, Y, beta, splitrat):
     tic = clk()
-    nonzero, conv, dispersion = grp_lasso_selection(X, Y, traj, randomize=True)
-    traj.f_add_result('posi.nonzero.mask', nonzero)
-    traj.f_add_result('posi.nonzero.nnz', nonzero.sum())
+    eta = traj.sigma * np.sqrt((1 - splitrat)/splitrat)
+    nonzero, conv, dispersion = grp_lasso_selection(X, Y, traj, randomize=True, eta=eta)
+    traj.f_add_result(f'posi{splitrat}.nonzero.mask', nonzero)
+    traj.f_add_result(f'posi{splitrat}.nonzero.nnz', nonzero.sum())
 
     nz_true = beta.astype(bool)
-    traj.f_add_result('posi.sigdet.tp', np.logical_and(nonzero, nz_true).sum())
-    traj.f_add_result('posi.sigdet.tn', np.logical_and(~nonzero, ~nz_true).sum())
-    traj.f_add_result('posi.sigdet.fp', np.logical_and(nonzero, ~nz_true).sum())
-    traj.f_add_result('posi.sigdet.fn', np.logical_and(~nonzero, nz_true).sum())
+    traj.f_add_result(f'posi{splitrat}.sigdet.tp', np.logical_and(nonzero, nz_true).sum())
+    traj.f_add_result(f'posi{splitrat}.sigdet.tn', np.logical_and(~nonzero, ~nz_true).sum())
+    traj.f_add_result(f'posi{splitrat}.sigdet.fp', np.logical_and(nonzero, ~nz_true).sum())
+    traj.f_add_result(f'posi{splitrat}.sigdet.fn', np.logical_and(~nonzero, nz_true).sum())
 
     if (nonzero.sum() > 0) and (traj.nsample > 0):
         conv._setup_implied_gaussian()
@@ -252,50 +255,50 @@ def posi(traj, X, Y, beta):
 
         mupos = np.mean(samples, 0)
 
-        traj.f_add_result('posi.mse.target', compute_mse_target(mupos, beta_target))
-        traj.f_add_result('posi.mse.truth', compute_mse_truth(mupos, beta, nonzero))
+        traj.f_add_result(f'posi{splitrat}.mse.target', compute_mse_target(mupos, beta_target))
+        traj.f_add_result(f'posi{splitrat}.mse.truth', compute_mse_truth(mupos, beta, nonzero))
 
-        traj.f_add_result('samples', samples)
+        traj.f_add_result(f'posi{splitrat}.samples', samples)
 
         lci = np.percentile(samples, 5, axis=0)
         uci = np.percentile(samples, 95, axis=0)
         coverage = (lci < beta_target) * (uci > beta_target)
         length = uci - lci
 
-        traj.f_add_result('posi.componentwise.coverage', coverage)
-        traj.f_add_result('posi.componentwise.length', length)
+        traj.f_add_result(f'posi{splitrat}.componentwise.coverage', coverage)
+        traj.f_add_result(f'posi{splitrat}.componentwise.length', length)
 
-        traj.f_add_result('posi.mean.coverage', np.mean(coverage))
-        traj.f_add_result('posi.mean.length', np.mean(length))
+        traj.f_add_result(f'posi{splitrat}.mean.coverage', np.mean(coverage))
+        traj.f_add_result(f'posi{splitrat}.mean.length', np.mean(length))
 
         post_coverage = compute_coverage(lci, uci, beta, nonzero)
-        traj.f_add_result('posi.postcoverage', np.mean(post_coverage))
+        traj.f_add_result(f'posi{splitrat}.postcoverage', np.mean(post_coverage))
 
         tp, tn, fp, fn = compute_post_sigdet(lci, uci, beta, nonzero)
-        traj.f_add_result('posi.postsigdet.tp', tp)
-        traj.f_add_result('posi.postsigdet.tn', tn)
-        traj.f_add_result('posi.postsigdet.fp', fp)
-        traj.f_add_result('posi.postsigdet.fn', fn)
+        traj.f_add_result(f'posi{splitrat}.postsigdet.tp', tp)
+        traj.f_add_result(f'posi{splitrat}.postsigdet.tn', tn)
+        traj.f_add_result(f'posi{splitrat}.postsigdet.fp', fp)
+        traj.f_add_result(f'posi{splitrat}.postsigdet.fn', fn)
     else:
-        traj.f_add_result('posi.mse.target', np.nan)
-        traj.f_add_result('posi.mse.truth', compute_mse_truth(0, beta, nonzero))
+        traj.f_add_result(f'posi{splitrat}.mse.target', np.nan)
+        traj.f_add_result(f'posi{splitrat}.mse.truth', compute_mse_truth(0, beta, nonzero))
 
-        traj.f_add_result('posi.componentwise.coverage', np.nan)
-        traj.f_add_result('posi.componentwise.length', np.nan)
+        traj.f_add_result(f'posi{splitrat}.componentwise.coverage', np.nan)
+        traj.f_add_result(f'posi{splitrat}.componentwise.length', np.nan)
 
-        traj.f_add_result('posi.mean.coverage', np.nan)
-        traj.f_add_result('posi.mean.length', np.nan)
+        traj.f_add_result(f'posi{splitrat}.mean.coverage', np.nan)
+        traj.f_add_result(f'posi{splitrat}.mean.length', np.nan)
 
-        traj.f_add_result('posi.postcoverage', 1 - np.mean(nz_true))
+        traj.f_add_result(f'posi{splitrat}.postcoverage', 1 - np.mean(nz_true))
 
 
-        traj.f_add_result('posi.postsigdet.tp', 0)
-        traj.f_add_result('posi.postsigdet.tn', np.sum(~nz_true))
-        traj.f_add_result('posi.postsigdet.fp', 0)
-        traj.f_add_result('posi.postsigdet.fn', np.sum(nz_true))
+        traj.f_add_result(f'posi{splitrat}.postsigdet.tp', 0)
+        traj.f_add_result(f'posi{splitrat}.postsigdet.tn', np.sum(~nz_true))
+        traj.f_add_result(f'posi{splitrat}.postsigdet.fp', 0)
+        traj.f_add_result(f'posi{splitrat}.postsigdet.fn', np.sum(nz_true))
 
     toc = clk()
-    traj.f_add_result('posi.runtime', toc - tic)
+    traj.f_add_result(f'posi{splitrat}.runtime', toc - tic)
 
 
 def data_splitting(traj, X, Y, beta, splitrat=.5):
