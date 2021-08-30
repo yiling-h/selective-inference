@@ -62,7 +62,7 @@ def draw_data(traj):
     return X, Y, beta
 
 
-def grp_lasso_selection(X, Y, traj, randomize=True):
+def grp_lasso_selection(X, Y, traj, randomize=True, eta=0):
     dispersion = traj.sigma ** 2  # use the true (oracle) value of sigma^2 as dispersion
     sigma_ = np.sqrt(dispersion)
 
@@ -103,12 +103,11 @@ def grp_lasso_selection(X, Y, traj, randomize=True):
             W[:, grps == grp] = Wg
 
     if randomize:
-        randomizer_scale = traj.randomizer_scale * sigma_
         conv = group_lasso.gaussian(W,
                                     Y,
                                     grps,
                                     weights,
-                                    randomizer_scale=randomizer_scale,
+                                    randomizer_scale=eta,
                                     ridge_term=ridge_term)
     else:
         perturb = np.repeat(0, W.shape[1])
