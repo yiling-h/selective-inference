@@ -71,14 +71,16 @@ res$Method <- recode(res$method,
 
 
 res$QueryProp <- factor(recode(res$method,
-  naive = 1,
-  posi50 = .5,
-  posi67 = .67,
-  posi33 = .33,
-  split50 = .5,
-  split67 = .67,
-  split33 = .33
-))
+  naive = "0",
+  posi50 = "1:1",
+  posi67 = "2:1",
+  posi33 = "1:2",
+  split50 = "1:1",
+  split67 = "2:1",
+  split33 = "1:2"
+),
+levels = c("1:2", "1:1", "2:1", "0")
+)
 
 
 snr.labels <- as_labeller(c('0.2' = 'Low SNR', '0.5' = 'Medium SNR', '1.5' = 'High SNR',
@@ -145,7 +147,7 @@ can.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %
   geom_boxplot() +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Query F1 Score") +
-  xlab("Proportion of Data Used for Query") +
+  xlab("Level of Randomization") +
   theme_bw(base_size = 30)
 
 can.cov <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
@@ -155,7 +157,7 @@ can.cov <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   geom_hline(yintercept = 0.9, linetype = "dashed") +
   ylab("Coverage") +
-  xlab("Proportion of Data Used for Query") +
+  xlab("Level of Randomization") +
   theme_bw(base_size = 30)
 
 can.len <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
@@ -164,7 +166,7 @@ can.len <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   geom_boxplot() +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Length") +
-  xlab("Proportion of Data Used for Query") +
+  xlab("Level of Randomization") +
   theme_bw(base_size = 30)
 
 ext.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %>%
@@ -173,7 +175,7 @@ ext.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %
   geom_boxplot() +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Query F1 Score") +
-  xlab("Proportion of Data Used for Query") +
+  xlab("Level of Randomization") +
   theme_bw(base_size = 30)
 
 ext.cov <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
@@ -183,7 +185,7 @@ ext.cov <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   geom_hline(yintercept = 0.9, linetype = "dashed") +
   ylab("Coverage") +
-  xlab("Proportion of Data Used for Query") +
+  xlab("Level of Randomization") +
   theme_bw(base_size = 30)
 
 ext.len <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
@@ -192,7 +194,7 @@ ext.len <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   geom_boxplot() +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Length") +
-  xlab("Proportion of Data Used for Query") +
+  xlab("Level of Randomization") +
   theme_bw(base_size = 30)
 
 
@@ -219,7 +221,7 @@ can.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score
   stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Query F1 Score") +
-  xlab("Proportion of Data Used for Query") +
+  xlab("Level of Randomization") +
   theme_bw(base_size = 30)
 
 can.cov.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
@@ -229,7 +231,7 @@ can.cov.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   geom_hline(yintercept = 0.9, linetype = "dashed") +
   ylab("Coverage") +
-  xlab("Proportion of Data Used for Query") +
+  xlab("Level of Randomization") +
   theme_bw(base_size = 30)
 
 can.len.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
@@ -238,7 +240,7 @@ can.len.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Length") +
-  xlab("Proportion of Data Used for Query") +
+  xlab("Level of Randomization") +
   theme_bw(base_size = 30)
 
 ext.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %>%
@@ -247,7 +249,7 @@ ext.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score
   stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Query F1 Score") +
-  xlab("Proportion of Data Used for Query") +
+  xlab("Level of Randomization") +
   theme_bw(base_size = 30)
 
 ext.cov.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
@@ -257,7 +259,7 @@ ext.cov.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   geom_hline(yintercept = 0.9, linetype = "dashed") +
   ylab("Coverage") +
-  xlab("Proportion of Data Used for Query") +
+  xlab("Level of Randomization") +
   theme_bw(base_size = 30)
 
 ext.len.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
@@ -266,7 +268,7 @@ ext.len.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Length") +
-  xlab("Proportion of Data Used for Query") +
+  xlab("Level of Randomization") +
   theme_bw(base_size = 30)
 
 
