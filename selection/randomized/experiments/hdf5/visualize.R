@@ -102,6 +102,19 @@ acc$value <- (tps + tns) / (tps + tns + fps + fns)
 
 res <- rbind(res, acc)
 
+## compute quality of query with F1 score
+tps <- res[res$metric == "tp", ]$value
+fps <- res[res$metric == "fp", ]$value
+tns <- res[res$metric == "tn", ]$value
+fns <- res[res$metric == "fn", ]$value
+frame <- res[res$metric == "tp", ]
+
+acc <- frame
+acc$metric <- "Query F1 Score"
+acc$value <- (tps) / (tps + 1/2 * (fps + fns))
+
+res <- rbind(res, acc)
+
 ## compute TPR and FPR
 tps <- res[res$metric == "posttp", ]$value
 fps <- res[res$metric == "postfp", ]$value
