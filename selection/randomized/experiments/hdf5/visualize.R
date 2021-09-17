@@ -139,12 +139,12 @@ res <- rbind(res, tpr, fpr, fdp)
 ## start making plots
 res <- filter(res, Setting != "Atomic")
 
-can.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query Accuracy") %>%
+can.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
   geom_boxplot() +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
-  ylab("Query Accuracy") +
+  ylab("Query F1 Score") +
   xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
@@ -167,12 +167,12 @@ can.len <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
-ext.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query Accuracy") %>%
+ext.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %>%
   filter(Setting %in% c("Standardized", "Overlapping")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
   geom_boxplot() +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
-  ylab("Query Accuracy") +
+  ylab("Query F1 Score") +
   xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
@@ -213,12 +213,12 @@ skinnybox <- function(x) {
   return(stats)
 }
 
-can.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query Accuracy") %>%
+can.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
   stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
-  ylab("Query Accuracy") +
+  ylab("Query F1 Score") +
   xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
@@ -241,12 +241,12 @@ can.len.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
-ext.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query Accuracy") %>%
+ext.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %>%
   filter(Setting %in% c("Standardized", "Overlapping")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
   stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
-  ylab("Query Accuracy") +
+  ylab("Query F1 Score") +
   xlab("Proportion of Data Used for Query") +
   theme_bw(base_size = 30)
 
