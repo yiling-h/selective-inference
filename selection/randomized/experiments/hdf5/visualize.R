@@ -144,7 +144,7 @@ res <- filter(res, Setting != "Atomic")
 can.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
-  geom_boxplot() +
+  geom_boxplot(position = position_dodge2(preserve = "single")) +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Query F1 Score") +
   xlab("Level of Randomization") +
@@ -153,7 +153,7 @@ can.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %
 can.cov <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
-  geom_boxplot() +
+  geom_boxplot(position = position_dodge2(preserve = "single")) +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   geom_hline(yintercept = 0.9, linetype = "dashed") +
   ylab("Coverage") +
@@ -163,7 +163,7 @@ can.cov <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
 can.len <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
-  geom_boxplot() +
+  geom_boxplot(position = position_dodge2(preserve = "single")) +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Length") +
   xlab("Level of Randomization") +
@@ -172,7 +172,7 @@ can.len <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
 ext.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %>%
   filter(Setting %in% c("Standardized", "Overlapping")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
-  geom_boxplot() +
+  geom_boxplot(position = position_dodge2(preserve = "single")) +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Query F1 Score") +
   xlab("Level of Randomization") +
@@ -181,7 +181,7 @@ ext.que <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %
 ext.cov <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
   filter(Setting %in% c("Standardized", "Overlapping")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
-  geom_boxplot() +
+  geom_boxplot(position = position_dodge2(preserve = "single")) +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   geom_hline(yintercept = 0.9, linetype = "dashed") +
   ylab("Coverage") +
@@ -191,7 +191,7 @@ ext.cov <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
 ext.len <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   filter(Setting %in% c("Standardized", "Overlapping")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
-  geom_boxplot() +
+  geom_boxplot(position = position_dodge2(preserve = "single")) +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Length") +
   xlab("Level of Randomization") +
@@ -218,7 +218,7 @@ skinnybox <- function(x) {
 can.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
-  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = position_dodge2(preserve = "single")) +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Query F1 Score") +
   xlab("Level of Randomization") +
@@ -227,7 +227,7 @@ can.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score
 can.cov.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
-  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = position_dodge2(preserve = "single")) +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   geom_hline(yintercept = 0.9, linetype = "dashed") +
   ylab("Coverage") +
@@ -237,7 +237,7 @@ can.cov.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
 can.len.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   filter(Setting %in% c("Atomic", "Balanced", "Heterogeneous")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
-  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = position_dodge2(preserve = "single")) +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Length") +
   xlab("Level of Randomization") +
@@ -246,7 +246,7 @@ can.len.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
 ext.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score") %>%
   filter(Setting %in% c("Standardized", "Overlapping")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
-  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = position_dodge2(preserve = "single")) +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Query F1 Score") +
   xlab("Level of Randomization") +
@@ -255,7 +255,7 @@ ext.que.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "Query F1 Score
 ext.cov.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
   filter(Setting %in% c("Standardized", "Overlapping")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
-  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = position_dodge2(preserve = "single")) +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   geom_hline(yintercept = 0.9, linetype = "dashed") +
   ylab("Coverage") +
@@ -265,7 +265,7 @@ ext.cov.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "coverage") %>%
 ext.len.alt <- filter(res, SNR %in% c(0.2, 0.5, 1.5) & metric == "length") %>%
   filter(Setting %in% c("Standardized", "Overlapping")) %>%
   ggplot(aes(x = QueryProp, y = value, color = Method)) +
-  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = 'dodge2') +
+  stat_summary(fun.data = skinnybox, geom = 'boxplot', position = position_dodge2(preserve = "single")) +
   facet_grid(rows = vars(SNR), cols = vars(Setting), labeller = snr.labels) +
   ylab("Length") +
   xlab("Level of Randomization") +
