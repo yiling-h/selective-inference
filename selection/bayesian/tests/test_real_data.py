@@ -209,5 +209,5 @@ def main(ndraw=10, split_proportion=0.70, randomizer_scale=1.):
         print("exceptions ", exception)
 
 
-main(ndraw=50)
+
 

@@ -639,3 +639,4 @@ def create_naive_output(V_values,
     df_master.to_csv(outfile_inf_csv, index=False)
     df_master.to_html(outfile_inf_html)
 
+
