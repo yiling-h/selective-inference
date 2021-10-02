@@ -372,6 +372,13 @@ def create_output(V_values,
                                                                                                    null_prob=null_prob)
 
             n, p = X.shape
+            outpath_Y = os.path.join(outpath, "Y/")
+            out_y = os.path.join(outpath_Y + "Y_regime_" + str(j+1) + "_replicate" + str(ndraw+1) + ".npy")
+            np.save(out_y, y)
+
+            outpath_Beta = os.path.join(outpath, "Beta/")
+            out_beta = os.path.join(outpath_Beta + "Beta_regime_" + str(j+1) + "_replicate" + str(ndraw+1) + ".npy")
+            np.save(out_beta, beta)
 
             if n > 2 * p:
                 dispersion = np.linalg.norm(y - X.dot(np.linalg.pinv(X).dot(y))) ** 2 / (n - p)
