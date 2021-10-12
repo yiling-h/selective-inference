@@ -21,6 +21,7 @@ class paired_group_lasso(query):
                   weights,
                   ridge_term,
                   randomizer,
+                  randomizer_scale,
                   perturb=None):
          r"""
          Create a new post-selection object for the paired group LASSO problem
@@ -45,14 +46,32 @@ class paired_group_lasso(query):
 
          self.X = X
          self.nfeature = p = self.X.shape[1]
+         self.nobs = n = self.X.shape[0]
+         self.X_aug = self.augment_X()
+         self.Y_aug = self.augment_Y()
+         self.groups, self.groups_to_vars = self.create_groups()
 
+         # Optimization hyperparameters
          self.ridge_term = ridge_term
-         self.penalty = rr.group_lasso(groups,
+         self.penalty = rr.group_lasso(self.groups,
                                        weights=weights,
                                        lagrange=1.)
          self._initial_omega = perturb  # random perturbation
 
          self.randomizer = randomizer
+
+         """
+         if type(weights) != float and type(weights) != int:
+            TODO: create the weight dictionary 
+         """
+         glsolver = group_lasso.gaussian(self.X_aug,
+                                         self.Y_aug,
+                                         self.groups,
+                                         weights,
+                                         randomizer_scale=randomizer_scale)
+
+         signs = glsolver.fit()
+         nonzero = glsolver.selection_variable['directions'].keys()
 
     def augment_X(self):
         r"""
@@ -88,10 +107,22 @@ class paired_group_lasso(query):
         n = self.X.shape[0]
         p = self.X.shape[1]
 
-        groups = np.zeros((p*(p-1),))
+        # E.g. groups = [0, 0, 1, 1, 1]; start counting from 0
+        groups = np.zeros((p * (p - 1),))
+        g = 0
+        groups_to_vars = dict()
 
         for i in range(p):
-            for j in range(i+1,p):
+            for j in range(i + 1, p):
+                # Assign b_ij and b_ji to be in the same group
+                # Note that b_ji is mapped to an earlier dimension of the vectorized parameter
+                groups[j * (p - 1) + i] = g
+                groups[i * (p - 1) + j - 1] = g
+                # Record this correspondence between g and i,j
+                groups_to_vars[g] = [i,j]
+                g = g + 1
 
+        # Cast the datatype
+        groups = groups.tolist()
 
-        return groups
+        return groups, groups_to_vars
