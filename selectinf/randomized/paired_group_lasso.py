@@ -49,29 +49,24 @@ class paired_group_lasso(query):
          self.nobs = n = self.X.shape[0]
          self.X_aug = self.augment_X()
          self.Y_aug = self.augment_Y()
-         self.groups, self.groups_to_vars = self.create_groups()
+
+         if type(weights) != float and type(weights) != int:
+             # When an ndarray of weights is supplied
+             self.groups, self.groups_to_vars, self.weights = self.create_groups(weights)
+         else:
+             # when weight is a real number
+             self.groups, self.groups_to_vars = self.create_groups()
+             self.weights = weights
 
          # Optimization hyperparameters
          self.ridge_term = ridge_term
          self.penalty = rr.group_lasso(self.groups,
-                                       weights=weights,
+                                       weights=self.weights,
                                        lagrange=1.)
          self._initial_omega = perturb  # random perturbation
 
          self.randomizer = randomizer
-
-         """
-         if type(weights) != float and type(weights) != int:
-            TODO: create the weight dictionary 
-         """
-         glsolver = group_lasso.gaussian(self.X_aug,
-                                         self.Y_aug,
-                                         self.groups,
-                                         weights,
-                                         randomizer_scale=randomizer_scale)
-
-         signs = glsolver.fit()
-         nonzero = glsolver.selection_variable['directions'].keys()
+         self.randomizer_scale = randomizer_scale
 
     def augment_X(self):
         r"""
@@ -102,7 +97,8 @@ class paired_group_lasso(query):
 
     def create_groups(self):
         r"""
-        Generate an ndarray containing the appropriate grouping of parameters: (b_ij, b_ji)
+        1. Generate an ndarray containing the appropriate grouping of parameters: (b_ij, b_ji)
+        2. Generate a dict that maps back from g to (i,j), i<j
         """
         n = self.X.shape[0]
         p = self.X.shape[1]
@@ -126,3 +122,60 @@ class paired_group_lasso(query):
         groups = groups.tolist()
 
         return groups, groups_to_vars
+
+    def create_groups(self, weights):
+        r"""
+        1. Generate an ndarray containing the appropriate grouping of parameters: (b_ij, b_ji)
+        2. Generate a dict that maps back from g to (i,j), i<j
+        3. Generate a dict for group weights that is interperatable by the group lasso solver,
+           from a symmetric ndarray of weights
+        """
+        n = self.X.shape[0]
+        p = self.X.shape[1]
+
+        # E.g. groups = [0, 0, 1, 1, 1]; start counting from 0
+        groups = np.zeros((p * (p - 1),))
+        g = 0
+        groups_to_vars = dict()
+        group_weights = dict()
+
+        for i in range(p):
+            for j in range(i + 1, p):
+                # Assign b_ij and b_ji to be in the same group
+                # Note that b_ji is mapped to an earlier dimension of the vectorized parameter
+                groups[j * (p - 1) + i] = g
+                groups[i * (p - 1) + j - 1] = g
+                # Record this correspondence between g and i,j
+                groups_to_vars[g] = [i,j]
+                # Record the group weight accordingly
+                group_weights[g] = weights[i,j]
+                g = g + 1
+
+        # Cast the datatype
+        groups = groups.tolist()
+
+        return groups, groups_to_vars, group_weights
+
+    def fit(self):
+        glsolver = group_lasso.gaussian(self.X_aug,
+                                        self.Y_aug,
+                                        self.groups,
+                                        self.weights,
+                                        randomizer_scale=self.randomizer_scale)
+
+        signs = glsolver.fit()
+        coeffs = signs['directions']
+        nonzero = glsolver.selection_variable['directions'].keys()
+
+        # Stack the parameters into a pxp matrix
+        beta = np.zeros((self.nfeature, self.nfeature))
+        for g in nonzero:
+            ij = self.groups_to_vars[g]
+            i = ij[0]
+            j = ij[1]
+            # when i<j, b_ji is mapped to an earlier position in the vectorized parameter
+            beta[j,i] = coeffs[g][0]
+            beta[i,j] = coeffs[g][1]
+
+        self.beta = beta
+
