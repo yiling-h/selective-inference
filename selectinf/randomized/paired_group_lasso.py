@@ -20,7 +20,6 @@ class paired_group_lasso(query):
                   X,
                   weights,
                   ridge_term,
-                  randomizer,
                   randomizer_scale,
                   perturb=None):
          r"""
@@ -50,13 +49,7 @@ class paired_group_lasso(query):
          self.X_aug = self.augment_X()
          self.Y_aug = self.augment_Y()
 
-         if type(weights) != float and type(weights) != int:
-             # When an ndarray of weights is supplied
-             self.groups, self.groups_to_vars, self.weights = self.create_groups(weights)
-         else:
-             # when weight is a real number
-             self.groups, self.groups_to_vars = self.create_groups()
-             self.weights = weights
+         self.groups, self.groups_to_vars, self.weights = self.create_groups(weights)
 
          # Optimization hyperparameters
          self.ridge_term = ridge_term
@@ -65,7 +58,6 @@ class paired_group_lasso(query):
                                        lagrange=1.)
          self._initial_omega = perturb  # random perturbation
 
-         self.randomizer = randomizer
          self.randomizer_scale = randomizer_scale
 
     def augment_X(self):
@@ -95,34 +87,6 @@ class paired_group_lasso(query):
 
         return Y_aug
 
-    def create_groups(self):
-        r"""
-        1. Generate an ndarray containing the appropriate grouping of parameters: (b_ij, b_ji)
-        2. Generate a dict that maps back from g to (i,j), i<j
-        """
-        n = self.X.shape[0]
-        p = self.X.shape[1]
-
-        # E.g. groups = [0, 0, 1, 1, 1]; start counting from 0
-        groups = np.zeros((p * (p - 1),))
-        g = 0
-        groups_to_vars = dict()
-
-        for i in range(p):
-            for j in range(i + 1, p):
-                # Assign b_ij and b_ji to be in the same group
-                # Note that b_ji is mapped to an earlier dimension of the vectorized parameter
-                groups[j * (p - 1) + i] = g
-                groups[i * (p - 1) + j - 1] = g
-                # Record this correspondence between g and i,j
-                groups_to_vars[g] = [i,j]
-                g = g + 1
-
-        # Cast the datatype
-        groups = groups.tolist()
-
-        return groups, groups_to_vars
-
     def create_groups(self, weights):
         r"""
         1. Generate an ndarray containing the appropriate grouping of parameters: (b_ij, b_ji)
@@ -139,6 +103,9 @@ class paired_group_lasso(query):
         groups_to_vars = dict()
         group_weights = dict()
 
+        # indicator of whether weights is a real number
+        is_singleton = (type(weights) == float or type(weights) == int)
+
         for i in range(p):
             for j in range(i + 1, p):
                 # Assign b_ij and b_ji to be in the same group
@@ -147,8 +114,12 @@ class paired_group_lasso(query):
                 groups[i * (p - 1) + j - 1] = g
                 # Record this correspondence between g and i,j
                 groups_to_vars[g] = [i,j]
-                # Record the group weight accordingly
-                group_weights[g] = weights[i,j]
+                # Record the group weights accordingly
+                if is_singleton:
+                    group_weights[g] = weights
+                else:
+                    group_weights[g] = weights[i, j]
+
                 g = g + 1
 
         # Cast the datatype
