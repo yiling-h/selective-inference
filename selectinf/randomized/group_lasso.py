@@ -221,7 +221,9 @@ class group_lasso(query):
              implied_variance, 
              log_det,
              log_cond_density) = dens_info
-            
+
+            group = int(group)
+
             group_idx = self.penalty.groups == group
             initial_scaling = np.linalg.norm(soln[group]) - self.penalty.weights[group]
 
