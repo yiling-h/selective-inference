@@ -127,6 +127,19 @@ class paired_group_lasso(query):
 
         return groups, groups_to_vars, group_weights
 
+    def undo_vectorize(self, k):
+        r"""
+        1. Mapp the k-th entry of the vectorized parameter to its corresponding
+           entry in the matrix parameter
+        """
+        p = self.X.shape[1]
+        j = k // (p-1)
+        i = k % (p-1)
+        if i >= j:
+            i = i + 1
+
+        return i,j
+
     def fit(self):
         glsolver = group_lasso.gaussian(self.X_aug,
                                         self.Y_aug,
@@ -140,13 +153,12 @@ class paired_group_lasso(query):
 
         # Stack the parameters into a pxp matrix
         beta = np.zeros((self.nfeature, self.nfeature))
-        for g in nonzero:
-            ij = self.groups_to_vars[g]
-            i = ij[0]
-            j = ij[1]
-            # when i<j, b_ji is mapped to an earlier position in the vectorized parameter
-            beta[j,i] = coeffs[g][0]
-            beta[i,j] = coeffs[g][1]
 
-        self.beta = beta
+        vectorized_beta = glsolver.initial_soln
 
+        for k in range(len(vectorized_beta)):
+            i,j = self.undo_vectorize(k)
+            print(k, 'mapped to', i, j)
+            beta[i,j] = vectorized_beta[k]
+        print(vectorized_beta)
+        print(beta)
