@@ -62,6 +62,7 @@ class group_lasso(object):
          self.initial_subgrad) = self._solve_randomized_problem(perturb=perturb,
                                                                 solve_args=solve_args)
 
+        # YH: Covariance matrix if the randomizer
         _, self.randomizer_prec = self.randomizer.cov_prec
 
         # initialize variables
