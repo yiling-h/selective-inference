@@ -56,6 +56,8 @@ class group_lasso(object):
     def fit(self,
             solve_args={'tol': 1.e-12, 'min_its': 50},
             perturb=None):
+        # YH: perturb is the same type of object as the output of randomizer.sample()
+        #     conventiently we usually choose isotropic gaussian
 
         # solve the randomized version of group lasso
         (self.initial_soln,
@@ -74,15 +76,18 @@ class group_lasso(object):
         ordered_opt = []  # gamma's ordered by group labels
         ordered_vars = []  # indices "ordered" by sorting group labels
 
+        # YH: Numerical tolerance, values below which are deemed to be zero
         tol = 1.e-20
 
         # now we are collecting the directions and norms of the active groups
+        # YH: Iterate over sorted, non-repetitive group labels
         for g in sorted(np.unique(self.groups)):  # g is group label
-
+            # YH: a logical vector accessing all variables in group g
             group_mask = self.groups == g
             soln = self.initial_soln  # do not need to keep setting this
 
             if norm(soln[group_mask]) > tol * norm(soln):  # is group g appreciably nonzero
+                # YH: add g to the active groups list
                 ordered_groups.append(g)
 
                 # variables in active group
@@ -91,12 +96,14 @@ class group_lasso(object):
                 if self.penalty.weights[g] == 0:
                     unpenalized.append(g)
 
-                else:
+                else: # YH: if group g have penalty weights
                     active_groups.append(g)
+                    # YH: unit vectors
                     active_dirs[g] = soln[group_mask] / norm(soln[group_mask])
-
+                # Gamma's (norms)
                 ordered_opt.append(norm(soln[group_mask]))
             else:
+                # YH: Mark these variables as inactive
                 overall[group_mask] = False
 
         self.selection_variable = {'directions': active_dirs,
@@ -113,8 +120,12 @@ class group_lasso(object):
 
         X, y = self.loglike.data
         W = self._W = np.ones(X.shape[0])
+        # YH: ordered_vars is the list of indices of covariates in the active group
+        # YH: This is X^T X_E?
         opt_linearNoU = np.dot(X.T, X[:, ordered_vars] * W[:, np.newaxis])
 
+        # YH: Add the ridge term as per Remark 4.1
+        # YH: What does enumerate do?
         for i, var in enumerate(ordered_vars):
             opt_linearNoU[var, i] += self.ridge_term
 
@@ -123,9 +134,11 @@ class group_lasso(object):
         self.observed_score_state = - X.T.dot(y)
 
         active_signs = np.sign(self.initial_soln)
+        # Nonzero indices in the ungrouped solution vector
         active = np.flatnonzero(active_signs)
         self.active = active
 
+        # YH: Orthonormal basis completion for each u_g
         def compute_Vg(ug):
             pg = ug.size  # figure out size of g'th group
             if pg > 1:
@@ -136,6 +149,7 @@ class group_lasso(object):
                 Vg = np.zeros((1, 0))  # if the group is size one, the orthogonal complement is empty
             return Vg
 
+        # YH: Lambda in paper (Thm 3.1)
         def compute_Lg(g):
             pg = active_dirs[g].size
             Lg = self.penalty.weights[g] * np.eye(pg)
@@ -152,6 +166,7 @@ class group_lasso(object):
         QI = inv(Q)
         C = V.T.dot(QI).dot(L).dot(V)
 
+        # YH: save results
         self.XE = XE
         self.Q = Q
         self.QI = QI
