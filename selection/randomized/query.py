@@ -8,6 +8,9 @@ from scipy.optimize import bisect
 from regreg.affine import power_L
 import regreg.api as rr
 
+import pyximport
+pyximport.install()
+
 from .selective_MLE_utils import solve_barrier_affine as solve_barrier_affine_C
 
 from ..distributions.api import discrete_family

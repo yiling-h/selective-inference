@@ -12,8 +12,8 @@ from .query import query, affine_gaussian_sampler
 from .randomization import randomization
 from .group_lasso import group_lasso
 from ..base import restricted_estimator
-from ..algorithms.debiased_lasso import (debiasing_matrix,
-                                         pseudoinverse_debiasing_matrix)
+#from ..algorithms.debiased_lasso import (debiasing_matrix,
+#                                         pseudoinverse_debiasing_matrix)
 
 class paired_group_lasso(query):
     def  __init__(self,

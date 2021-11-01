@@ -125,7 +125,6 @@ class group_lasso(object):
         opt_linearNoU = np.dot(X.T, X[:, ordered_vars] * W[:, np.newaxis])
 
         # YH: Add the ridge term as per Remark 4.1
-        # YH: What does enumerate do?
         for i, var in enumerate(ordered_vars):
             opt_linearNoU[var, i] += self.ridge_term
 
