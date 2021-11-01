@@ -32,7 +32,7 @@ def test_paired_group_lasso(n=400,
                     [1, 1, 1]])
     X = np.random.multivariate_normal(mean=np.zeros((3,)), cov=cov, size=100)
 
-    pgl = paired_group_lasso(X=X, weights=3.0, ridge_term=0.0, randomizer_scale=randomizer_scale)
+    pgl = paired_group_lasso(X=X, weights=10.0, ridge_term=0.0, randomizer_scale=randomizer_scale)
     pgl.fit()
     #print(pgl.beta)
 

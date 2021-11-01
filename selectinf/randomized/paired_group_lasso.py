@@ -140,25 +140,39 @@ class paired_group_lasso(query):
 
         return i,j
 
-    def fit(self):
+    def vec_to_mat(self, p, vec):
+        mat = np.zeros((p, p))
+        for k in range(len(vec)):
+            i,j = self.undo_vectorize(k)
+            # print(k, 'mapped to', i, j)
+            mat[i,j] = vec[k]
+        return mat
+
+    # REQUIRES: perturb is a p x p ndarray with the diagonal being zero
+    def fit(self, perturb=None):
         glsolver = group_lasso.gaussian(self.X_aug,
                                         self.Y_aug,
                                         self.groups,
                                         self.weights,
                                         randomizer_scale=self.randomizer_scale)
-
         signs = glsolver.fit()
         coeffs = signs['directions']
         nonzero = glsolver.selection_variable['directions'].keys()
 
-        # Stack the parameters into a pxp matrix
-        beta = np.zeros((self.nfeature, self.nfeature))
+        # If perturbation not provided, stack the perturbation given by the glsover into matrix
+        if perturb == None:
+            perturb_vec = glsolver._initial_omega
+            perturb = self.vec_to_mat(p=self.nfeature, vec=perturb_vec)
+        self.perturb = perturb
+
+        # gammas negative in original implementation?
+        gammas = glsolver.observed_opt_state
+        subgrad = glsolver.initial_subgrad
+        print('gamma',gammas)
+        print('subgrad',subgrad)
 
         vectorized_beta = glsolver.initial_soln
-
-        for k in range(len(vectorized_beta)):
-            i,j = self.undo_vectorize(k)
-            print(k, 'mapped to', i, j)
-            beta[i,j] = vectorized_beta[k]
-        print(vectorized_beta)
+        # Stack the parameters into a pxp matrix
+        beta = self.vec_to_mat(p = self.nfeature, vec=vectorized_beta)
+        print('beta_vec', vectorized_beta)
         print(beta)

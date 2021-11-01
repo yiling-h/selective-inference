@@ -100,7 +100,8 @@ class group_lasso(query):
             Support and non-zero signs of randomized lasso solution.
 
         """
-
+        # YH: perturb is the same type of object as the output of randomizer.sample()
+        #     conventiently we usually choose isotropic gaussian
         p = self.nfeature
 
         (self.initial_soln, 
@@ -108,40 +109,43 @@ class group_lasso(query):
                                       perturb=perturb, 
                                       solve_args=solve_args)
 
+        # YH: Covariance matrix if the randomizer
+        _, self.randomizer_prec = self.randomizer.cov_prec
+
         # assuming solution is non-zero here!
+        # initialize variables
+        active_groups = []  # active group labels
+        active_dirs = {}    # dictionary: keys are group labels, values are unit-norm coefficients
+        unpenalized = []    # selected groups with no penalty
+        overall = np.ones(p, np.bool)   # mask of active features
+        ordered_groups = [] # active group labels sorted by label
+        ordered_opt = []    # gamma's ordered by group labels
+        ordered_vars = []   # indices "ordered" by sorting group labels
 
-        active = []
-        active_dirs = {}
-        unpenalized = []
-        overall = np.ones(p, np.bool)
-
-        ordered_groups = []
-        ordered_opt = []
-        ordered_vars = []
-
-        tol = 1.e-6
+        tol = 1.e-20
 
         for g in sorted(np.unique(self.penalty.groups)):
-            group = self.penalty.groups == g
+            group_mask = self.penalty.groups == g
 
             soln = self.initial_soln
-            if np.linalg.norm(soln[group]) * tol * np.linalg.norm(soln):
+            if np.linalg.norm(soln[group_mask]) * tol * np.linalg.norm(soln):
                 ordered_groups.append(g)
-                ordered_vars.extend(np.nonzero(group)[0])
+                ordered_vars.extend(np.nonzero(group_mask)[0])
 
                 if self.penalty.weights[g] == 0:
                     unpenalized.append(g)
-                    ordered_opt.append(soln[group])
+                    ordered_opt.append(soln[group_mask])
                 else:
-                    active.append(g)
-                    dir = soln[group] / np.linalg.norm(soln[group])
+                    active_groups.append(g)
+                    dir = soln[group_mask] / np.linalg.norm(soln[group_mask])
                     active_dirs[g] = dir
-                    ordered_opt.append(np.linalg.norm(soln[group]) - self.penalty.weights[g])
+                    #ordered_opt.append(np.linalg.norm(soln[group_mask]) - self.penalty.weights[g])
+                    ordered_opt.append(np.linalg.norm(soln[group_mask]))
             else:
-                overall[group] = False
+                overall[group_mask] = False
 
         self.selection_variable = {'directions': active_dirs,
-                                   'active_groups':active}
+                                   'active_groups':active_groups}
 
         self._ordered_groups = ordered_groups
 
@@ -205,7 +209,7 @@ class group_lasso(query):
                                                           ordered_vars,
                                                           dispersion)
 
-        for group, dens_info in _reference_density_info(soln, 
+        for group_mask, dens_info in _reference_density_info(soln,
                                                         ordered_groups,
                                                         ordered_vars,
                                                         opt_linear,
@@ -222,10 +226,10 @@ class group_lasso(query):
              log_det,
              log_cond_density) = dens_info
 
-            group = int(group)
+            group_mask = int(group_mask)
 
-            group_idx = self.penalty.groups == group
-            initial_scaling = np.linalg.norm(soln[group]) - self.penalty.weights[group]
+            group_idx = self.penalty.groups == group_mask
+            initial_scaling = np.linalg.norm(soln[group_mask]) - self.penalty.weights[group_mask]
 
             sampler = polynomial_gaussian_sampler(implied_mean,
                                                   implied_variance,
@@ -235,7 +239,7 @@ class group_lasso(query):
                                                   log_det,
                                                   (np.atleast_2d(logdens_linear.T[:,idx_g].dot(dir_g).T), 
                                                    opt_offset))
-            self._samplers[group] = sampler
+            self._samplers[group_mask] = sampler
 
         self._setup = True
 
