@@ -176,3 +176,17 @@ class paired_group_lasso(query):
         beta = self.vec_to_mat(p = self.nfeature, vec=vectorized_beta)
         print('beta_vec', vectorized_beta)
         print(beta)
+
+        """
+        # indicator of whether weights is a real number
+        is_singleton = (type(self.weights) == float or type(self.weights) == int)
+        # the term involving subgradient in the KKT map
+        scaled_subgrad = None
+        if is_singleton: # when the weights are uniform
+            scaled_subgrad = self.weights * subgrad
+        else: # assuming subgrad is a valid p x p matrix, self.weights a symmetric matrix
+            # Elementwise multiplication that multiplies each subgradient with its weight
+            scaled_subgrad = np.multiply(self.weights,subgrad)
+        rhs = - self.X @ self.X + (self.X @ self.X) @ beta + scaled_subgrad
+        lhs = self.perturb
+        """
