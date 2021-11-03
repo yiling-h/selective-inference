@@ -58,9 +58,17 @@ def test_group_lasso(n=400,
                  groups,
                  weights, 
                  randomizer_scale=randomizer_scale * sigma_)
-    
     signs = conv.fit()
     nonzero = conv.selection_variable['directions'].keys()
+
+    ####################################
+    ########### DELETE LATER ###########
+    ####################################
+    # KKT map
+    beta = conv.initial_soln
+    LHS = conv._initial_omega
+    RHS = -(X.T @ Y) + X.T @ X @ beta + conv.initial_subgrad
+    print(np.abs(LHS-RHS) > 0.1)
 
     if target == 'full':
         (observed_target, 

@@ -218,18 +218,23 @@ class paired_group_lasso(query):
         vectorized_beta = glsolver.initial_soln
         # Stack the parameters into a pxp matrix
         beta = self.vec_to_mat(p = self.nfeature, vec=vectorized_beta)
-        print('beta_vec', vectorized_beta)
+        #print('beta_vec', vectorized_beta)
         #print('beta', beta)
 
-        # Calculate the KKT map
+        # KKT map for the group lasso solver
+        LHS_gl = glsolver._initial_omega
+        RHS_gl = -(self.X_aug.T @ self.Y_aug) + self.X_aug.T @ self.X_aug @ vectorized_beta + subgrad
+        num_disagreement = np.abs(LHS_gl - RHS_gl) > 0.1
+        #print(num_disagreement)
+        num_dis_mat = self.vec_to_mat(p = self.nfeature, vec=num_disagreement.astype(int)).astype(bool)
+        print('gl disagreement', num_dis_mat)
+
+        # Calculate the KKT map for the paired group lasso
         rhs = - self.X.T @ self.X + (self.X.T @ self.X) @ beta + subgrad_mat
         np.fill_diagonal(rhs, 0)
         lhs = self.perturb
-        rhs_iter = np.zeros((self.nfeature, self.nfeature))
-        for i in range(self.nfeature):
-            for j in range(self.nfeature):
-                if i != j:
-                    rhs_iter[i,j] = -self.X[:,i].T @ (self.X[:,j] - self.X @ beta[:,j]) + subgrad_mat[i,j]
-        print('lhs', lhs)
-        print('rhs', rhs)
-        print('rhs_iter', rhs_iter)
+
+        print('paired gl disagreement', np.abs(lhs - rhs) > 0.1)
+        #print('lhs', lhs)
+        #print('rhs', rhs)
+        #print('rhs_iter', rhs_iter)
