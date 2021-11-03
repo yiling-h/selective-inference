@@ -387,7 +387,7 @@ class group_lasso(query):
 
     def _solve_randomized_problem(self, 
                                   perturb=None, 
-                                  solve_args={'tol': 1.e-12, 'min_its': 50}):
+                                  solve_args={'tol': 1.e-12, 'min_its': 200}):
 
         # take a new perturbation if supplied
         if perturb is not None:
@@ -417,7 +417,8 @@ class group_lasso(query):
                  sigma=1.,
                  quadratic=None,
                  ridge_term=None,
-                 randomizer_scale=None):
+                 randomizer_scale=None,
+                 perturb=None):
         r"""
         Squared-error LASSO with feature weights.
         Objective function is (before randomization)
@@ -492,7 +493,8 @@ class group_lasso(query):
                            groups, 
                            weights,
                            ridge_term, 
-                           randomizer)
+                           randomizer,
+                           perturb=perturb)
 
     @staticmethod
     def logistic(X,
