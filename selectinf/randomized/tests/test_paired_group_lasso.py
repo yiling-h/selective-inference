@@ -175,10 +175,72 @@ def test_optimization_vars(n=400, p=15, randomizer_scale=.75):
     # Fit
     pgl = paired_group_lasso(X=X, weights=10.0, ridge_term=0.0, randomizer_scale=randomizer_scale)
     pgl.fit()
-    T1 = pgl.observed_score_state
+    T1 = - pgl.X_aug.T @ pgl.Y_aug
     T2 = pgl.opt_linear.dot(pgl.observed_opt_state)
     T3 = pgl.opt_offset
-    # assert(np.allclose(T1 + T2 + T3, pgl._initial_omega))
-    # print(T1 + T2 + T3)
-    # print(pgl._initial_omega)
-    print(np.round(pgl.beta, 3))
+    assert(np.allclose(T1 + T2 + T3, pgl._initial_omega))
+    assert(np.all(pgl.observed_opt_state > 0))
+
+def test_selection_power(n=400, p=15, randomizer_scale=.75):
+    block = np.array([[2, 1, 1, 1, 1],
+                      [1, 2, 1, 1, 1],
+                      [1, 1, 2, 1, 1],
+                      [1, 1, 1, 2, 1],
+                      [1, 1, 1, 1, 1]])
+
+    def gen_covariance(p):
+        assert (p % 5 == 0)
+        cov = np.zeros((p, p))
+        for i in range(p // 5):
+            cov[i * 5:(i + 1) * 5, i * 5:(i + 1) * 5] = block
+        return cov
+
+    # generate covariance and data
+    cov = gen_covariance(p)
+    prec = np.linalg.inv(cov)
+    num_sparse_true = np.sum(prec == 0) - p
+
+    avg_ratio = np.zeros((5,))
+    weights = [1,5,10,15,20]
+
+    for w in range(5):
+        ratio = np.zeros((50,))
+        for i in range(50):
+            X = np.random.multivariate_normal(mean=np.zeros((p,)), cov=cov, size=n)
+            pgl = paired_group_lasso(X=X, weights=weights[w], ridge_term=0.0, randomizer_scale=randomizer_scale)
+            pgl.fit()
+            num_sparse_est = np.sum(pgl.beta == 0) - p
+            ratio[i] = num_sparse_est / num_sparse_true
+        avg_ratio[w] = np.mean(ratio)
+
+    import matplotlib.pyplot as plt
+    plt.plot(weights, avg_ratio)
+    plt.show()
+
+def test_selection_consistency(n=400, p=15, randomizer_scale=.75):
+    block = np.array([[2, 1, 1, 1, 1],
+                      [1, 2, 1, 1, 1],
+                      [1, 1, 2, 1, 1],
+                      [1, 1, 1, 2, 1],
+                      [1, 1, 1, 1, 1]])
+
+    def gen_covariance(p):
+        assert (p % 5 == 0)
+        cov = np.zeros((p, p))
+        for i in range(p // 5):
+            cov[i * 5:(i + 1) * 5, i * 5:(i + 1) * 5] = block
+        return cov
+
+    # generate covariance and data
+    cov = gen_covariance(p)
+    prec = np.linalg.inv(cov)
+    print(prec)
+
+    ## TODO: Do numerical experiments to see how robust the algorithm is against different randomizations
+    ##       for the same X
+    ## Step 1: Fix penalty
+    ## Step 2: Generate one X object
+    ## Step 3: Draw perturbations, and solve for the randomized problem
+    ## Step 4: Calculate the proportion of zero entries that are always captured,
+    ##         as well as the proportion of zero entries that are captured at least once
+    ## Step 5: Repeat 2-4

@@ -134,7 +134,7 @@ class group_lasso(object):
         # YH: - X^T X_E Beta_E^LS
         self.observed_score_state = -opt_linearNoU.dot(_beta_unpenalized)
         # YH: - X^T X_E Beta_E^LS + ??
-        self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
+        # self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
 
         active_signs = np.sign(self.initial_soln)
         active = np.flatnonzero(active_signs)
