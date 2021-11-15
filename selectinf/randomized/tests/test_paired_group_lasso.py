@@ -6,10 +6,7 @@ from nose.tools import nottest
 
 import regreg.api as rr
 
-from ..group_lasso import (group_lasso,
-                           selected_targets,
-                           full_targets,
-                           debiased_targets)
+from ..approx_reference_grouplasso import group_lasso
 from ..paired_group_lasso import paired_group_lasso
 from ...tests.instance import gaussian_instance
 from ...tests.flags import SET_SEED
@@ -159,3 +156,29 @@ def test_paired_group_lasso(n=400,
     pgl2 = paired_group_lasso(X=X, weights=15.0, ridge_term=0.0, randomizer_scale=randomizer_scale)
     pgl2.fit()
 
+def test_optimization_vars(n=400, p=15, randomizer_scale=.75):
+    block = np.array([[2, 1, 1, 1, 1],
+                    [1, 2, 1, 1, 1],
+                    [1, 1, 2, 1, 1],
+                    [1, 1, 1, 2, 1],
+                    [1, 1, 1, 1, 1]])
+    def gen_covariance(p):
+        assert(p % 5 == 0)
+        cov = np.zeros((p,p))
+        for i in range(p // 5):
+            cov[i*5:(i+1)*5, i*5:(i+1)*5] = block
+        return cov
+
+    # generate covariance and data
+    cov = gen_covariance(p)
+    X = np.random.multivariate_normal(mean=np.zeros((p,)), cov=cov, size=n)
+    # Fit
+    pgl = paired_group_lasso(X=X, weights=10.0, ridge_term=0.0, randomizer_scale=randomizer_scale)
+    pgl.fit()
+    T1 = pgl.observed_score_state
+    T2 = pgl.opt_linear.dot(pgl.observed_opt_state)
+    T3 = pgl.opt_offset
+    # assert(np.allclose(T1 + T2 + T3, pgl._initial_omega))
+    # print(T1 + T2 + T3)
+    # print(pgl._initial_omega)
+    print(np.round(pgl.beta, 3))

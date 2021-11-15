@@ -117,11 +117,13 @@ class group_lasso(object):
                                                  solve_args=solve_args)
 
         beta_bar = np.zeros(self.nfeature)
-        beta_bar[overall] = _beta_unpenalized  # refit OLS beta with zeros
+        # refit OLS beta with zeros: set active features, while leave nonactive ones as zero
+        beta_bar[overall] = _beta_unpenalized
         self._beta_full = beta_bar
 
         X, y = self.loglike.data
         W = self._W = self.loglike.saturated_loss.hessian(X.dot(beta_bar))  # all 1's for LS
+        # YH: X^T X_E, without multiplying u, covariates ordered by groups
         opt_linearNoU = np.dot(X.T, X[:, ordered_vars] * W[:, np.newaxis])
 
         for i, var in enumerate(ordered_vars):
@@ -129,7 +131,9 @@ class group_lasso(object):
 
         opt_offset = self.initial_subgrad
 
+        # YH: - X^T X_E Beta_E^LS
         self.observed_score_state = -opt_linearNoU.dot(_beta_unpenalized)
+        # YH: - X^T X_E Beta_E^LS + ??
         self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
 
         active_signs = np.sign(self.initial_soln)
@@ -167,9 +171,12 @@ class group_lasso(object):
         self.QI = QI
         self.C = C
 
+        # YH: Each block in U has only one column
+        #     ug's are sorted by groups
         U = block_diag(*[ug for ug in sorted_active_dirs.values()]).T
 
-        self.opt_linear = opt_linearNoU.dot(U)
+        # YH: X^T sum(X_g u_g)
+        self.opt_linear = opt_linearNoU.dot(U)  #self.opt_linear.dot(self.observed_opt_state) = X^T sum(X gamma u)
         self.active_dirs = active_dirs
         self.opt_offset = opt_offset
         self.ordered_vars = ordered_vars

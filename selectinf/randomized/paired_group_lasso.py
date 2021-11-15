@@ -10,7 +10,7 @@ import regreg.api as rr
 from .query import query, affine_gaussian_sampler
 
 from .randomization import randomization
-from .group_lasso import group_lasso
+from .approx_reference_grouplasso import group_lasso
 from ..base import restricted_estimator
 from ..algorithms.debiased_lasso import (debiasing_matrix,
                                          pseudoinverse_debiasing_matrix)
@@ -184,7 +184,7 @@ class paired_group_lasso(query):
             #print(self.X_aug)
             glsolver = group_lasso.gaussian(self.X_aug,
                                             self.Y_aug,
-                                            self.groups,
+                                            np.array(self.groups),
                                             self.weights,
                                             randomizer_scale=self.randomizer_scale,
                                             perturb=perturb_vec)
@@ -192,7 +192,7 @@ class paired_group_lasso(query):
         else:
             glsolver = group_lasso.gaussian(self.X_aug,
                                             self.Y_aug,
-                                            self.groups,
+                                            np.array(self.groups),
                                             self.weights,
                                             randomizer_scale=self.randomizer_scale)
             signs = glsolver.fit()
@@ -222,19 +222,33 @@ class paired_group_lasso(query):
         #print('beta', beta)
 
         # KKT map for the group lasso solver
-        LHS_gl = glsolver._initial_omega
-        RHS_gl = -(self.X_aug.T @ self.Y_aug) + self.X_aug.T @ self.X_aug @ vectorized_beta + subgrad
-        num_disagreement = np.abs(LHS_gl - RHS_gl) > 0.1
-        #print(num_disagreement)
-        num_dis_mat = self.vec_to_mat(p = self.nfeature, vec=num_disagreement.astype(int)).astype(bool)
-        print('gl disagreement', num_dis_mat)
+        # LHS_gl = glsolver._initial_omega
+        # RHS_gl = -(self.X_aug.T @ self.Y_aug) + self.X_aug.T @ self.X_aug @ vectorized_beta + subgrad
+        # num_disagreement = np.abs(LHS_gl - RHS_gl) > 0.00000001
+        # print(num_disagreement)
+        # num_dis_mat = self.vec_to_mat(p = self.nfeature, vec=num_disagreement.astype(int)).astype(bool)
+        # print('gl disagreement', num_dis_mat)
 
         # Calculate the KKT map for the paired group lasso
         rhs = - self.X.T @ self.X + (self.X.T @ self.X) @ beta + subgrad_mat
         np.fill_diagonal(rhs, 0)
         lhs = self.perturb
 
-        print('paired gl disagreement', np.abs(lhs - rhs) > 0.1)
-        #print('lhs', lhs)
-        #print('rhs', rhs)
-        #print('rhs_iter', rhs_iter)
+        # print('paired gl disagreement', np.abs(lhs - rhs) > 0.00000001)
+        # print('lhs', lhs)
+        # print('rhs', rhs)
+        # print('rhs_iter', rhs_iter)
+        self.observed_opt_state = glsolver.observed_opt_state
+        self.opt_linear = glsolver.opt_linear
+        self.observed_score_state = glsolver.observed_score_state
+        self.opt_offset = glsolver.opt_offset
+        self._initial_omega = glsolver._initial_omega
+
+        # -(self.X_aug.T @ self.Y_aug) == pgl.observed_score_state
+        # print(np.abs(-(self.X_aug.T @ self.Y_aug) - self.observed_score_state))
+
+        # self.opt_linear.dot(self.observed_opt_state) = X^T sum(X gamma u)
+        # roughly the same
+        # print(np.abs(self.opt_linear.dot(self.observed_opt_state) - (self.X_aug.T @ self.X_aug) @ vectorized_beta))
+
+        self.beta = beta
