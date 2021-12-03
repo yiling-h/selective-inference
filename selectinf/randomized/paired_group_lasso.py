@@ -315,7 +315,7 @@ class paired_group_lasso(query):
                      beta_grouped, subgradient, i, j):
             XY_ = XY(t=t, i=i, j=j, p=p, X_=X_, Y_=Y_)
             XXE_ = XXE(t=t, i=i, j=j, p=p, X_=X_, XE=XE)
-            omega = -XY_ + XXE_ + subgradient
+            omega = -XY_ + XXE_ @ beta_grouped + subgradient
 
             return np.exp(omega.T @ prec @ omega)
 
