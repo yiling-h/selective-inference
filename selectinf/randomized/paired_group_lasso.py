@@ -177,6 +177,7 @@ class paired_group_lasso(query):
 
     # REQUIRES: perturb is a p x p ndarray with the diagonal being zero
     def fit(self):
+        ### SELECTION PART
         # Vectorize the perturbation
         if self.perturb is not None:
             perturb_vec = self.mat_to_vec(p=self.nfeature, mat=self.perturb)
@@ -243,6 +244,9 @@ class paired_group_lasso(query):
         self.observed_score_state = glsolver.observed_score_state
         self.opt_offset = glsolver.opt_offset
         self._initial_omega = glsolver._initial_omega
+        self.ordered_groups = glsolver._ordered_groups
+        print("sub", glsolver.initial_subgrad)
+        print('vars', glsolver.ordered_vars)
 
         # -(self.X_aug.T @ self.Y_aug) == pgl.observed_score_state
         # print(np.abs(-(self.X_aug.T @ self.Y_aug) - self.observed_score_state))
@@ -252,3 +256,67 @@ class paired_group_lasso(query):
         # print(np.abs(self.opt_linear.dot(self.observed_opt_state) - (self.X_aug.T @ self.X_aug) @ vectorized_beta))
 
         self.beta = beta
+
+        ### INFERENCE PART
+        ## X_ is the augmented design matrix
+        ## Y_ is the augmented response
+        ## t is the value of x_i^T x_j
+        ## REQUIRES: i < j, i, j follows the natural enumeration (starting from 1),
+        ##           p is the dimension of data,
+        def XY(t, i, j, p, X_, Y_):
+            i = i - 1
+            j = j - 1
+
+            # the first appearance of x_i^T x_j
+            idx_ij = i*(p-1) + j - 1
+            idx_ji = j*(p-1) + i
+            # the target object
+            XY = X_.T @ Y_
+            XY[idx_ij] = t
+            XY[idx_ji] = t
+            return XY
+
+        ## NOTES: Assuming i < j, then b_ij comes after b_ji in the vectorized beta
+        ##        This implies when we order covariates according to groups,
+        ##        within the group g corresponding to i,j,
+        ##        the earlier one corresponds to b_ji, and the later one corresponds to b_ij.
+        ##        That is, the earlier column contains the observations x_j,
+        ##        and the later column contains the observations x_i.
+        ## REQUIRES: i < j, i, j follows the natural enumeration (starting from 1),
+        ##           p is the dimension of data, g is the group label of i,j,
+        ##           Retrieval of g: g = groups[j * (p - 1) + i]
+        def XXE(t, i, j, p, X_, XE):
+            i = i - 1
+            j = j - 1
+
+            # the row index corresponding to x_j^T x_i
+            row_ji = i*(p-1) + j - 1
+            # the row index corresponding to x_i^T x_j
+            row_ij = j*(p-1) + i
+
+            # g is the group label of i,j
+            g = self.groups[j * (p - 1) + i]
+            # g_i is the index of g in the list of ordered selected groups
+            g_i = self.ordered_groups.index(g)
+            # the column index corresponding to x_j^T x_i
+            col_ji = 2*g + 1        # all groups are of size 2
+            # the column index corresponding to x_i^T x_j
+            col_ij = 2*g
+
+            # the target object
+            XXE_ = X_.T @ XE
+            XXE_[row_ji, col_ji] = t
+            XXE_[row_ij, col_ij] = t
+            return XXE_
+
+        ## NOTES: beta_grouped is the solution of beta ordered according to groups
+        ##        Retrieval of beta_grouped: beta_grouped = initial_soln[overall]
+        def quad_exp(t, X_, Y_, XE, p, prec,
+                     beta_grouped, subgradient, i, j):
+            XY_ = XY(t=t, i=i, j=j, p=p, X_=X_, Y_=Y_)
+            XXE_ = XXE(t=t, i=i, j=j, p=p, X_=X_, XE=XE)
+            omega = -XY_ + XXE_ + subgradient
+
+            return np.exp(omega.T @ prec @ omega)
+
+
