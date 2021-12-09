@@ -244,3 +244,26 @@ def test_selection_consistency(n=400, p=15, randomizer_scale=.75):
     ## Step 4: Calculate the proportion of zero entries that are always captured,
     ##         as well as the proportion of zero entries that are captured at least once
     ## Step 5: Repeat 2-4
+
+def test_quadratic_form(n=400, p=15, randomizer_scale=.75):
+    block = np.array([[2, 1, 1, 1, 1],
+                      [1, 2, 1, 1, 1],
+                      [1, 1, 2, 1, 1],
+                      [1, 1, 1, 2, 1],
+                      [1, 1, 1, 1, 1]])
+
+    def gen_covariance(p):
+        assert (p % 5 == 0)
+        cov = np.zeros((p, p))
+        for i in range(p // 5):
+            cov[i * 5:(i + 1) * 5, i * 5:(i + 1) * 5] = block
+        return cov
+
+    # generate covariance and data
+    cov = gen_covariance(p=5)
+
+    X = np.random.multivariate_normal(mean=np.zeros((5,)), cov=cov, size=5)
+    # Fit
+    pgl = paired_group_lasso(X=X, weights=1, ridge_term=0.0, randomizer_scale=1)
+    pgl.fit()
+

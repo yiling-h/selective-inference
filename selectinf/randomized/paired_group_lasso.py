@@ -230,6 +230,8 @@ class paired_group_lasso(query):
         # num_dis_mat = self.vec_to_mat(p = self.nfeature, vec=num_disagreement.astype(int)).astype(bool)
         # print('gl disagreement', num_dis_mat)
 
+        print(self.X_aug.T @ self.X_aug @ vectorized_beta)
+
         # Calculate the KKT map for the paired group lasso
         rhs = - self.X.T @ self.X + (self.X.T @ self.X) @ beta + subgrad_mat
         np.fill_diagonal(rhs, 0)
@@ -245,8 +247,8 @@ class paired_group_lasso(query):
         self.opt_offset = glsolver.opt_offset
         self._initial_omega = glsolver._initial_omega
         self.ordered_groups = glsolver._ordered_groups
-        print("sub", glsolver.initial_subgrad)
-        print('vars', glsolver.ordered_vars)
+        #print("sub", glsolver.initial_subgrad)
+        #print('vars', glsolver.ordered_vars)
 
         # -(self.X_aug.T @ self.Y_aug) == pgl.observed_score_state
         # print(np.abs(-(self.X_aug.T @ self.Y_aug) - self.observed_score_state))
@@ -299,9 +301,9 @@ class paired_group_lasso(query):
             # g_i is the index of g in the list of ordered selected groups
             g_i = self.ordered_groups.index(g)
             # the column index corresponding to x_j^T x_i
-            col_ji = 2*g + 1        # all groups are of size 2
+            col_ji = 2*g_i + 1        # all groups are of size 2
             # the column index corresponding to x_i^T x_j
-            col_ij = 2*g
+            col_ij = 2*g_i
 
             # the target object
             XXE_ = X_.T @ XE
@@ -310,13 +312,36 @@ class paired_group_lasso(query):
             return XXE_
 
         ## NOTES: beta_grouped is the solution of beta ordered according to groups
-        ##        Retrieval of beta_grouped: beta_grouped = initial_soln[overall]
+        ##        Retrieval of beta_grouped: beta_grouped = initial_soln[ordered_vars]
+        ##        prec:
         def quad_exp(t, X_, Y_, XE, p, prec,
                      beta_grouped, subgradient, i, j):
             XY_ = XY(t=t, i=i, j=j, p=p, X_=X_, Y_=Y_)
             XXE_ = XXE(t=t, i=i, j=j, p=p, X_=X_, XE=XE)
             omega = -XY_ + XXE_ @ beta_grouped + subgradient
-
             return np.exp(omega.T @ prec @ omega)
 
+        def call_quad_exp(i,j):
+            t = self.X[:,i-1].T @ self.X[:,j-1]
+            X_ = self.X_aug
+            XE = glsolver.XE
+            Y_ = self.Y_aug
+            p = self.nfeature
+            beta_grouped = glsolver.initial_soln[glsolver.ordered_vars]
+            subgradient = glsolver.initial_subgrad
+            quad_t = quad_exp(t=t, X_=X_, Y_=Y_, XE=XE, p=p, prec=np.identity(p*(p-1)),
+                              beta_grouped=beta_grouped, subgradient=subgradient, i=i, j=j)
+            quad_original = np.exp(glsolver._initial_omega.T @ glsolver._initial_omega)
 
+            #print(quad_t)
+            #print(quad_original)
+            #print(glsolver._initial_omega)
+            #print(XXE_t)
+            #print(glsolver._initial_omega)
+
+            #T1
+            #print(-X_.T @ Y_)
+            #T2
+            print(X_.T @ XE @ beta_grouped)
+
+        call_quad_exp(2,4)
