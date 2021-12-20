@@ -267,3 +267,13 @@ def test_quadratic_form(n=400, p=15, randomizer_scale=.75):
     pgl = paired_group_lasso(X=X, weights=1, ridge_term=0.0, randomizer_scale=1)
     pgl.fit()
 
+def test_XXE(n=400, p=15, randomizer_scale=.75):
+    cov = np.array([[2, 1, 1, 1],
+                    [1, 2, 1, 1],
+                    [1, 1, 2, 1],
+                    [1, 1, 1, 1]])
+
+    X = np.random.multivariate_normal(mean=np.zeros((4,)), cov=cov, size=10)
+    # Fit
+    pgl = paired_group_lasso(X=X, weights=0.05, ridge_term=0.0, randomizer_scale=1)
+    pgl.fit()

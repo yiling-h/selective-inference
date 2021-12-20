@@ -284,31 +284,57 @@ class paired_group_lasso(query):
         ##        the earlier one corresponds to b_ji, and the later one corresponds to b_ij.
         ##        That is, the earlier column contains the observations x_j,
         ##        and the later column contains the observations x_i.
-        ## REQUIRES: i < j, i, j follows the natural enumeration (starting from 1),
+        ## REQUIRES: i, j follows the natural enumeration (starting from 1),
         ##           p is the dimension of data, g is the group label of i,j,
         ##           Retrieval of g: g = groups[j * (p - 1) + i]
         def XXE(t, i, j, p, X_, XE):
             i = i - 1
             j = j - 1
-
-            # the row index corresponding to x_j^T x_i
-            row_ji = i*(p-1) + j - 1
-            # the row index corresponding to x_i^T x_j
-            row_ij = j*(p-1) + i
-
-            # g is the group label of i,j
-            g = self.groups[j * (p - 1) + i]
-            # g_i is the index of g in the list of ordered selected groups
-            g_i = self.ordered_groups.index(g)
-            # the column index corresponding to x_j^T x_i
-            col_ji = 2*g_i + 1        # all groups are of size 2
-            # the column index corresponding to x_i^T x_j
-            col_ij = 2*g_i
+            # Swap the value of i,j if i>j,
+            # so that i always represents the lower value
+            if i > j:
+                k = i
+                i = j
+                j = k
 
             # the target object
             XXE_ = X_.T @ XE
-            XXE_[row_ji, col_ji] = t
-            XXE_[row_ij, col_ij] = t
+
+            # identify x_i*x_j and x_j*x_i in the kth block
+            for k in range(p):
+                # when both x_i and x_j appear in the kth blcok
+                if i != k and j != k:
+                    if i > k:
+                        i_idx = (p-1)*k + i - 1
+                    else:
+                        i_idx = (p-1)*k + i
+
+                    if j > k:
+                        j_idx = (p-1)*k + j - 1
+                    else:
+                        j_idx = (p-1)*k + j
+
+                    # identify x_i^T * x_j if b_jk != 0
+                    if self.groups[j_idx] in self.ordered_groups:
+                        # g_j is the index of x_j's group
+                        # in the list of ordered selected groups
+                        g_j = self.ordered_groups.index(self.groups[j_idx])
+                        if np.max(self.undo_vectorize(j_idx)) == j:
+                            j_idx_XE = 2 * g_j
+                        else:
+                            j_idx_XE = 2 * g_j + 1
+                        XXE_[i_idx, j_idx_XE] = t
+                    # identify x_j^T * x_i if b_ik != 0
+                    if self.groups[i_idx] in self.ordered_groups:
+                        # g_i is the index of x_i's group
+                        # in the list of ordered selected groups
+                        g_i = self.ordered_groups.index(self.groups[i_idx])
+                        if np.max(self.undo_vectorize(i_idx)) == i:
+                            i_idx_XE = 2 * g_i
+                        else:
+                            i_idx_XE = 2 * g_i + 1
+                        XXE_[j_idx, i_idx_XE] = t
+            print(XXE_)
             return XXE_
 
         ## NOTES: beta_grouped is the solution of beta ordered according to groups
@@ -322,9 +348,11 @@ class paired_group_lasso(query):
             return np.exp(omega.T @ prec @ omega)
 
         def call_quad_exp(i,j):
-            t = self.X[:,i-1].T @ self.X[:,j-1]
+            #t = self.X[:,i-1].T @ self.X[:,j-1]
+            t = 100
             X_ = self.X_aug
             XE = glsolver.XE
+            print(XE.shape)
             Y_ = self.Y_aug
             p = self.nfeature
             beta_grouped = glsolver.initial_soln[glsolver.ordered_vars]
@@ -333,15 +361,4 @@ class paired_group_lasso(query):
                               beta_grouped=beta_grouped, subgradient=subgradient, i=i, j=j)
             quad_original = np.exp(glsolver._initial_omega.T @ glsolver._initial_omega)
 
-            #print(quad_t)
-            #print(quad_original)
-            #print(glsolver._initial_omega)
-            #print(XXE_t)
-            #print(glsolver._initial_omega)
-
-            #T1
-            #print(-X_.T @ Y_)
-            #T2
-            print(X_.T @ XE @ beta_grouped)
-
-        call_quad_exp(2,4)
+        call_quad_exp(3,2)
