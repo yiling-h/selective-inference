@@ -320,7 +320,7 @@ class split_slope(lasso):
         regress_opt = np.zeros((len(ordered_vars),
                                    self.nfeature)) 
         # JT: not sure this is right -- had to remove signs
-        regress_opt[:, ordered_vars] = -cond_cov / (dispersion * ratio)
+        regress_opt[:, ordered_vars] = -cond_cov.dot(signs_cluster.T) / (dispersion * ratio)
         cond_mean = regress_opt.dot(self.observed_score_state + observed_subgrad)
 
         ## probably missing a dispersion in the denominator
