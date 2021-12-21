@@ -212,15 +212,9 @@ class paired_group_lasso(query):
 
         # Cast the subgradient vector into matrix
         subgrad_mat = self.vec_to_mat(p=self.nfeature, vec=subgrad)
-        #print(subgrad_mat)
-        #print('gamma',gammas)
-        #print('subgrad',subgrad)
-
         vectorized_beta = glsolver.initial_soln
         # Stack the parameters into a pxp matrix
         beta = self.vec_to_mat(p = self.nfeature, vec=vectorized_beta)
-        #print('beta_vec', vectorized_beta)
-        #print('beta', beta)
 
         # KKT map for the group lasso solver
         # LHS_gl = glsolver._initial_omega
@@ -230,17 +224,11 @@ class paired_group_lasso(query):
         # num_dis_mat = self.vec_to_mat(p = self.nfeature, vec=num_disagreement.astype(int)).astype(bool)
         # print('gl disagreement', num_dis_mat)
 
-        print(self.X_aug.T @ self.X_aug @ vectorized_beta)
-
         # Calculate the KKT map for the paired group lasso
         rhs = - self.X.T @ self.X + (self.X.T @ self.X) @ beta + subgrad_mat
         np.fill_diagonal(rhs, 0)
         lhs = self.perturb
 
-        # print('paired gl disagreement', np.abs(lhs - rhs) > 0.00000001)
-        # print('lhs', lhs)
-        # print('rhs', rhs)
-        # print('rhs_iter', rhs_iter)
         self.observed_opt_state = glsolver.observed_opt_state
         self.opt_linear = glsolver.opt_linear
         self.observed_score_state = glsolver.observed_score_state
@@ -284,12 +272,10 @@ class paired_group_lasso(query):
         ##        the earlier one corresponds to b_ji, and the later one corresponds to b_ij.
         ##        That is, the earlier column contains the observations x_j,
         ##        and the later column contains the observations x_i.
-        ## REQUIRES: i, j follows the natural enumeration (starting from 1),
+        ## REQUIRES: i, j follows the python indexing (starting from 0),
         ##           p is the dimension of data, g is the group label of i,j,
         ##           Retrieval of g: g = groups[j * (p - 1) + i]
         def XXE(t, i, j, p, X_, XE):
-            i = i - 1
-            j = j - 1
             # Swap the value of i,j if i>j,
             # so that i always represents the lower value
             if i > j:
@@ -319,11 +305,19 @@ class paired_group_lasso(query):
                         # g_j is the index of x_j's group
                         # in the list of ordered selected groups
                         g_j = self.ordered_groups.index(self.groups[j_idx])
+
+                        # In our indexing rule that determines the group index
+                        # of each parameter, if two augmented vectors, one containing x_i,
+                        # one containing x_j, are in the same group, with i < j,
+                        # then in the truncated matrix ordered by groups,
+                        # the column containing x_j will be the to left of the other,
+                        # as explained in the comments above function definition
                         if np.max(self.undo_vectorize(j_idx)) == j:
                             j_idx_XE = 2 * g_j
                         else:
                             j_idx_XE = 2 * g_j + 1
                         XXE_[i_idx, j_idx_XE] = t
+
                     # identify x_j^T * x_i if b_ik != 0
                     if self.groups[i_idx] in self.ordered_groups:
                         # g_i is the index of x_i's group
@@ -334,7 +328,6 @@ class paired_group_lasso(query):
                         else:
                             i_idx_XE = 2 * g_i + 1
                         XXE_[j_idx, i_idx_XE] = t
-            print(XXE_)
             return XXE_
 
         ## NOTES: beta_grouped is the solution of beta ordered according to groups
@@ -347,6 +340,8 @@ class paired_group_lasso(query):
             omega = -XY_ + XXE_ @ beta_grouped + subgradient
             return np.exp(omega.T @ prec @ omega)
 
+        """
+        # FOR TESTING
         def call_quad_exp(i,j):
             #t = self.X[:,i-1].T @ self.X[:,j-1]
             t = 100
@@ -360,5 +355,4 @@ class paired_group_lasso(query):
             quad_t = quad_exp(t=t, X_=X_, Y_=Y_, XE=XE, p=p, prec=np.identity(p*(p-1)),
                               beta_grouped=beta_grouped, subgradient=subgradient, i=i, j=j)
             quad_original = np.exp(glsolver._initial_omega.T @ glsolver._initial_omega)
-
-        call_quad_exp(3,2)
+        """
