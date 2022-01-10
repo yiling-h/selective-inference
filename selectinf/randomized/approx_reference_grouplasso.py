@@ -134,7 +134,7 @@ class group_lasso(object):
         # YH: - X^T X_E Beta_E^LS
         self.observed_score_state = -opt_linearNoU.dot(_beta_unpenalized)
         # YH: - X^T X_E Beta_E^LS + ??
-        # self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
+        self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
 
         active_signs = np.sign(self.initial_soln)
         active = np.flatnonzero(active_signs)
@@ -170,16 +170,20 @@ class group_lasso(object):
         self.Q = Q
         self.QI = QI
         self.C = C
+        # YH: V, L added for paired group lasso implementations
+        self.V = V
+        self.L = L
 
         # YH: Each block in U has only one column
         #     ug's are sorted by groups
         U = block_diag(*[ug for ug in sorted_active_dirs.values()]).T
 
-        # YH: X^T sum(X_g u_g)
+        # YH: X^T sum(X_g u_g) = B in the paper
         self.opt_linear = opt_linearNoU.dot(U)  #self.opt_linear.dot(self.observed_opt_state) = X^T sum(X gamma u)
         self.active_dirs = active_dirs
         self.opt_offset = opt_offset
         self.ordered_vars = ordered_vars
+        self.overall = overall
 
         self.linear_part = -np.eye(self.observed_opt_state.shape[0])
         self.offset = np.zeros(self.observed_opt_state.shape[0])
