@@ -4,6 +4,7 @@ from copy import copy
 
 import numpy as np
 from scipy.stats import norm as ndist
+from scipy.linalg import block_diag
 
 import regreg.api as rr
 
@@ -248,6 +249,8 @@ class paired_group_lasso(query):
         self.beta = beta
 
         ### INFERENCE PART
+
+        ## TESTED
         ## X_ is the augmented design matrix
         ## Y_ is the augmented response
         ## t is the value of x_i^T x_j
@@ -266,6 +269,7 @@ class paired_group_lasso(query):
             XY[idx_ji] = t
             return XY
 
+        ## TESTED
         ## NOTES: Assuming i < j, then b_ij comes after b_ji in the vectorized beta
         ##        This implies when we order covariates according to groups,
         ##        within the group g corresponding to i,j,
@@ -330,6 +334,7 @@ class paired_group_lasso(query):
                         XXE_[j_idx, i_idx_XE] = t
             return XXE_
 
+        ## TESTED
         ## NOTES: beta_grouped is the solution of beta ordered according to groups
         ##        Retrieval of beta_grouped: beta_grouped = initial_soln[ordered_vars]
         ##        prec:
@@ -339,6 +344,89 @@ class paired_group_lasso(query):
             XXE_ = XXE(t=t, i=i, j=j, p=p, X_=X_, XE=XE)
             omega = -XY_ + XXE_ @ beta_grouped + subgradient
             return np.exp(omega.T @ prec @ omega)
+
+        ## TESTED
+        def Q(t, i, j, p, XE):
+            # Swap the value of i,j if i>j,
+            # so that i always represents the lower value
+            if i > j:
+                k = i
+                i = j
+                j = k
+
+            # the target object
+            XEXE = XE.T @ XE
+
+            # identify x_i*x_j and x_j*x_i in the kth block
+            for k in range(p):
+                # when both x_i and x_j appear in the kth blcok
+                if i != k and j != k:
+                    if i > k:
+                        i_idx = (p - 1) * k + i - 1
+                    else:
+                        i_idx = (p - 1) * k + i
+
+                    if j > k:
+                        j_idx = (p - 1) * k + j - 1
+                    else:
+                        j_idx = (p - 1) * k + j
+
+                    # identify x_i^T * x_j if b_jk != 0 AND b_ik != 0
+                    if self.groups[j_idx] in self.ordered_groups and \
+                            self.groups[i_idx] in self.ordered_groups:
+                        # g_j, g_i is the index of x_j, x_i's group
+                        # in the list of ordered selected groups
+                        g_j = self.ordered_groups.index(self.groups[j_idx])
+                        g_i = self.ordered_groups.index(self.groups[i_idx])
+
+                        # In our indexing rule that determines the group index
+                        # of each parameter, if two augmented vectors, one containing x_i,
+                        # one containing x_j, are in the same group, with i < j,
+                        # then in the truncated matrix ordered by groups,
+                        # the column containing x_j will be the to left of the other,
+                        # as explained in the comments above function definition
+                        if np.max(self.undo_vectorize(j_idx)) == j:
+                            j_idx_XE = 2 * g_j
+                        else:
+                            j_idx_XE = 2 * g_j + 1
+
+                        if np.max(self.undo_vectorize(i_idx)) == i:
+                            i_idx_XE = 2 * g_i
+                        else:
+                            i_idx_XE = 2 * g_i + 1
+
+                        XEXE[i_idx_XE, j_idx_XE] = t
+                        XEXE[j_idx_XE, i_idx_XE] = t
+            return XEXE
+
+        # print(Q(100, 0, 1, p=4, XE=glsolver.XE))
+        # print(Q(100, 1, 2, p=4, XE=glsolver.XE))
+        # print(Q(100, 1, 3, p=4, XE=glsolver.XE))
+
+        # Calculate the Gamma matrix in the Jacobian
+        def calc_GammaMinus(gamma, active_dirs):
+            """Calculate Gamma^minus (as a function of gamma vector, active directions)
+            """
+            to_diag = [[g] * (ug.size - 1) for (g, ug) in zip(gamma, active_dirs.values())]
+            return block_diag(*[i for gp in to_diag for i in gp])
+
+        ## UNTESTED
+        ## Calculate the Jacobian as a function of t, and location parameters i,j
+        def Jacobian(t, i, j):
+            ## Tasks:
+            ## 1. Compute Q(t) by replacing x_i*x_j with t
+            Q_ = Q(t, i, j, p = self.nfeature, XE=glsolver.XE)
+            Q_inv = np.linalg.inv(Q_)
+            ## 2. Compute U_bar (V) using GL file lines 143-161
+            V_ = glsolver.V
+            ## 3. Compute Lambda using GL file compute_Lg()
+            L_ = glsolver.L
+            ## 4. Compute Gamma using GL file calc_GammaMinus()
+            G_ = calc_GammaMinus(glsolver.observed_opt_state, glsolver.active_dirs)
+
+            return np.linalg.det(Q_) * np.linalg.det(G_ + V_.T @ Q_inv @ L_ @ V_)
+
+        print(Jacobian(10,1,2))
 
         """
         # FOR TESTING
