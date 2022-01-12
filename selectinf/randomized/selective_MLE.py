@@ -101,17 +101,4 @@ class mle_inference(object):
 
         return result, observed_info_mean, log_ref
 
-def target_query_Interactspec(query_spec,
-                              regress_target_score,
-                              cov_target):
 
-    QS = query_spec
-    prec_target = np.linalg.inv(cov_target)
-
-    U1 = regress_target_score.T.dot(prec_target)
-    U2 = U1.T.dot(QS.M2.dot(U1))
-    U3 = U1.T.dot(QS.M3.dot(U1))
-    U4 = QS.M1.dot(QS.opt_linear).dot(QS.cond_cov).dot(QS.opt_linear.T.dot(QS.M1.T.dot(U1)))
-    U5 = U1.T.dot(QS.M1.dot(QS.opt_linear))
-
-    return U1, U2, U3, U4, U5
