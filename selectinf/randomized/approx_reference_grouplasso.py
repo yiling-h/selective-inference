@@ -178,6 +178,9 @@ class group_lasso(object):
         #     ug's are sorted by groups
         U = block_diag(*[ug for ug in sorted_active_dirs.values()]).T
 
+        # YH: U added for paired group lasso implementations
+        self.U = U
+
         # YH: X^T sum(X_g u_g) = B in the paper
         self.opt_linear = opt_linearNoU.dot(U)  #self.opt_linear.dot(self.observed_opt_state) = X^T sum(X gamma u)
         self.active_dirs = active_dirs

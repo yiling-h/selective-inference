@@ -7,7 +7,7 @@ from nose.tools import nottest
 import regreg.api as rr
 
 from ..approx_reference_grouplasso import group_lasso
-from ..paired_group_lasso_backup import paired_group_lasso
+from ..paired_group_lasso import paired_group_lasso
 from ...tests.instance import gaussian_instance
 from ...tests.flags import SET_SEED
 from ...tests.decorators import set_sampling_params_iftrue, set_seed_iftrue

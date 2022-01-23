@@ -182,8 +182,6 @@ class paired_group_lasso(query):
         # Vectorize the perturbation
         if self.perturb is not None:
             perturb_vec = self.mat_to_vec(p=self.nfeature, mat=self.perturb)
-            #print(self.X)
-            #print(self.X_aug)
             glsolver = group_lasso.gaussian(self.X_aug,
                                             self.Y_aug,
                                             np.array(self.groups),
@@ -410,9 +408,31 @@ class paired_group_lasso(query):
             to_diag = [[g] * (ug.size - 1) for (g, ug) in zip(gamma, active_dirs.values())]
             return block_diag(*[i for gp in to_diag for i in gp])
 
+        def calc_GammaBar(gamma, active_dirs):
+            """Calculate Gamma^minus (as a function of gamma vector, active directions)
+            """
+            to_diag = [[g] * (ug.size) for (g, ug) in zip(gamma, active_dirs.values())]
+            return block_diag(*[i for gp in to_diag for i in gp])
+
         ## UNTESTED
         ## Calculate the Jacobian as a function of t, and location parameters i,j
         def Jacobian(t, i, j):
+
+            ## Tasks:
+            ## 1. Compute Q(t) by replacing x_i*x_j with t
+            Q_ = Q(t, i, j, p=self.nfeature, XE=glsolver.XE)
+            ## 2. Compute U using GL file lines 179
+            U_ = glsolver.U
+            ## 3. Compute U_bar (V) using GL file lines 143-161
+            V_ = glsolver.V
+            ## 4. Compute Lambda using GL file compute_Lg()
+            L_ = glsolver.L
+            ## 5. Compute GammaBar using GL file calc_GammaBar()
+            G_ = calc_GammaBar(glsolver.observed_opt_state, glsolver.active_dirs)
+
+            J_ = np.block([(Q_ @ G_ + L_) @ V_, Q_ @ U_])
+            return np.linalg.det(J_)
+            """
             ## Tasks:
             ## 1. Compute Q(t) by replacing x_i*x_j with t
             Q_ = Q(t, i, j, p = self.nfeature, XE=glsolver.XE)
@@ -425,6 +445,7 @@ class paired_group_lasso(query):
             G_ = calc_GammaMinus(glsolver.observed_opt_state, glsolver.active_dirs)
 
             return np.linalg.det(Q_) * np.linalg.det(G_ + V_.T @ Q_inv @ L_ @ V_)
+            """
 
         print(Jacobian(10,1,2))
 
