@@ -224,9 +224,9 @@ class paired_group_lasso(query):
         # print('gl disagreement', num_dis_mat)
 
         # Calculate the KKT map for the paired group lasso
-        rhs = - self.X.T @ self.X + (self.X.T @ self.X) @ beta + subgrad_mat
-        np.fill_diagonal(rhs, 0)
-        lhs = self.perturb
+        # rhs = - self.X.T @ self.X + (self.X.T @ self.X) @ beta + subgrad_mat
+        # np.fill_diagonal(rhs, 0)
+        # lhs = self.perturb
 
         self.observed_opt_state = glsolver.observed_opt_state
         self.opt_linear = glsolver.opt_linear

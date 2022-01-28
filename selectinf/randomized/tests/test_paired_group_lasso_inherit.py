@@ -277,3 +277,28 @@ def test_XXE(n=400, p=15, randomizer_scale=.75):
     # Fit
     pgl = paired_group_lasso(X=X, weights=0.05, ridge_term=0.0, randomizer_scale=1)
     pgl.fit()
+
+def test_Gaussian_init(n=400,
+                        p=100,
+                        signal_fac=3,
+                        s=5,
+                        sigma=3,
+                        target='full',
+                        rho=0.4,
+                        randomizer_scale=.75,
+                        ndraw=100000):
+    cov = np.array([[2, 1, 1, 1],
+                    [1, 2, 1, 1],
+                    [1, 1, 2, 1],
+                    [1, 1, 1, 1]])
+
+    X = np.random.multivariate_normal(mean=np.zeros((4,)), cov=cov, size=10)
+    """
+    perturb = np.array([[0, -0.22352252, -0.40935027],
+                    [-0.39547683, 0, 0.35188586],
+                    [0.70123141, -0.4890036, 0]])
+    
+    perturb = np.zeros((3,3))
+    """
+    pgl = paired_group_lasso.gaussian(X=X, weights=15.0, randomizer_scale=randomizer_scale, sigma=1)
+    pgl.fit()
