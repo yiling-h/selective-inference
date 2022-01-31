@@ -8,6 +8,7 @@ import regreg.api as rr
 
 from ..approx_reference_grouplasso import group_lasso
 from ..paired_group_lasso import paired_group_lasso
+from ..paired_group_lasso_backup import paired_group_lasso as paired_original
 from ...tests.instance import gaussian_instance
 from ...tests.flags import SET_SEED
 from ...tests.decorators import set_sampling_params_iftrue, set_seed_iftrue
@@ -293,12 +294,34 @@ def test_Gaussian_init(n=400,
                     [1, 1, 1, 1]])
 
     X = np.random.multivariate_normal(mean=np.zeros((4,)), cov=cov, size=10)
-    """
-    perturb = np.array([[0, -0.22352252, -0.40935027],
-                    [-0.39547683, 0, 0.35188586],
-                    [0.70123141, -0.4890036, 0]])
-    
-    perturb = np.zeros((3,3))
-    """
     pgl = paired_group_lasso.gaussian(X=X, weights=15.0, randomizer_scale=randomizer_scale, sigma=1)
     pgl.fit()
+
+def test_consistency(n=400,
+                        p=100,
+                        signal_fac=3,
+                        s=5,
+                        sigma=3,
+                        target='full',
+                        rho=0.4,
+                        randomizer_scale=.75,
+                        ndraw=100000):
+    cov = np.array([[2, 1, 1, 1],
+                    [1, 2, 1, 1],
+                    [1, 1, 2, 1],
+                    [1, 1, 1, 1]])
+
+    X = np.random.multivariate_normal(mean=np.zeros((4,)), cov=cov, size=10)
+
+    perturb = np.array([[0., 0.59317133, -1.3092067, -1.00568904],
+                          [-0.89862168, 0., 0.31491519, 0.25149595],
+                          [0.49108693, 0.521259, 0., 0.61751535],
+                          [0.57598437, -0.33098453, 0.87203953, 0.]])
+    pgl = paired_group_lasso.gaussian(X=X, weights=1,
+                                      randomizer_scale=randomizer_scale, sigma=1.,
+                                      perturb=perturb)
+    pgl.fit()
+
+    pgl_orig = paired_original(X=X, weights=1, randomizer_scale=randomizer_scale,
+                                      perturb=perturb, ridge_term=0)
+    pgl_orig.fit()

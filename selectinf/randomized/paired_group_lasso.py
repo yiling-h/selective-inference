@@ -5,8 +5,6 @@ from scipy.linalg import block_diag
 import regreg.api as rr
 from .randomization import randomization
 
-from .query import query, affine_gaussian_sampler
-
 from .approx_reference_grouplasso import group_lasso
 class paired_group_lasso(group_lasso):
     def  __init__(self,
@@ -18,28 +16,37 @@ class paired_group_lasso(group_lasso):
                   randomizer_scale,
                   ridge_term=0,
                   perturb=None):
-        ## What input should this function take?
-        ## loglike?
-        ## We instantiated Gaussian in fit(), so there is no need to specify loglike
-
-        ## Should we provide alternative versions of fit() so that we instantiate
-        ## a group_lasso object with different loglike, instead of Gaussian?
 
          r"""
          Create a new post-selection object for the paired group LASSO problem
 
          Parameters
          ----------
+         loglike: likelihood object
+             log-likelihood function for the paired group lasso
+
+         n,p: int
+             n is the number of observations,
+             p is the number of covariates
+
+         groups: list
+             A list object of length p(p-1) that indicates the group index
+             of each column in the augmented X matrix
 
          weights : np.ndarray
-             Feature weights for L-1 penalty. If a float,
-             it is broadcast to all features.
-
-         ridge_term : float
-             How big a ridge term to add?
+             Feature weights for L-1 penalty.
+             If a float, it is broadcast to all features.
+             Otherwise, must be a pxp symmetric non-negative matrix with 0's
+             along the diagonal.
 
          randomizer : object
              Randomizer -- contains representation of randomization density.
+
+         randomizer_scale : object
+             Scale parameter of the randomizer
+
+         ridge_term : float
+             How big a ridge term to add?
 
          perturb : np.ndarray
              Random perturbation subtracted as a linear
@@ -70,7 +77,6 @@ class paired_group_lasso(group_lasso):
 
          self.ridge_term = ridge_term
 
-    # TESTED
     @staticmethod
     def augment_X(X):
         r"""
@@ -86,7 +92,6 @@ class paired_group_lasso(group_lasso):
 
         return X_aug
 
-    # TESTED
     @staticmethod
     def augment_Y(X):
         r"""
@@ -101,7 +106,6 @@ class paired_group_lasso(group_lasso):
 
         return Y_aug
 
-    # TESTED
     @staticmethod
     def create_groups(n, p, weights):
         r"""
@@ -142,7 +146,6 @@ class paired_group_lasso(group_lasso):
 
         return groups, groups_to_vars, group_weights
 
-    # TESTED
     @staticmethod
     def undo_vectorize(p, k):
         r"""
@@ -156,7 +159,6 @@ class paired_group_lasso(group_lasso):
 
         return i,j
 
-    # TESTED
     # Cast the vectorized parameters to a matrix with zero diagonals
     @staticmethod
     def vec_to_mat(p, vec):
@@ -166,7 +168,6 @@ class paired_group_lasso(group_lasso):
             mat[i,j] = vec[k]
         return mat
 
-    # TESTED
     # Given an index pair (i,j) of the B matrix,
     # this function returns the corresponding index in the vectorized parameter
     @staticmethod
@@ -175,8 +176,7 @@ class paired_group_lasso(group_lasso):
             return (p-1)*j + i
         return (p-1)*j + i - 1
 
-    # TESTED
-    # The inverse of vec_to_mat()
+    # The inverse mapping of vec_to_mat()
     # This is the vectorization operator
     # p is the number of raw covariates
     @staticmethod
@@ -191,7 +191,10 @@ class paired_group_lasso(group_lasso):
 
     def fit(self,
             solve_args={'tol': 1.e-12, 'min_its': 50}):
-        ### SELECTION PART
+        ######################
+        ### SELECTION PART ###
+        ######################
+
         # Vectorize the perturbation
         if self.perturb is not None:
             perturb_vec = self.mat_to_vec(p=self.p, mat=self.perturb)
@@ -208,9 +211,10 @@ class paired_group_lasso(group_lasso):
         # Stack the parameters into a pxp matrix
         self.beta = self.vec_to_mat(p=self.p, vec=self.initial_soln)
 
-        ### INFERENCE PART
+        ######################
+        ### INFERENCE PART ###
+        ######################
 
-        ## TESTED
         ## X_ is the augmented design matrix
         ## Y_ is the augmented response
         ## t is the value of x_i^T x_j
@@ -229,7 +233,6 @@ class paired_group_lasso(group_lasso):
             XY[idx_ji] = t
             return XY
 
-        ## TESTED
         ## NOTES: Assuming i < j, then b_ij comes after b_ji in the vectorized beta
         ##        This implies when we order covariates according to groups,
         ##        within the group g corresponding to i,j,
@@ -294,7 +297,6 @@ class paired_group_lasso(group_lasso):
                         XXE_[j_idx, i_idx_XE] = t
             return XXE_
 
-        ## TESTED
         ## NOTES: beta_grouped is the solution of beta ordered according to groups
         ##        Retrieval of beta_grouped: beta_grouped = initial_soln[ordered_vars]
         ##        prec:
@@ -305,7 +307,6 @@ class paired_group_lasso(group_lasso):
             omega = -XY_ + XXE_ @ beta_grouped + subgradient
             return np.exp(omega.T @ prec @ omega)
 
-        ## TESTED
         def Q(t, i, j, p, XE):
             # Swap the value of i,j if i>j,
             # so that i always represents the lower value
@@ -372,7 +373,6 @@ class paired_group_lasso(group_lasso):
             to_diag = [[g] * (ug.size) for (g, ug) in zip(gamma, active_dirs.values())]
             return block_diag(*[i for gp in to_diag for i in gp])
 
-        ## UNTESTED
         ## Calculate the Jacobian as a function of t, and location parameters i,j
         def Jacobian(t, i, j):
             ## Tasks:
@@ -389,8 +389,6 @@ class paired_group_lasso(group_lasso):
 
             J_ = np.block([(Q_ @ G_ + L_) @ V_, Q_ @ U_])
             return np.linalg.det(J_)
-
-        print(Jacobian(10, 1, 2))
 
     @staticmethod
     def gaussian(X,

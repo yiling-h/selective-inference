@@ -199,6 +199,7 @@ class paired_group_lasso(query):
             # If perturbation not provided, stack the perturbation given by glslover into matrix
             perturb_vec = glsolver._initial_omega
             self.perturb = self.vec_to_mat(p=self.nfeature, vec=perturb_vec)
+            print(self.perturb)
 
         # coeffs = signs['directions']
         # nonzero = glsolver.selection_variable['directions'].keys()
