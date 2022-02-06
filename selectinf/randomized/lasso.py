@@ -693,6 +693,9 @@ def selected_targets(loglike,
                      dispersion=None,
                      solve_args={'tol': 1.e-12, 'min_its': 50}):
 
+    # YH: features is a logical vector indicating
+    # positions of selected variables
+
     X, y = loglike.data
     n, p = X.shape
 

@@ -275,5 +275,5 @@ def test_XXE(n=400, p=15, randomizer_scale=.75):
 
     X = np.random.multivariate_normal(mean=np.zeros((4,)), cov=cov, size=10)
     # Fit
-    pgl = paired_group_lasso(X=X, weights=0.05, ridge_term=0.0, randomizer_scale=1)
+    pgl = paired_group_lasso(X=X, weights=5, ridge_term=0.0, randomizer_scale=1)
     pgl.fit()

@@ -131,10 +131,13 @@ class group_lasso(object):
 
         opt_offset = self.initial_subgrad
 
-        # YH: - X^T X_E Beta_E^LS
+        # YH: - X^T X_E Beta_E^LS = N_E - X^T Y
         self.observed_score_state = -opt_linearNoU.dot(_beta_unpenalized)
-        # YH: - X^T X_E Beta_E^LS + ??
+        # YH: - X^T X_E Beta_E^LS + (-N_E)??
         self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
+        # YH: # self.observed_score_state should equal -N_E in the end
+        print("obs_state", self.observed_score_state)
+        print("N_E", X.T @ y - opt_linearNoU.dot(_beta_unpenalized))
 
         active_signs = np.sign(self.initial_soln)
         active = np.flatnonzero(active_signs)
@@ -182,12 +185,15 @@ class group_lasso(object):
         self.U = U
 
         # YH: X^T sum(X_g u_g) = B in the paper
-        self.opt_linear = opt_linearNoU.dot(U)  #self.opt_linear.dot(self.observed_opt_state) = X^T sum(X gamma u)
+        self.opt_linear = opt_linearNoU.dot(U)  #self.opt_linear.dot(self.observobserved_opt_stateed_opt_state) = X^T sum(X gamma u)
         self.active_dirs = active_dirs
         self.opt_offset = opt_offset
         self.ordered_vars = ordered_vars
         self.overall = overall
 
+        # YH: observed_opt_state: gammas as array
+        #     linear_part: negative identity with the same dimension of #groups
+        #     offset: 0 vector of #groups x 1
         self.linear_part = -np.eye(self.observed_opt_state.shape[0])
         self.offset = np.zeros(self.observed_opt_state.shape[0])
 
@@ -253,17 +259,30 @@ class group_lasso(object):
 
     def _setup_implied_gaussian(self):
 
+        # YH: Precision matrix of randomizer
         _, prec = self.randomizer.cov_prec
 
+        # YH: opt_linear = X^T sum(X_g u_g) = B in the paper
+        # YH: cond_precision is the quadratic form (B^T Omega^-1 B) = Omega_bar^-1
+        # YH: cond_cov is Omega_bar
+        # YH: logdens_linear = Omega_bar B^T Omega^-1 = -b_bar without c
+
+        # YH: if the precision "matrix" is a scalar
         if np.asarray(prec).shape in [(), (0,)]:
             cond_precision = self.opt_linear.T.dot(self.opt_linear) * prec
             cond_cov = inv(cond_precision)
             logdens_linear = cond_cov.dot(self.opt_linear.T) * prec
+        # YH: if there is a nontrivial covariance structure for the randomization
         else:
             cond_precision = self.opt_linear.T.dot(prec.dot(self.opt_linear))
             cond_cov = inv(cond_precision)
             logdens_linear = cond_cov.dot(self.opt_linear.T).dot(prec)
+            # YH: Omega_bar B^T Omega^-1 = -b_bar without c
 
+        # YH: observed_score_state is X^T Y, opt_offset is the subgrad
+        # YH: self.observed_score_state + self.opt_offset = NE + subgrad
+        # cond_mean = b_bar =  -Omega_bar B^T Omega^-1 (-NE + subgrad)
+        # self.observed_score_state should equal -NE
         cond_mean = -logdens_linear.dot(self.observed_score_state + self.opt_offset)
         self.cond_mean = cond_mean
         self.cond_cov = cond_cov
@@ -466,6 +485,8 @@ class approximate_grid_inference(object):
         self.init_soln = query.observed_opt_state
 
         self.randomizer_prec = query.randomizer_prec
+        # YH: observed_score_state = -N_E, opt_offset = subgrad
+        # YH: so score_offset = c in the paper
         self.score_offset = query.observed_score_state + query.opt_offset
 
         self.ntarget = ntarget = target_cov.shape[0]

@@ -199,7 +199,6 @@ class paired_group_lasso(query):
             # If perturbation not provided, stack the perturbation given by glslover into matrix
             perturb_vec = glsolver._initial_omega
             self.perturb = self.vec_to_mat(p=self.nfeature, vec=perturb_vec)
-            print(self.perturb)
 
         # coeffs = signs['directions']
         # nonzero = glsolver.selection_variable['directions'].keys()
@@ -239,13 +238,14 @@ class paired_group_lasso(query):
         #print('vars', glsolver.ordered_vars)
 
         # -(self.X_aug.T @ self.Y_aug) == pgl.observed_score_state
-        # print(np.abs(-(self.X_aug.T @ self.Y_aug) - self.observed_score_state))
+        print("XY",-(self.X_aug.T @ self.Y_aug))
 
         # self.opt_linear.dot(self.observed_opt_state) = X^T sum(X gamma u)
         # roughly the same
         # print(np.abs(self.opt_linear.dot(self.observed_opt_state) - (self.X_aug.T @ self.X_aug) @ vectorized_beta))
 
         self.beta = beta
+        print("beta", beta)
 
         ### INFERENCE PART
 
@@ -448,7 +448,7 @@ class paired_group_lasso(query):
             return np.linalg.det(Q_) * np.linalg.det(G_ + V_.T @ Q_inv @ L_ @ V_)
             """
 
-        print(Jacobian(10,1,2))
+        #print(Jacobian(10,1,2))
 
         """
         # FOR TESTING

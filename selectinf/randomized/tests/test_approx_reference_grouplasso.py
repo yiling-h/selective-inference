@@ -15,6 +15,10 @@ def test_approx_pivot(n=500,
 
     while True:
 
+        # YH: inst is a alias for gaussian_group_instance,
+        #     a function that creates a group lasso data
+        #     const is a gaussian group lasso object
+
         inst, const = gaussian_group_instance, group_lasso.gaussian
         signal = np.sqrt(signal_fac * 2 * np.log(p))
 

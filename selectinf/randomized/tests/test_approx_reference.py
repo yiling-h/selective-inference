@@ -40,6 +40,8 @@ def test_summary(n=500,
     nonzero = signs != 0
 
     if nonzero.sum()>0:
+        # YH: beta_target = (X_E^T X_E)^-1 X_E^T X_E beta_E
+        #     Basically beta_target = beta_E
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
 
         (observed_target,
