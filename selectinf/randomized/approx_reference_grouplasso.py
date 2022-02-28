@@ -132,12 +132,11 @@ class group_lasso(object):
         opt_offset = self.initial_subgrad
 
         # YH: - X^T X_E Beta_E^LS = N_E - X^T Y
+        # NE = -X'(Y-X_E Beta_E^LS) (nonzero only on -E)
         self.observed_score_state = -opt_linearNoU.dot(_beta_unpenalized)
-        # YH: - X^T X_E Beta_E^LS + (-N_E)??
+        # YH: - X^T X_E Beta_E^LS + (-N_E)      (checked)
         self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
-        # YH: # self.observed_score_state should equal -N_E in the end
-        print("obs_state", self.observed_score_state)
-        print("N_E", X.T @ y - opt_linearNoU.dot(_beta_unpenalized))
+        # YH: # self.observed_score_state should equal -X^T Y in the end
 
         active_signs = np.sign(self.initial_soln)
         active = np.flatnonzero(active_signs)
@@ -185,7 +184,7 @@ class group_lasso(object):
         self.U = U
 
         # YH: X^T sum(X_g u_g) = B in the paper
-        self.opt_linear = opt_linearNoU.dot(U)  #self.opt_linear.dot(self.observobserved_opt_stateed_opt_state) = X^T sum(X gamma u)
+        self.opt_linear = opt_linearNoU.dot(U)  #self.opt_linear.dot(self.observed_opt_state) = X^T sum(X gamma u)
         self.active_dirs = active_dirs
         self.opt_offset = opt_offset
         self.ordered_vars = ordered_vars
@@ -279,15 +278,17 @@ class group_lasso(object):
             logdens_linear = cond_cov.dot(self.opt_linear.T).dot(prec)
             # YH: Omega_bar B^T Omega^-1 = -b_bar without c
 
-        # YH: observed_score_state is X^T Y, opt_offset is the subgrad
-        # YH: self.observed_score_state + self.opt_offset = NE + subgrad
-        # cond_mean = b_bar =  -Omega_bar B^T Omega^-1 (-NE + subgrad)
-        # self.observed_score_state should equal -NE
+        # YH: observed_score_state is -X^T Y, opt_offset is the subgrad
+        # YH: self.observed_score_state + self.opt_offset = -X^T Y + subgrad
+        # cond_mean = -Omega_bar B^T Omega^-1 (A beta_E^(LS) + b_bar)
+        #           = -Omega_bar B^T Omega^-1 (-X^T Y + subgrad)
+        #           = A_bar beta_E^(LS) + b_bar
+        # self.observed_score_state should equal -X^T Y
         cond_mean = -logdens_linear.dot(self.observed_score_state + self.opt_offset)
-        self.cond_mean = cond_mean
-        self.cond_cov = cond_cov
-        self.cond_precision = cond_precision
-        self.logdens_linear = logdens_linear
+        self.cond_mean = cond_mean                  # A_bar beta_E^(LS) + b_bar
+        self.cond_cov = cond_cov                    # Omega_bar
+        self.cond_precision = cond_precision        # Omega_bar^-1
+        self.logdens_linear = logdens_linear        # Omega_bar B^T Omega^-1
 
         return cond_mean, cond_cov, cond_precision, logdens_linear
 
@@ -320,13 +321,25 @@ class group_lasso(object):
         """
 
         self._setup_implied_gaussian()  # Calculate useful quantities
+
+        # YH: dispersion is the variance (omega^2) of the presumably true OLS model
+        # YH: observed_target is the OLS solution on E
+        # YH: cov_target = self.QI * dispersion
+        # YH: crosscov_target_score = - (X^T XE (XE^T XE)^{-1})^T * dispersion
+        #                           = - (XE^T XE)^{-1} XE^T X * dispersion
+        # YH: alternatives = ['twosided'] * len(self.active)
         (observed_target, target_cov, target_score_cov, alternatives) = self.selected_targets(dispersion)
 
         init_soln = self.observed_opt_state  # just the gammas
+        # YH: cond_mean =  A_bar beta_E^(LS) + b_bar
         cond_mean = self.cond_mean
+        # YH: cond_cov is Omega_bar
         cond_cov = self.cond_cov
+        # YH: logdens_linear = Omega_bar B^T Omega^-1 = -b_bar without c
         logdens_linear = self.logdens_linear
+        # YH: self.linear_part should be A_bar
         linear_part = self.linear_part
+        # YH: self.offset should be b_bar
         offset = self.offset
 
         if np.asarray(observed_target).shape in [(), (0,)]:
@@ -335,8 +348,10 @@ class group_lasso(object):
         observed_target = np.atleast_1d(observed_target)
         prec_target = inv(target_cov)
 
+        # YH: prec_opt is omega_bar^{-1} (omega_bar is a covariance)
         prec_opt = self.cond_precision
 
+        # YH: -X^T Y + subgrad
         score_offset = self.observed_score_state + self.opt_offset
 
         # target_lin determines how the conditional mean of optimization variables
@@ -344,24 +359,37 @@ class group_lasso(object):
         # logdens_linear determines how the argument of the optimization density
         # depends on the score, not how the mean depends on score, hence the minus sign
 
+        # YH: target_score_cov.T = - (X^T XE (XE^T XE)^{-1}) * dispersion
+        # YH: so target_linear = - (X^T XE (XE^T XE)^{-1}) (XE^T XE)
+        #                      = - X^T XE = A
         target_linear = target_score_cov.T.dot(prec_target)
+        # YH: target_offset = -X^T Y + subgrad + X^T XE (XE^T XE)^{-1} XE^T
+        # YH: target_offset = c
         target_offset = score_offset - target_linear.dot(observed_target)
 
+        # YH: A_bar
         target_lin = - logdens_linear.dot(target_linear)
+        # YH: b_bar
         target_off = cond_mean - target_lin.dot(observed_target)
 
         if np.asarray(self.randomizer_prec).shape in [(), (0,)]:
+            # YH: A^T  Omega^-1 c
             _P = target_linear.T.dot(target_offset) * self.randomizer_prec
+            # YH: theta_bar^{-1}
             _prec = prec_target + (target_linear.T.dot(target_linear) * self.randomizer_prec) - target_lin.T.dot(
                 prec_opt).dot(
                 target_lin)
         else:
+            # YH: A^T  Omega^-1 c
             _P = target_linear.T.dot(self.randomizer_prec).dot(target_offset)
+            # YH: theta_bar^{-1}
             _prec = prec_target + (target_linear.T.dot(self.randomizer_prec).dot(target_linear)) - target_lin.T.dot(
                 prec_opt).dot(target_lin)
 
+        # YH: -s_bar, replacing theta_bar with Sigma
         C = target_cov.dot(_P - target_lin.T.dot(prec_opt).dot(target_off))
 
+        # YH: prec_opt is omega_bar^{-1}
         conjugate_arg = prec_opt.dot(cond_mean)
 
         val, soln, hess = solve_barrier_affine_jacobian_py(conjugate_arg,
@@ -419,16 +447,21 @@ class group_lasso(object):
         n, p = X.shape
 
         XE = self.XE
-        Q = self.Q
+        Q = self.Q          # YH: Q = XE^T XE
+        # YH: ordered_vars: variable indices ordered by group memberships
+        # YH: observed_target is the OLS solution on E
         observed_target = restricted_estimator(self.loglike, self.ordered_vars, solve_args=solve_args)
-        _score_linear = -XE.T.dot(self._W[:, None] * X).T
+        _score_linear = -XE.T.dot(self._W[:, None] * X).T  # YH: -X^T XE, W is 1 for linear models
         alternatives = ['twosided'] * len(self.active)
 
+        # YH: dispersion is the variance (omega^2) of the presumably true OLS model
         if dispersion is None:  # use Pearson's X^2
             dispersion = ((y - self.loglike.saturated_loss.mean_function(
                 XE.dot(observed_target))) ** 2 / self._W).sum() / (n - XE.shape[1])
 
         cov_target = self.QI * dispersion
+        # YH: crosscov_target_score = - (X^T XE (XE^T XE)^{-1})^T * dispersion
+        #                           = - (XE^T XE)^{-1} XE^T X  * dispersion
         crosscov_target_score = _score_linear.dot(self.QI).T * dispersion
 
         return (observed_target,
@@ -467,16 +500,31 @@ class approximate_grid_inference(object):
 
         result, inverse_info = query.selective_MLE(dispersion=dispersion)[:2]
 
+        # YH: should be A_bar
         self.linear_part = query.linear_part
+        # YH: should be b_bar
         self.offset = query.offset
 
+        # YH: logdens_linear = Omega_bar B^T Omega^-1 = -b_bar without c
         self.logdens_linear = query.logdens_linear
+        # YH: cond_mean = A_bar beta_E^(LS) + b_bar
         self.cond_mean = query.cond_mean
+        # YH: prec_opt is omega_bar^{-1}
         self.prec_opt = np.linalg.inv(query.cond_cov)
+        # YH: cond_cov is Omega_bar
         self.cond_cov = query.cond_cov
+
+        # YH: V.T.dot(QI).dot(L).dot(V), V: U_bar, L: Lambda, QI: Q^-1
         self.C = query.C
+        # dictionary: keys are group labels, values are unit-norm coefficients
         self.active_dirs = query.active_dirs
 
+        # YH: dispersion is the variance (omega^2) of the presumably true OLS model
+        # YH: observed_target is the OLS solution on E
+        # YH: cov_target = self.QI * dispersion
+        # YH: crosscov_target_score = - (X^T XE (XE^T XE)^{-1})^T * dispersion
+        #                           = - (XE^T XE)^{-1} XE^T X * dispersion
+        # YH: alternatives = ['twosided'] * len(self.active)
         (observed_target, target_cov, target_score_cov, alternatives) = query.selected_targets(dispersion)
         self.observed_target = observed_target
         self.target_score_cov = target_score_cov
@@ -489,13 +537,18 @@ class approximate_grid_inference(object):
         # YH: so score_offset = c in the paper
         self.score_offset = query.observed_score_state + query.opt_offset
 
+        # ntarget = |E|
         self.ntarget = ntarget = target_cov.shape[0]
+        # inverse_info is the inverse information matrix in solving the Barrier problem
+        # _scale determines the range of the grids
         _scale = 4 * np.sqrt(np.diag(inverse_info))
 
         if useIP == False:
             ngrid = 1000
             self.stat_grid = np.zeros((ntarget, ngrid))
             for j in range(ntarget):
+                # Return evenly spaced numbers over a specified interval
+                # self.stat_grid[j, :] is a 1000 x 1 np array of numbers
                 self.stat_grid[j, :] = np.linspace(observed_target[j] - 1.5 * _scale[j],
                                                    observed_target[j] + 1.5 * _scale[j],
                                                    num=ngrid)
@@ -562,11 +615,14 @@ class approximate_grid_inference(object):
         if np.asarray(observed_target).shape in [(), (0,)]:
             raise ValueError('no target specified')
 
+        # YH: prec_target = (XE^T XE) / dispersion
         prec_target = np.linalg.inv(target_cov)
+        # YH: A_bar
         target_lin = - self.logdens_linear.dot(target_score_cov.T.dot(prec_target))
 
         ref_hat = []
 
+        # Iterate over dimensions of target
         for k in range(grid.shape[0]):
             # in the usual D = N + Gamma theta.hat,
             # target_lin is "something" times Gamma,
@@ -581,7 +637,9 @@ class approximate_grid_inference(object):
                               self.cond_mean)
 
             #direction for decomposing o
-
+            # YH: prec_opt is omega_bar^{-1}, logdens_linear = Omega_bar B^T Omega^-1,
+            #     target_score_cov = - (XE^T XE)^{-1} XE^T X * dispersion
+            #     eta: - B^T Omega^-1 A QI * dispersion
             eta = -self.prec_opt.dot(self.logdens_linear.dot(target_score_cov.T))
 
             implied_mean = np.asscalar(eta.T.dot(cond_mean_grid))
