@@ -80,11 +80,14 @@ class discrete_family(object):
 
         The weights are normalized to sum to 1.
         """
+        # YH: xw = {(suff, weight)}, a sorted list
         xw = np.array(sorted(zip(sufficient_stat, weights)), np.float)
         self._x = xw[:,0]
         self._w = xw[:,1]
+        # YH: log weights
         self._lw = np.log(xw[:,1])
         self._w /= self._w.sum() # make sure they are a pmf
+        # YH: total # of grids
         self.n = len(xw)
         self._theta = np.nan
         self.theta = theta

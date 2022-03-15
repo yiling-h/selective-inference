@@ -324,7 +324,7 @@ class group_lasso(object):
 
         # YH: dispersion is the variance (omega^2) of the presumably true OLS model
         # YH: observed_target is the OLS solution on E
-        # YH: cov_target = self.QI * dispersion
+        # YH: target_cov = self.QI * dispersion
         # YH: crosscov_target_score = - (X^T XE (XE^T XE)^{-1})^T * dispersion
         #                           = - (XE^T XE)^{-1} XE^T X * dispersion
         # YH: alternatives = ['twosided'] * len(self.active)
@@ -633,6 +633,7 @@ class approximate_grid_inference(object):
             num_opt = self.prec_opt.shape[0]
             num_con = self.linear_part.shape[0]
 
+            # YH: A_bar @ (.) + A_bar beta_E^(LS) + b_bar
             cond_mean_grid = (target_lin.dot(np.atleast_1d(grid[k] - observed_target)) +
                               self.cond_mean)
 
@@ -654,6 +655,8 @@ class approximate_grid_inference(object):
 
             conjugate_arg = implied_mean * implied_prec
 
+            # YH: solver: solve_barrier_affine_py
+            # YH: Approximating selection probability using (4)/(OA) in MCMC-free (?)
             val, soln, _ = solver(np.asarray([conjugate_arg]),
                                   np.reshape(implied_prec, (1,1)),
                                   eta.T.dot(self.init_soln),
@@ -683,6 +686,7 @@ class approximate_grid_inference(object):
 
             var_target = 1. / ((self.precs[m])[0, 0])
 
+            # Evaluate h(t) over the grids
             log_ref = self.log_reference(observed_target_uni,
                                          target_cov_uni,
                                          target_score_cov_uni,
@@ -693,6 +697,7 @@ class approximate_grid_inference(object):
                 self._families.append(discrete_family(self.stat_grid[m],
                                                       np.exp(logW)))
             else:
+                # YH: Quadratic interpolation of h(t)
                 approx_fn = interp1d(self.stat_grid[m],
                                      log_ref,
                                      kind='quadratic',
@@ -700,10 +705,17 @@ class approximate_grid_inference(object):
                                      fill_value='extrapolate')
 
                 grid = np.linspace(self.stat_grid[m].min(), self.stat_grid[m].max(), 1000)
+                # YH: conditional marginal density: -1/2 * (t-b)^2 / sigma_j^2 + h(t),
+                # YH: (?) replacing b (parameter) with the observed quantity
                 logW = (approx_fn(grid) -
                         0.5 * (grid - self.observed_target[m]) ** 2 / var_target)
 
                 logW -= logW.max()
+
+                # YH: This is a discrete approximation of a family
+                #     with sufficient statistic being just x and
+                #     weights being w, and theta default to 0.
+                #     That is, a discrete pmf to approximate the pdf given by logW
                 self._families.append(discrete_family(grid,
                                                       np.exp(logW)))
 
@@ -763,27 +775,41 @@ class approximate_grid_inference(object):
         return np.asarray(lower), np.asarray(upper)
 
     ### Private method
+    ## YH: WHAT DOES THIS FUNCTIO DO?
     def _construct_density(self):
 
         precs = {}
         S = {}
         r = {}
 
+        # YH: target_score_cov = - (XE^T XE)^{-1} XE^T X * dispersion
         p = self.target_score_cov.shape[1]
 
+        # Loop over selected targets (betas)
         for m in range(self.ntarget):
+            # YH: observed_target is the OLS solution on E
             observed_target_uni = (self.observed_target[m]).reshape((1,))
+            # YH: target_cov = self.QI * dispersion
+            #     This is the variance of the m-th target
             target_cov_uni = (np.diag(self.target_cov)[m]).reshape((1, 1))
             prec_target = 1. / target_cov_uni
             target_score_cov_uni = self.target_score_cov[m, :].reshape((1, p))
 
+            # YH: - dispersion/target_cov_m * (XE^T XE)^{-1}_(m,:) XE^T X
             target_linear = target_score_cov_uni.T.dot(prec_target)
+            # YH: score_offset = c in the paper
+            #     target_offset = c - dispersion*beta_m/target_cov_m * (XE^T XE)^{-1}_(m,:) XE^T X
             target_offset = (self.score_offset - target_linear.dot(observed_target_uni)).reshape(
                 (target_linear.shape[0],))
 
+            # YH: logdens_linear = Omega_bar B^T Omega^-1
+            #     cond_mean = A_bar beta_E^(LS) + b_bar
+            #     target_lin = dispersion/target_cov_m * Omega_bar B^T Omega^-1 (XE^T XE)^{-1}_(m,:) XE^T X
+            #     target_off = A_bar beta_E^(LS) + b_bar - target_lin * beta_m
             target_lin = -self.logdens_linear.dot(target_linear)
             target_off = (self.cond_mean - target_lin.dot(observed_target_uni)).reshape((target_lin.shape[0],))
 
+            # YH:
             _prec = prec_target + (target_linear.T.dot(target_linear) * self.randomizer_prec) - target_lin.T.dot(
                 self.prec_opt).dot(target_lin)
 
