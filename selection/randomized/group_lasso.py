@@ -1,17 +1,20 @@
 from __future__ import print_function
 import numpy as np
 import regreg.api as rr
+
 from selection.randomized.randomization import randomization
-from selection.base import restricted_estimator
+from selection.randomized.base import restricted_estimator, _solve_barrier_affine_py
+from selection.randomized.sampler import langevin
+
 from scipy.linalg import block_diag
 from numpy import log
-from numpy.linalg import norm, qr, inv, eig
+from numpy.linalg import norm, qr, inv
 from scipy.stats import norm as ndist
 import collections
-from selection.randomized.query import naive_confidence_intervals, naive_pvalues, _solve_barrier_affine_py
-from scipy.linalg import fractional_matrix_power
+
 import sys
 import pandas as pd
+
 
 class group_lasso(object):
 
