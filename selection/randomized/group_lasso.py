@@ -24,8 +24,29 @@ class group_lasso(object):
                  weights,
                  ridge_term,
                  randomizer,
-                 use_lasso=True,  # should lasso solver be used where applicable - defaults to True
+                 use_lasso=True,
                  perturb=None):
+
+        r"""
+                        Create a new post-selection object for the group LASSO problem
+                        Parameters
+                        ----------
+                        loglike : `regreg.smooth.glm.glm`
+                            A (negative) log-likelihood as implemented in `regreg`.
+                        groups: np.ndarray
+                            Group indices for features
+                        weights : np.ndarray
+                            Feature weights for groups in group penalty.
+                        ridge_term : float
+                            How big a ridge term to add?
+                        randomizer : object
+                            Randomizer -- contains representation of randomization density.
+                        use_lasso : bool
+                            should lasso solver be used where applicable with default value = True
+                        perturb : np.ndarray
+                            Random perturbation subtracted as a linear
+                            term in the objective function.
+                        """
 
         _check_groups(groups)  # make sure groups looks sensible
 
@@ -429,7 +450,7 @@ def solve_barrier_affine_jacobian_py(conjugate_arg,
     con_linear: linear part of affine constraint used for barrier function
     con_offset: offset part of affine constraint used for barrier function
     C: V^T Q^{-1} \\Lambda V
-    active_dirs:
+    active_dirs: dictionary object, keys are group labels, values are unit-norm coefficients
     """
     scaling = np.sqrt(np.diag(con_linear.dot(precision).dot(con_linear.T)))
 
@@ -591,24 +612,6 @@ def _check_groups(groups):
 
 
 class posterior():
-    """
-    Parameters
-    ----------
-    observed_target : ndarray
-        Observed estimate of target.
-    target_cov : ndarray
-        Estimated covariance of target.
-    target_score_cov : ndarray
-        Estimated covariance of target and score of randomized query.
-    prior : callable
-        A callable object that takes a single argument
-        `parameter` of the same shape as `observed_target`
-        and returns (gradient of log prior, value of log prior)
-    dispersion : float, optional
-        A dispersion parameter for likelihood.
-    solve_args : dict
-        Arguments passed to solver of affine barrier problem.
-    """
 
     def __init__(self,
                  conv,
@@ -617,6 +620,20 @@ class posterior():
                  solve_args={'tol': 1.e-12},
                  XrawE=False,
                  useJacobian=True):
+
+        """
+        Parameters
+        ----------
+        conv : Group LASSO solver
+        prior : callable
+             A callable object that takes a single argument
+            `parameter` of the same shape as `observed_target`
+            and returns (gradient of log prior, value of log prior)
+        dispersion : float, optional
+            A dispersion parameter for likelihood.
+        solve_args : dict
+            Arguments passed to solver of affine barrier problem.
+        """
 
         self.solve_args = solve_args
 
@@ -780,49 +797,3 @@ class posterior():
 
         return samples[nburnin:, :]
 
-
-class langevin(object):
-
-    def __init__(self,
-                 initial_condition,
-                 gradient_map,
-                 proposal_scale,
-                 stepsize,
-                 scaling):
-
-        (self.state,
-         self.gradient_map,
-         self.stepsize) = (np.copy(initial_condition),
-                           gradient_map,
-                           stepsize)
-        self.proposal_scale = proposal_scale
-        self._shape = self.state.shape[0]
-        self._sqrt_step = np.sqrt(self.stepsize)
-        self._noise = ndist(loc=0, scale=1)
-        self.sample = np.copy(initial_condition)
-        self.scaling = scaling
-
-        self.proposal_sqrt = fractional_matrix_power(self.proposal_scale, 0.5)
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        return self.__next__()
-
-    def __next__(self):
-
-        while True:
-
-            self.grad_posterior = self.gradient_map(self.state, self.scaling)
-            candidate = (self.state + self.stepsize * self.proposal_scale.dot(self.grad_posterior[0])
-                         + np.sqrt(2.) * (self.proposal_sqrt.dot(self._noise.rvs(self._shape))) * self._sqrt_step)
-
-            if not np.all(np.isfinite(self.gradient_map(candidate)[0])):
-                self.stepsize *= 0.5
-                self._sqrt_step = np.sqrt(self.stepsize)
-            else:
-                self.state[:] = candidate
-                break
-
-        return self.state

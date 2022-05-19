@@ -263,7 +263,7 @@ class two_stage_gaussian_query(query):
 
         cond_mean, cond_cov, cond_precision, logdens_linear, randomizer_prec = self._setup_implied_gaussian(opt_linear,
                                                                                                             opt_offset)
-        
+
         def log_density(logdens_linear, offset, cond_prec, score, opt):
             if score.ndim == 1:
                 mean_term = logdens_linear.dot(score.T + offset).T
