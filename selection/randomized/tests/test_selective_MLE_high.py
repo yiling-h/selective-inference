@@ -4,12 +4,12 @@ import nose.tools as nt
 from selection.randomized.lasso import lasso, full_targets, selected_targets, debiased_targets
 from selection.tests.instance import gaussian_instance
 
-def test_full_targets(n=200, 
-                      p=1000, 
-                      signal_fac=0.5, 
+def test_full_targets(n=200,
+                      p=1000,
+                      signal_fac=0.5,
                       s=5,
                       sigma=3,
-                      rho=0.4, 
+                      rho=0.4,
                       randomizer_scale=0.5,
                       full_dispersion=False):
     """
@@ -79,12 +79,12 @@ def test_full_targets(n=200,
             return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
 
 
-def test_selected_targets(n=2000, 
-                          p=200, 
-                          signal_fac=1., 
-                          s=5, 
-                          sigma=3, 
-                          rho=0.4, 
+def test_selected_targets(n=2000,
+                          p=200,
+                          signal_fac=1.,
+                          s=5,
+                          sigma=3,
+                          rho=0.4,
                           randomizer_scale=1,
                           full_dispersion=True):
     """
@@ -131,7 +131,7 @@ def test_selected_targets(n=2000,
              cov_target_score,
              alternatives) = selected_targets(conv.loglike,
                                               conv._W,
-                                              nonzero, 
+                                              nonzero,
                                               dispersion=dispersion)
 
             estimate, _, _, pval, intervals, _, _ = conv.selective_MLE(observed_target,
