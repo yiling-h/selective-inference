@@ -1,6 +1,6 @@
 import numpy as np
 from selection.randomized.query import naive_confidence_intervals
-from selection.tests.instance import gaussian_group_instance
+from selection.randomized.tests.instance import gaussian_group_instance
 from selection.randomized.group_lasso import group_lasso, posterior
 from time import perf_counter as clk
 
