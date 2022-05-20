@@ -321,11 +321,6 @@ class group_lasso(object):
 
         score_offset = self.observed_score_state + self.opt_offset
 
-        # target_lin determines how the conditional mean of optimization variables
-        # vary with target
-        # logdens_linear determines how the argument of the optimization density
-        # depends on the score, not how the mean depends on score, hence the minus sign
-
         target_linear = target_score_cov.T.dot(prec_target)
         target_offset = score_offset - target_linear.dot(observed_target)
 
