@@ -117,6 +117,26 @@ class gaussian_query(query):
         if not np.all(A.dot(self.observed_opt_state) - b <= 0):
             raise ValueError('constraints not satisfied')
 
+        # key observation is that the covariance of the added noise is
+        # roughly dispersion * (1 - pi) / pi * X^TX (in OLS regression, similar for other
+        # models), so the precision is  (X^TX)^{-1} * (pi / ((1 - pi) * dispersion))
+        # and prec.dot(opt_linear) = S_E / (dispersion * (1 - pi) / pi)
+        # because opt_linear has shape p x E with the columns
+        # being those non-zero columns of the solution. Above S_E = np.diag(signs)
+        # the conditional precision is S_E Q[E][:,E] * pi / ((1 - pi) * dispersion) S_E
+        # and regress_opt is -Q[E][:,E]^{-1} S_E
+        # padded with zeros
+        # to be E x p
+
+        # cond_mean = A = -(Sigma_bar Q_s' Sigma_w^{-1}) (P_s + r_s),
+        # where P_s = -X'X_E = 'observed_score_state' - beta_s^perp,
+        # and   r_s = 'observed_subgrad' + beta_s^perp
+        # cond_cov = Sigma_bar^{-1}
+        # cond_precision = Sigma_bar
+        # regress_opt = -(Sigma_bar Q_s' Sigma_w^{-1})
+        # M1 = X'X Sigma_w^{-1} * dispersion
+        # M2 = dispersion * X'X Sigma_w^{-1} X'X
+        # M3 = dispersion^2 * X'X Sigma_w^{-1} (Q_s Sigma_bar Q_s') Sigma_w^{-1} X'X
         (cond_mean,
          cond_cov,
          cond_precision,
@@ -142,6 +162,7 @@ class gaussian_query(query):
 
         self.cond_mean, self.cond_cov = cond_mean, cond_cov
 
+        # In LASSO, A = U = - diag(sign(o1)), b = v = 0_E
         affine_con = constraints(A,
                                  b,
                                  mean=cond_mean,
@@ -164,9 +185,11 @@ class gaussian_query(query):
                                 opt_linear,
                                 observed_subgrad,
                                 dispersion=1):
-
+        # For LASSO, opt_linear = Q_s
+        # cov_rand = Sigma_w, prec = Sigma_w^{-1}
         cov_rand, prec = self.randomizer.cov_prec
 
+        # For LASSO, '_unscaled_cov_score' = '_hessian' = X'X
         if np.asarray(prec).shape in [(), (0,)]:
             prod_score_prec_unnorm = self._unscaled_cov_score * prec
         else:
@@ -177,16 +200,24 @@ class gaussian_query(query):
             cond_cov = np.linalg.inv(cond_precision)
             regress_opt = -cond_cov.dot(opt_linear.T) * prec
         else:
+            # cond_precision = Sigma_bar^{-1}
             cond_precision = opt_linear.T.dot(prec.dot(opt_linear))
+            # cond_cov = Sigma_bar
             cond_cov = np.linalg.inv(cond_precision)
+            # regress_opt = -(Sigma_bar Q_s' Sigma_w^{-1})
             regress_opt = -cond_cov.dot(opt_linear.T).dot(prec)
 
         # regress_opt is regression coefficient of opt onto score + u...
-
+        # cond_mean = A beta_hat_s + b = -(Sigma_bar Q_s' Sigma_w^{-1}) (P_s beta_hat_s + r_s),
+        # where P_s = -X'X_E, P_s beta_hat_s = 'observed_score_state' - beta_s^perp,
+        # and   r_s = 'observed_subgrad' + beta_s^perp
         cond_mean = regress_opt.dot(self.observed_score_state + observed_subgrad)
 
+        # M1 = X'X Sigma_w^{-1} * dispersion
         M1 = prod_score_prec_unnorm * dispersion
+        # M2 = dispersion^2 * X'X Sigma_w^{-1} X'X
         M2 = M1.dot(cov_rand).dot(M1.T)
+        # M3 = dispersion^2 * X'X Sigma_w^{-1} (Q_s Sigma_bar Q_s') Sigma_w^{-1} X'X
         M3 = M1.dot(opt_linear.dot(cond_cov).dot(opt_linear.T)).dot(M1.T)
 
         self.M1 = M1
@@ -1325,7 +1356,7 @@ def selective_MLE(target_spec,
                   M1,   
                   M2,
                   M3,
-                  observed_score,
+                  observed_score,  # LASSO: observed_score_state + observed_subgrad
                   solve_args={'tol': 1.e-12},
                   level=0.9,
                   useC=False):
@@ -1362,32 +1393,60 @@ def selective_MLE(target_spec,
         Use python or C solver.
     """
 
-    (observed_target,
-     cov_target,
-     regress_target_score) = target_spec[:3]
+    #### For LASSO
+    # observed_score_state = -X^TY
+    # cond_mean = A beta_hat_s + b = -(Sigma_bar Q_s' Sigma_w^{-1}) (P_s beta_hat_s + r_s),
+    # where P_s = -X'X_E,
+    # and   r_s = 'observed_subgrad' + beta_s^perp
+    # observed_score = observed_score_state + observed_subgrad = -X'Y + subgrad
+    # cond_precision = Sigma_bar^{-1}
+    # cond_cov = Sigma_bar
+    # regress_opt = -(Sigma_bar Q_s' Sigma_w^{-1})
+    # M1 = dispersion * X'X Sigma_w^{-1}
+    # M2 = dispersion^2 * X'X Sigma_w^{-1} X'X
+    # M3 = dispersion^2 * X'X Sigma_w^{-1} (Q_s Sigma_bar Q_s') Sigma_w^{-1} X'X
+
+    (observed_target,                           # OLS solution: \hat\beta_S = (X_E'X_E)^-1 X_E Y
+     cov_target,                                # dispersion * (X_E'X_E)^-1
+     regress_target_score) = target_spec[:3]    # [ (X_E'X_E)^-1  0_{-E} ]
 
     if np.asarray(observed_target).shape in [(), (0,)]:
         raise ValueError('no target specified')
 
     observed_target = np.atleast_1d(observed_target)
-    prec_target = np.linalg.inv(cov_target)
+    prec_target = np.linalg.inv(cov_target)     # dispersion^-1 * X_E'X_E
 
-    prec_opt = np.linalg.inv(cond_cov)
+    prec_opt = np.linalg.inv(cond_cov)          # Sigma_bar
 
     # this is specific to target
-    
+
+    # T1 = dispersion^-1 * [   I_E  ]
+    #                      [ 0_{-E} ]
     T1 = regress_target_score.T.dot(prec_target)
+    # T2 = X_E'X Sigma_w^{-1} X'X_E
     T2 = T1.T.dot(M2.dot(T1))
-    T3 = T1.T.dot(M3.dot(T1)) 
+    # T3 = X_E'X Sigma_w^{-1} (Q_s Sigma_bar Q_s') Sigma_w^{-1} X'X_E
+    T3 = T1.T.dot(M3.dot(T1))
+    # For LASSO, opt_linear = Q_s
+    # T4 = dispersion^2 * X'X Sigma_w^{-1} (Sigma_w - Q_s Sigma_bar Q_s') Sigma_w^{-1} X'X_E
     T4 = M1.dot(opt_linear).dot(cond_cov).dot(opt_linear.T.dot(M1.T.dot(T1)))
+    # T5 = X_E'X Sigma_w^{-1} Q_s
     T5 = T1.T.dot(M1.dot(opt_linear))
 
+    # prec_target_nosel = dispersion^-1 * X_E'X_E + X_E'X Sigma_w^{-1} X'X_E
     prec_target_nosel = prec_target + T2 - T3
 
+    # _P = - (X_E'X Sigma_w^{-1} (-X'Y + subgrad) + X_E'X Sigma_w^{-1} X'X_E beta_hat_s)
+    # _P = - X_E'X Sigma_w^{-1} r_s
     _P = -(T1.T.dot(M1.dot(observed_score)) + T2.dot(observed_target)) ##flipped sign of second term here
 
+    # bias_target = dispersion * (X_E'X_E)^-1 \
+    #              @  { [ (dispersion * X_E'X Sigma_w^{-1} (Q_s Sigma_bar Q_s' - Sigma_w) Sigma_w^{-1} X'X_E beta_hat_s)
+    #                   + dispersion * X_E'X Sigma_w^{-1} Q_s (A beta_hat_s + b) ]
+    #                   + X_E'X Sigma_w^{-1} r_s }
     bias_target = cov_target.dot(T1.T.dot(-T4.dot(observed_target) + M1.dot(opt_linear.dot(cond_mean))) - _P)
 
+    # conjugate_arg = Sigma_bar (A beta_hat_s + b)
     conjugate_arg = prec_opt.dot(cond_mean)
 
     if useC:
@@ -1395,6 +1454,7 @@ def selective_MLE(target_spec,
     else:
         solver = solve_barrier_affine_py
 
+    # Solution for o_1^*(beta_hat_s)
     val, soln, hess = solver(conjugate_arg,
                              prec_opt,
                              observed_soln,
@@ -1402,15 +1462,23 @@ def selective_MLE(target_spec,
                              offset,
                              **solve_args)
 
+    # final_estimator = selective_MLE
+    # 1. cov_target.dot(prec_target_nosel).dot(observed_target)
+    #    ==
+    # 2. regress_target_score.dot(M1.dot(opt_linear)).dot(cond_mean - soln)
+    #    == Sigma_{Ms_s} A' Sigma_bar^{-1} (A beta + b - o_1^*(beta_hat_s))
     final_estimator = cov_target.dot(prec_target_nosel).dot(observed_target) \
                       + regress_target_score.dot(M1.dot(opt_linear)).dot(cond_mean - soln) - bias_target
 
+    # middle of observed info
     observed_info_natural = prec_target_nosel + T3 - T5.dot(hess.dot(T5.T))
 
     unbiased_estimator = cov_target.dot(prec_target_nosel).dot(observed_target) - bias_target
 
+    # observed info
     observed_info_mean = cov_target.dot(observed_info_natural.dot(cov_target))
 
+    # individual z-scores
     Z_scores = final_estimator / np.sqrt(np.diag(observed_info_mean))
 
     pvalues = ndist.cdf(Z_scores)

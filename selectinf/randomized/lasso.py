@@ -111,12 +111,12 @@ class lasso(gaussian_query):
                                      solve_args=solve_args)
 
         active_signs = np.sign(self.observed_soln)
-        active = self._active = active_signs != 0
+        active = self._active = active_signs != 0      # flag for nonzero coeffs
 
         self._lagrange = self.penalty.weights
         unpenalized = self._lagrange == 0
 
-        active *= ~unpenalized
+        active *= ~unpenalized          # flag for nonzero AND penalized coeffs
 
         self._overall = overall = (active + unpenalized) > 0
         self._inactive = inactive = ~self._overall
@@ -136,15 +136,16 @@ class lasso(gaussian_query):
         initial_scalings = np.fabs(self.observed_soln[active])
         initial_unpenalized = self.observed_soln[self._unpenalized]
 
+        # Abs. values of active vars & original values of unpenalized vars
         self.observed_opt_state = np.concatenate([initial_scalings,
                                                   initial_unpenalized])
-
+        # For LASSO, this is the OLS solution on X_{E,U}
         _beta_unpenalized = restricted_estimator(self.loglike, 
                                                  self._overall, 
                                                  solve_args=solve_args)
 
         # \bar{\beta}_{E \cup U} piece -- the unpenalized M estimator
-
+        # beta_bar: restricted OLS solution + some zeros at appropriate positions
         beta_bar = np.zeros(p)
         beta_bar[overall] = _beta_unpenalized
         self._beta_full = beta_bar
@@ -159,7 +160,7 @@ class lasso(gaussian_query):
         # -E for inactive
 
         # compute part of hessian
-
+        #_hessian: X'X, _hessian_active: X'X_E, _hessian_unpen: X'X_U
         _hessian, _hessian_active, _hessian_unpen  = _compute_hessian(self.loglike,
                                                                       beta_bar,
                                                                       active,
@@ -170,7 +171,7 @@ class lasso(gaussian_query):
         opt_linear = np.zeros((p, num_opt_var))
         _score_linear_term = np.zeros((p, num_opt_var))
 
-        _score_linear_term = -np.hstack([_hessian_active, _hessian_unpen])
+        _score_linear_term = -np.hstack([_hessian_active, _hessian_unpen]) # - X'X_{E,U}
 
         # set the observed score (data dependent) state
 
