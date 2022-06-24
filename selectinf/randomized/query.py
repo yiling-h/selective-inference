@@ -1428,22 +1428,25 @@ def selective_MLE(target_spec,
     # T3 = X_E'X Sigma_w^{-1} (Q_s Sigma_bar Q_s') Sigma_w^{-1} X'X_E
     T3 = T1.T.dot(M3.dot(T1))
     # For LASSO, opt_linear = Q_s
-    # T4 = dispersion^2 * X'X Sigma_w^{-1} (Sigma_w - Q_s Sigma_bar Q_s') Sigma_w^{-1} X'X_E
+    # T4 = dispersion * X'X Sigma_w^{-1} (Q_s Sigma_bar Q_s') Sigma_w^{-1} X'X_E
     T4 = M1.dot(opt_linear).dot(cond_cov).dot(opt_linear.T.dot(M1.T.dot(T1)))
     # T5 = X_E'X Sigma_w^{-1} Q_s
     T5 = T1.T.dot(M1.dot(opt_linear))
 
-    # prec_target_nosel = dispersion^-1 * X_E'X_E + X_E'X Sigma_w^{-1} X'X_E
+    # prec_target_nosel = Sigma^-1
     prec_target_nosel = prec_target + T2 - T3
 
     # _P = - (X_E'X Sigma_w^{-1} (-X'Y + subgrad) + X_E'X Sigma_w^{-1} X'X_E beta_hat_s)
     # _P = - X_E'X Sigma_w^{-1} r_s
+    # _P = P_s' Sigma_w^{-1} r_s
     _P = -(T1.T.dot(M1.dot(observed_score)) + T2.dot(observed_target)) ##flipped sign of second term here
 
-    # bias_target = dispersion * (X_E'X_E)^-1 \
-    #              @  { [ (dispersion * X_E'X Sigma_w^{-1} (Q_s Sigma_bar Q_s' - Sigma_w) Sigma_w^{-1} X'X_E beta_hat_s)
-    #                   + dispersion * X_E'X Sigma_w^{-1} Q_s (A beta_hat_s + b) ]
-    #                   + X_E'X Sigma_w^{-1} r_s }
+    ####################COMMENTS ABOVE SHOULD BE CORRECT#############
+
+    # bias_target = Sigma_{Ms_s} \
+    #              @  { [ (P_s' Sigma_w^{-1} (Q_s Sigma_bar Q_s') Sigma_w^{-1} P_s beta_hat_s)
+    #                    - P_s' Sigma_w^{-1} Q_s (A beta_hat_s + b) ]
+    #                    - P_s' Sigma_w^{-1} r_s }
     bias_target = cov_target.dot(T1.T.dot(-T4.dot(observed_target) + M1.dot(opt_linear.dot(cond_mean))) - _P)
 
     # conjugate_arg = Sigma_bar (A beta_hat_s + b)
@@ -1463,10 +1466,14 @@ def selective_MLE(target_spec,
                              **solve_args)
 
     # final_estimator = selective_MLE
-    # 1. cov_target.dot(prec_target_nosel).dot(observed_target)
-    #    ==
-    # 2. regress_target_score.dot(M1.dot(opt_linear)).dot(cond_mean - soln)
+    # 1. (CORRECT)
+    #    cov_target.dot(prec_target_nosel).dot(observed_target)
+    #    == J^{-1} beta_hat_s
+    # 2. (CORRECT)
+    #    regress_target_score.dot(M1.dot(opt_linear)).dot(cond_mean - soln)
     #    == Sigma_{Ms_s} A' Sigma_bar^{-1} (A beta + b - o_1^*(beta_hat_s))
+    # 3. (CORRECT)
+    #    bias_target = J^{-1} k
     final_estimator = cov_target.dot(prec_target_nosel).dot(observed_target) \
                       + regress_target_score.dot(M1.dot(opt_linear)).dot(cond_mean - soln) - bias_target
 
