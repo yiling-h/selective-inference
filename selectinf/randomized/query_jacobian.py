@@ -36,6 +36,15 @@ class QuerySpec(NamedTuple):
     observed_subgrad : np.ndarray       # subgradients scaled by lambda
     observed_soln : np.ndarray          # gammas
     observed_score : np.ndarray         # -X'Y + subgrad = "score_offset"
+
+class JacobianSpec(NamedTuple):
+
+    # Constant term in the Jacobian calculation
+    C : np.ndarray
+
+    # Unit-norms representations of the active directions
+    active_dirs : dict
+
     
 class gaussian_query(object):
     r"""
@@ -50,7 +59,7 @@ class gaussian_query(object):
         \langle \omega, B \rangle + \frac{\epsilon}{2} \|B\|^2_2
     """
 
-    def __init__(self, randomization, perturb=None):
+    def __init__(self, randomization, useJacobian, perturb=None):
 
         """
         Parameters
@@ -62,6 +71,7 @@ class gaussian_query(object):
             Value of randomization vector, an instance of $\omega$.
         """
         self.randomization = randomization
+        self.useJacobian = useJacobian      # logical value for whether a Jacobian is needed
         self.perturb = perturb
         self._solved = False
         self._randomized = False
@@ -82,7 +92,11 @@ class gaussian_query(object):
                          observed_subgrad=self.observed_subgrad,
                          observed_soln=self.observed_opt_state,
                          observed_score=self.observed_score_state + self.observed_subgrad)
-   
+
+    @property
+    def Jacobian_info(self):
+        return JacobianSpec(C=self.C,
+                            active_dirs=self.active_dirs)
 
     # Methods reused by subclasses
 
@@ -222,11 +236,21 @@ class gaussian_query(object):
         """
 
         query_spec = self.specification
+        Jacobian_spec = self.Jacobian_info
 
         if method == 'selective_MLE':
-            G = mle_inference(query_spec,
-                              target_spec,
-                              **method_args)
+            if self.useJacobian:
+                G = mle_inference(query_spec,
+                                  target_spec,
+                                  self.useJacobian,
+                                  Jacobian_spec,
+                                  **method_args)
+            else:
+                G = mle_inference(query_spec,
+                                  target_spec,
+                                  self.useJacobian,
+                                  None,
+                                  **method_args)
 
             return G.solve_estimating_eqn(alternatives=target_spec.alternatives,
                                           level=level)[0]

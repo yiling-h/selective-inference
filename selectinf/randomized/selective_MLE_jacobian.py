@@ -41,10 +41,13 @@ class mle_inference(object):
         # alternatives: list
         TS = self.target_spec
 
-        # C = V.T.dot(QI).dot(L).dot(V)
-        # active_dirs
-        JS = self.Jacobian_spec
+        if self.useJacobian:
+            # C = V.T.dot(QI).dot(L).dot(V)
+            # active_dirs
+            JS = self.Jacobian_spec
 
+        # In the context of group Lasso, the quantities U1-U5 are:
+        # U1 =
         # U2 = A' {\Omega^-1} A = (regress_score_target.T.dot(self.prec_randomizer).dot(regress_score_target))
         # U3 = \barA' {\bar\Omega^-1} \barA = regress_opt_target.T.dot(prec_opt).dot(regress_opt_target)
         # U4 =
@@ -89,9 +92,10 @@ class mle_inference(object):
                                                                QS.offset,
                                                                JS.C,    # for Jacobian
                                                                JS.active_dirs,
-                                                               self.useJacobian,
+                                                               useJacobian=True,
                                                                **self.solve_args)
 
+        # Everything below this line are unchanged and apply to both the Lasso and group Lasso
         final_estimator = TS.cov_target.dot(prec_target_nosel).dot(TS.observed_target) \
                           + TS.regress_target_score.dot(QS.M1.dot(QS.opt_linear)).dot(QS.cond_mean - soln) \
                           - bias_target
