@@ -2,9 +2,6 @@ from typing import NamedTuple
 import numpy as np, pandas as pd
 
 from ..constraints.affine import constraints
-from .posterior_inference import (posterior, langevin_sampler)
-from .approx_reference import approximate_grid_inference
-from .exact_reference import exact_grid_inference
 from .selective_MLE_jacobian import mle_inference
 
 class QuerySpec(NamedTuple):
