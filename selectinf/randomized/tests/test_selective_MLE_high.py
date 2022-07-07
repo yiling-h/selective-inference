@@ -47,6 +47,7 @@ def test_full_targets(n=200,
         n, p = X.shape
 
         sigma_ = np.std(Y)
+        # W: feature weights
         W = np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
 
         conv = const(X,
@@ -55,7 +56,7 @@ def test_full_targets(n=200,
                      randomizer_scale=randomizer_scale * sigma_)
 
         signs = conv.fit()
-        nonzero = signs != 0
+        nonzero = signs != 0            # Indicator vector for nonzero coef.s
         print("dimensions", n, p, nonzero.sum())
 
         if nonzero.sum() > 0:

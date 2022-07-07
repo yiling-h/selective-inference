@@ -68,15 +68,19 @@ def selected_targets(loglike,
     X, y = loglike.data
     n, p = X.shape
 
+    # OLS solution: \hat\beta_S = (X_E'X_E)^-1 X_E Y
     observed_target = restricted_estimator(loglike, features, solve_args=solve_args)
     linpred = X[:, features].dot(observed_target)
-    
+
+    # Hfeat = _hessian_active = X'X_E
     Hfeat = _compute_hessian(loglike,
                              solution,
                              features)[1]
+    # Qfeat = X_E'X_E
     Qfeat = Hfeat[features]
     _score_linear = -Hfeat
 
+    # cov_target: (X_E'X_E)^-1 = covariance of selected OLS estimator hat{beta_S}
     cov_target = np.linalg.inv(Qfeat)
     crosscov_target_score = _score_linear.dot(cov_target)
     alternatives = ['twosided'] * features.sum()
@@ -93,6 +97,7 @@ def selected_targets(loglike,
                                 observed_target.shape[0])
 
     regress_target_score = np.zeros((cov_target.shape[0], p))
+    # regress_target_score = [ (X_E'X_E)^-1  0_{-E} ]
     regress_target_score[:,features] = cov_target
 
     return TargetSpec(observed_target,
@@ -118,6 +123,7 @@ def full_targets(loglike,
 
     # target is one-step estimator
 
+    # Solve inherited from env3/lib/python3.8/site-packages/regreg/problems/composite.py
     full_estimator = loglike.solve(**solve_args)
     linpred = X.dot(full_estimator)
     Qfull = _compute_hessian(loglike,
@@ -234,7 +240,9 @@ def _compute_hessian(loglike,
     n = linpred.shape[0]
 
     if hasattr(loglike.saturated_loss, "hessian"): # a GLM -- all we need is W
+        # W is all ones for the lasso
         W = loglike.saturated_loss.hessian(linpred)
+        # Active idx, then unpenalized idx
         parts = [np.dot(X.T, X[:, bool_idx] * W[:, None]) for bool_idx in bool_indices]
         _hessian = np.dot(X.T, X * W[:, None]) # CAREFUL -- this will be big
     elif hasattr(loglike.saturated_loss, "hessian_mult"):
@@ -256,6 +264,7 @@ def _compute_hessian(loglike,
         raise ValueError('saturated_loss has no hessian or hessian_mult method')
 
     if bool_indices:
+        # Returns _hessian, _hessian_active, _hessian_unpen
         return (_hessian,) + tuple(parts)
     else:
         return _hessian

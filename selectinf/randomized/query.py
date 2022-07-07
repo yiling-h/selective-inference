@@ -158,7 +158,6 @@ class gaussian_query(object):
                                 opt_linear,
                                 observed_subgrad,
                                 dispersion=1):
-
         cov_rand, prec = self.randomizer.cov_prec
 
         if np.asarray(prec).shape in [(), (0,)]:
@@ -176,7 +175,6 @@ class gaussian_query(object):
             regress_opt = -cond_cov.dot(opt_linear.T).dot(prec)
 
         # regress_opt is regression coefficient of opt onto score + u...
-
         cond_mean = regress_opt.dot(self.observed_score_state + observed_subgrad)
 
         M1 = prod_score_prec_unnorm * dispersion
@@ -259,7 +257,6 @@ def _posterior(query_spec,
                nsample=2000,
                nburnin=500):
     """
-
     Parameters
     ----------
     target_spec : TargetSpec
@@ -274,7 +271,6 @@ def _posterior(query_spec,
         and returns (value of log prior, gradient of log prior)
     solve_args : dict, optional
         Arguments passed to solver.
-
     """
 
     if prior is None:
