@@ -247,6 +247,7 @@ class group_lasso(gaussian_query):
                  quadratic=None,
                  ridge_term=0.,
                  perturb=None,
+                 useJacobian=True,
                  use_lasso=True,  # should lasso solver be used when applicable - defaults to True
                  randomizer_scale=None):
 
@@ -267,8 +268,9 @@ class group_lasso(gaussian_query):
                            weights,
                            ridge_term,
                            randomizer,
-                           use_lasso,
-                           perturb)
+                           useJacobian=useJacobian,
+                           use_lasso=use_lasso,
+                           perturb=perturb)
 
 def _check_groups(groups):
     """Make sure that the user-specific groups are ok

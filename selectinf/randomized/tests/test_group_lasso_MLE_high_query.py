@@ -10,6 +10,10 @@ from ...base import (full_targets,
                      selected_targets,
                      debiased_targets)
 from selectinf.randomized.tests.instance import gaussian_group_instance
+from ...tests.instance import (gaussian_instance,
+                               logistic_instance,
+                               poisson_instance,
+                               cox_instance)
 
 def test_selected_targets(n=500,
                              p=200,
@@ -63,6 +67,79 @@ def test_selected_targets(n=500,
 
 
         if nonzero.sum() > 0:
+
+            conv.setup_inference(dispersion=dispersion)
+
+            target_spec = selected_targets(conv.loglike,
+                                           conv.observed_soln,
+                                           dispersion=dispersion)
+
+            result = conv.inference(target_spec,
+                                    method='selective_MLE')
+
+            pval = result['pvalue']
+            intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
+
+            beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+
+            coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
+
+            print(pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals)
+            return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
+
+def test_selected_targets_lasso(n=2000,
+                                p=200,
+                                signal_fac=1.2,
+                                s=5,
+                                sigma=2,
+                                rho=0.7,
+                                randomizer_scale=1.,
+                                full_dispersion=True):
+    """
+        Compare to R randomized lasso
+        """
+
+    inst, const = gaussian_instance, group_lasso.gaussian
+    signal = np.sqrt(signal_fac * 2 * np.log(p))
+
+    while True:
+        X, Y, beta = inst(n=n,
+                          p=p,
+                          signal=signal,
+                          s=s,
+                          equicorrelated=True,
+                          rho=rho,
+                          sigma=sigma,
+                          random_signs=True)[:3]
+
+        idx = np.arange(p)
+        sigmaX = rho ** np.abs(np.subtract.outer(idx, idx))
+        print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
+
+        n, p = X.shape
+
+        sigma_ = np.std(Y)
+
+        W = dict([(i, 0.8 * np.sqrt(2 * np.log(p)) * sigma_) for i in np.unique(np.arange(p))])
+
+        conv = const(X,
+                     Y,
+                     weights=W,
+                     groups=np.arange(p),
+                     useJacobian=False,
+                     randomizer_scale=randomizer_scale * sigma_)
+
+        signs, _ = conv.fit()
+        nonzero = (signs != 0)
+        print("dimensions", n, p, nonzero.sum())
+
+        if nonzero.sum() > 0:
+
+            if full_dispersion:
+                dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+            else:
+                dispersion = np.linalg.norm(Y - X[:, nonzero].dot(np.linalg.pinv(X[:, nonzero]).dot(Y))) ** 2 / (
+                            n - nonzero.sum())
 
             conv.setup_inference(dispersion=dispersion)
 
