@@ -23,7 +23,7 @@ def test_split_lasso(n=100,
                      signal_fac=3, 
                      s=5, 
                      sigma=3, 
-                     target='full',
+                     target='selected',
                      rho=0.4, 
                      proportion=0.5,
                      orthogonal=False,
@@ -80,29 +80,23 @@ def test_split_lasso(n=100,
                                            penalty=conv.penalty,
                                            dispersion=sigma**2)
 
-        result = conv.summary(target_spec,
-                              ndraw=ndraw,
-                              burnin=burnin, 
-                              compute_intervals=False)
+        conv.setup_inference(dispersion=sigma**2)
 
-        MLE_result, observed_info_mean, _ = conv.selective_MLE(target_spec)
+        result = conv.inference(target_spec,
+                                method='selective_MLE')
 
-        final_estimator = np.asarray(MLE_result['MLE'])
-        pval = np.asarray(result['pvalue'])
-        
         if target == 'selected':
             true_target = np.linalg.pinv(X[:,nonzero]).dot(X.dot(beta))
         else:
             true_target = beta[nonzero]
 
-        MLE_pivot = ndist.cdf((final_estimator - true_target) / 
-                             np.sqrt(np.diag(observed_info_mean)))
-        MLE_pivot = 2 * np.minimum(MLE_pivot, 1 - MLE_pivot)
-        
-        if MLE:
-            return MLE_pivot[true_target == 0], MLE_pivot[true_target != 0]
-        else:
-            return pval[true_target == 0], pval[true_target != 0]
+        pval = result['pvalue']
+        intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
+
+        coverage = (true_target > intervals[:, 0]) * (true_target < intervals[:, 1])
+
+        print(pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals)
+        return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
     else:
         return [], []
 
