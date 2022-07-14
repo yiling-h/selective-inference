@@ -7,7 +7,7 @@ from scipy.stats import norm as ndist
 
 import regreg.api as rr
 
-from ..lasso import split_lasso 
+from ..lasso import split_lasso
 from ...base import (selected_targets, 
                      full_targets, 
                      debiased_targets)                     

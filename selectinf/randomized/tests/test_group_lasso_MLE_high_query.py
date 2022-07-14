@@ -57,11 +57,12 @@ def test_selected_targets(n=500,
         weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
         conv = group_lasso.gaussian(X,
                                     Y,
-                                    groups,
-                                    weights,
+                                    groups=groups,
+                                    weights=weights,
+                                    useJacobian=False,
                                     randomizer_scale=randomizer_scale * sigma_)
 
-        signs, _  = conv.fit()
+        signs, _ = conv.fit()
         nonzero = (signs != 0)
         print("dimensions", n, p, nonzero.sum())
 

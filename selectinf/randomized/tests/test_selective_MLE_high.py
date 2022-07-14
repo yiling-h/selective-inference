@@ -148,7 +148,7 @@ def test_selected_targets(n=2000,
                                            conv.observed_soln,
                                            dispersion=dispersion)
 
-            result = conv._selective_MLE(target_spec)[0]
+            result = conv.inference(target_spec, 'selective_MLE')
 
             pval = result['pvalue']
             intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
@@ -157,6 +157,7 @@ def test_selected_targets(n=2000,
 
             coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
 
+            print(pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals)
             return pval[beta[nonzero] == 0], pval[beta[nonzero] != 0], coverage, intervals
 
 
