@@ -56,7 +56,7 @@ class gaussian_query(object):
         \langle \omega, B \rangle + \frac{\epsilon}{2} \|B\|^2_2
     """
 
-    def __init__(self, randomization, useJacobian, perturb=None):
+    def __init__(self, randomization, useJacobian=False, perturb=None):
 
         """
         Parameters
@@ -187,7 +187,6 @@ class gaussian_query(object):
             regress_opt = -cond_cov.dot(opt_linear.T).dot(prec)
 
         # regress_opt is regression coefficient of opt onto score + u...
-
         cond_mean = regress_opt.dot(self.observed_score_state + observed_subgrad)
 
         # Remain the same as in LASSO
@@ -210,7 +209,6 @@ class gaussian_query(object):
                   target_spec,
                   method,
                   level=0.90,
-                  #add a jacobian term
                   method_args={}):
 
         """
@@ -233,7 +231,13 @@ class gaussian_query(object):
         """
 
         query_spec = self.specification
-        Jacobian_spec = self.Jacobian_info
+
+        if not hasattr(self, "useJacobian"):
+            print("no Jacobian")
+            self.useJacobian = False
+
+        if self.useJacobian:
+            Jacobian_spec = self.Jacobian_info
 
         if method == 'selective_MLE':
             if self.useJacobian:
