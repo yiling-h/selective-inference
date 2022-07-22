@@ -83,7 +83,8 @@ class group_lasso(gaussian_query):
 
         tol = 1.e-20
 
-        _, self.prec_randomizer = self.randomizer.cov_prec
+        if self.randomizer is not None:
+            _, self.prec_randomizer = self.randomizer.cov_prec
 
         # now we are collecting the directions and norms of the active groups
         for g in sorted(np.unique(self.groups)):  # g is group label
@@ -141,6 +142,8 @@ class group_lasso(gaussian_query):
 
         active_signs = np.sign(self.observed_soln)
         active = np.flatnonzero(active_signs)
+        self.active_signs = active_signs
+        #self.active_signs[unpenalized] = np.nan
         self.active = active
 
         # compute part of hessian
@@ -184,6 +187,7 @@ class group_lasso(gaussian_query):
         U = block_diag(*[ug for ug in sorted_active_dirs.values()]).T
 
         self.opt_linear = opt_linearNoU.dot(U)
+        self.U = U
         self.active_dirs = active_dirs
         self.ordered_vars = ordered_vars
 
@@ -271,6 +275,217 @@ class group_lasso(gaussian_query):
                            useJacobian=useJacobian,
                            use_lasso=use_lasso,
                            perturb=perturb)
+
+class split_group_lasso(group_lasso):
+
+    """
+    Data split, then group LASSO (i.e. data carving)
+    """
+
+    def __init__(self,
+                 loglike,
+                 groups,
+                 weights,
+                 proportion_select,
+                 randomizer,
+                 ridge_term=0,
+                 useJacobian=True,
+                 use_lasso=True,  # should lasso solver be used where applicable - defaults to True
+                 perturb=None,
+                 estimate_dispersion=True):
+
+        (self.loglike,
+         self.weights,
+         self.groups,
+         self.proportion_select,
+         self.ridge_term) = (loglike,
+                             weights,
+                             groups,
+                             proportion_select,
+                             ridge_term)
+
+        self.nfeature = p = self.loglike.shape[0]
+
+        # group lasso penalty (from regreg)
+        # use regular lasso penalty if all groups are size 1
+        if use_lasso and groups.size == np.unique(groups).size:
+            # need to provide weights an an np.array rather than a dictionary
+            weights_np = np.array([w[1] for w in sorted(weights.items())])
+            self.penalty = rr.weighted_l1norm(weights=weights_np,
+                                              lagrange=1.)
+        else:
+            self.penalty = rr.group_lasso(groups,
+                                          weights=weights,
+                                          lagrange=1.)
+
+        self._initial_omega = perturb
+        self.randomizer = randomizer
+
+        # Whether a Jacobian is needed for gaussian_query
+        # this should always be true for group Lasso
+        self.useJacobian = useJacobian
+
+        self.estimate_dispersion = estimate_dispersion
+
+    def fit(self,
+            solve_args={'tol': 1.e-12, 'min_its': 50},
+            perturb=None):
+
+        signs, soln = group_lasso.fit(self,
+                                      solve_args=solve_args,
+                                      perturb=perturb)
+
+        # for data splitting randomization,
+        # we need to estimate a dispersion parameter
+
+        # we then setup up the sampler again
+        df_fit = len(self.active)
+
+        if self.estimate_dispersion:
+            X, y = self.loglike.data
+            n, p = X.shape
+
+            dispersion = 2 * (self.loglike.smooth_objective(self._beta_full,
+                                                            'func') /
+                              (n - df_fit))
+
+            self.dispersion_ = dispersion
+            # run setup again after
+            # estimating dispersion
+
+        self.df_fit = df_fit
+
+        return signs, soln
+
+    def setup_inference(self,
+                        dispersion):
+
+        if self.df_fit > 0:
+
+            if dispersion is None:
+                self._setup_sampler(*self._setup_sampler_data,
+                                    dispersion=self.dispersion_)
+
+            else:
+                self._setup_sampler(*self._setup_sampler_data,
+                                    dispersion=dispersion)
+
+    def _setup_implied_gaussian(self,
+                                opt_linear,
+                                observed_subgrad,
+                                dispersion=1):
+
+        # key observation is that the covariance of the added noise is
+        # roughly dispersion * (1 - pi) / pi * X^TX (in OLS regression, similar for other
+        # models), so the precision is  (X^TX)^{-1} * (pi / ((1 - pi) * dispersion))
+        # and prec.dot(opt_linear) = S_E / (dispersion * (1 - pi) / pi)
+        # because opt_linear has shape p x E with the columns
+        # being those non-zero columns of the solution. Above S_E = np.diag(signs)
+        # the conditional precision is S_E Q[E][:,E] * pi / ((1 - pi) * dispersion) S_E
+        # and regress_opt is -Q[E][:,E]^{-1} S_E
+        # padded with zeros
+        # to be E x p
+
+        pi_s = self.proportion_select
+        ratio = (1 - pi_s) / pi_s
+
+        ordered_vars = self.ordered_vars
+
+        cond_precision = (opt_linear[ordered_vars]).T.dot(self.U) / (dispersion * ratio)
+
+        assert (np.linalg.norm(cond_precision - cond_precision.T) /
+                np.linalg.norm(cond_precision) < 1.e-6)
+        cond_cov = np.linalg.inv(cond_precision)
+        regress_opt = np.zeros((cond_cov.shape[0],
+                                self.nfeature))
+        regress_opt[:, ordered_vars] = -cond_cov.dot(self.U.T) / (dispersion * ratio)
+
+        cond_mean = regress_opt.dot(self.observed_score_state + observed_subgrad)
+
+        ## probably missing a dispersion in the denominator
+        prod_score_prec_unnorm = np.identity(self.nfeature) / (dispersion * ratio)
+
+        ## probably missing a multiplicative factor of ratio
+        cov_rand = self._unscaled_cov_score * (dispersion * ratio)
+
+        M1 = prod_score_prec_unnorm * dispersion
+        M2 = M1.dot(cov_rand).dot(M1.T)
+        M3 = M1.dot(opt_linear.dot(cond_cov).dot(opt_linear.T)).dot(M1.T)
+
+        # would be nice to not store these?
+
+        self.M1 = M1
+        self.M2 = M2
+        self.M3 = M3
+
+        return (cond_mean,
+                cond_cov,
+                cond_precision,
+                M1,
+                M2,
+                M3)
+
+    def _solve_randomized_problem(self,
+                                  perturb=None,
+                                  solve_args={'tol': 1.e-15, 'min_its': 100}):
+
+        # take a new perturbation if none supplied
+        if perturb is not None:
+            self._selection_idx = perturb
+        if not hasattr(self, "_selection_idx"):
+            X, y = self.loglike.data
+            total_size = n = X.shape[0]
+            pi_s = self.proportion_select
+            self._selection_idx = np.zeros(n, np.bool)
+            self._selection_idx[:int(pi_s * n)] = True
+            np.random.shuffle(self._selection_idx)
+
+        inv_frac = 1 / self.proportion_select
+        quad = rr.identity_quadratic(self.ridge_term,
+                                     0,
+                                     0,
+                                     0)
+
+        randomized_loss = self.loglike.subsample(self._selection_idx)
+        randomized_loss.coef *= inv_frac
+
+        problem = rr.simple_problem(randomized_loss, self.penalty)
+
+        # if all groups are size 1, set up lasso penalty and run usual lasso solver... (see existing code)...
+
+        observed_soln = problem.solve(quad, **solve_args)
+        observed_subgrad = -(randomized_loss.smooth_objective(observed_soln,
+                                                          'grad') +
+                            quad.objective(observed_soln, 'grad'))
+
+        return observed_soln, observed_subgrad
+
+    @staticmethod
+    def gaussian(X,
+                 Y,
+                 groups,
+                 weights,
+                 proportion,
+                 sigma=1.,
+                 quadratic=None,
+                 perturb=None,
+                 useJacobian=True,
+                 use_lasso=True):  # should lasso solver be used when applicable - defaults to True
+
+        loglike = rr.glm.gaussian(X,
+                                  Y,
+                                  coef=1. / sigma ** 2,
+                                  quadratic=quadratic)
+        n, p = X.shape
+
+        return split_group_lasso(loglike,
+                                 groups,
+                                 weights,
+                                 proportion_select=proportion,
+                                 randomizer=None,
+                                 useJacobian=useJacobian,
+                                 use_lasso=use_lasso,
+                                 perturb=perturb)
 
 def _check_groups(groups):
     """Make sure that the user-specific groups are ok
