@@ -1,3 +1,9 @@
+# 1. Test lasso, group lasso, split lasso in a jupyter notebook
+# 2. Write out the MLE calculation (lasso/group lasso/split lasso/...) details in latex
+# 3. See how we extend to the paired group lasso
+# 4. Read the original graphical lasso paper
+# 5. Extend to split group lasso
+
 from typing import NamedTuple
 import numpy as np, pandas as pd
 
@@ -91,7 +97,12 @@ class gaussian_query(object):
                          observed_subgrad=self.observed_subgrad,
                          observed_soln=self.observed_opt_state,
                          observed_score=self.observed_score_state + self.observed_subgrad)
-   
+
+
+    @property
+    def Jacobian_info(self):
+        return JacobianSpec(C=self.C,
+                            active_dirs=self.active_dirs)
 
     # Methods reused by subclasses
 
@@ -231,7 +242,6 @@ class gaussian_query(object):
         # Determine whether the seletion-informed likelihood
         # contains a non-constant Jacobian term
         if not hasattr(self, "useJacobian"):
-            print("no Jacobian")
             self.useJacobian = False
 
         if self.useJacobian:

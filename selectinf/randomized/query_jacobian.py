@@ -233,7 +233,6 @@ class gaussian_query(object):
         query_spec = self.specification
 
         if not hasattr(self, "useJacobian"):
-            print("no Jacobian")
             self.useJacobian = False
 
         if self.useJacobian:
