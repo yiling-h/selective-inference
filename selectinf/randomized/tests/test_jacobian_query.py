@@ -17,6 +17,8 @@ from selectinf.tests.instance import (gaussian_instance,
                                logistic_instance,
                                poisson_instance,
                                cox_instance)
+from ...base import restricted_estimator
+from scipy.optimize import minimize
 
 def test_selected_targets_lasso(n=500,
                               p=200,
@@ -347,3 +349,100 @@ def test_selected_targets_split_group_lasso(n=500,
                 print("Lengths so far ", np.mean(len_))
 
                 break  # Go to next iteration if we have some selection
+
+def test_selected_targets_logistic_lasso(n=500,
+                                          p=200,
+                                          signal_fac=1.2,
+                                          s=5,
+                                          sigma=2,
+                                          rho=0.7,
+                                          randomizer_scale=1.,
+                                          full_dispersion=True,
+                                          level=0.90,
+                                          iter=100):
+    """
+    Compare to R randomized lasso
+    """
+
+    cover = []
+    len_ = []
+
+    for i in range(iter):
+
+        np.random.seed(i)
+
+        inst, const = logistic_instance, lasso.logistic
+        signal = np.sqrt(signal_fac * 2 * np.log(p))
+
+        while True:  # run until we get somee selection
+            X, Y, beta = inst(n=n,
+                              p=p,
+                              signal=signal,
+                              s=s,
+                              equicorrelated=True,
+                              rho=rho,
+                              random_signs=True)[:3]
+
+            idx = np.arange(p)
+            sigmaX = rho ** np.abs(np.subtract.outer(idx, idx))
+            print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
+
+            n, p = X.shape
+
+            sigma_ = np.std(Y)
+            W = np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
+
+            conv = const(X,
+                         Y,
+                         W,
+                         randomizer_scale=randomizer_scale * sigma_)
+
+            signs = conv.fit()
+            nonzero = signs != 0
+            print("dimensions", n, p, nonzero.sum())
+
+            if nonzero.sum() > 0:
+                conv.setup_inference(dispersion=1)
+
+                target_spec = selected_targets(conv.loglike,
+                                               conv.observed_soln,
+                                               dispersion=1)
+
+                result = conv.inference(target_spec,
+                                        'selective_MLE',
+                                        level=0.9)
+                estimate = result['MLE']
+                pval = result['pvalue']
+                intervals = np.asarray(result[['lower_confidence',
+                                               'upper_confidence']])
+
+                # Solve for the target of inference
+                def solve_target():
+                    def pi(x):
+                        return 1 / (1 + np.exp(-x))
+
+                    Y_mean = pi(X.dot(beta))
+
+                    X_E = X[:, nonzero]
+
+                    def objective(beta_):
+                        return (- (Y_mean.T @ np.log(pi(X_E @ beta_))
+                                   + (1 - Y_mean).T @ np.log(1 - pi(X_E @ beta_))))
+
+                    def grad(beta_):
+                        return (- X_E.T @ (Y_mean - pi(X_E @ beta_)))
+
+                    beta_opt_res = minimize(fun=objective, jac=grad, x0=estimate, method='BFGS')
+
+                    return beta_opt_res.x
+
+                beta_target = solve_target()
+                coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
+
+                cover.extend(coverage)
+                len_.extend(intervals[:, 1] - intervals[:, 0])
+    
+                print("Coverage so far ", np.mean(cover), )
+                print("Lengths so far ", np.mean(len_))
+
+                break   # Go to next iteration if we have some selection

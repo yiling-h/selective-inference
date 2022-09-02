@@ -161,6 +161,7 @@ class lasso(gaussian_query):
 
         # compute part of hessian
         #_hessian: X'X, _hessian_active: X'X_E, _hessian_unpen: X'X_U
+        #_hessian: X'WX, _hessian_active: X'WX_E, _hessian_unpen: X'WX_U for GLMs
         _hessian, _hessian_active, _hessian_unpen  = _compute_hessian(self.loglike,
                                                                       beta_bar,
                                                                       active,

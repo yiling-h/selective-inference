@@ -303,7 +303,9 @@ def test_logistic(n=2000,
                                            conv.observed_soln,
                                            dispersion=1)
 
-            result = conv._selective_MLE(target_spec)[0]
+            result = conv.inference(target_spec,
+                                    'selective_MLE',
+                                    level=0.9)
             estimate = result['MLE']
             pval = result['pvalue']
             intervals = np.asarray(result[['lower_confidence',
