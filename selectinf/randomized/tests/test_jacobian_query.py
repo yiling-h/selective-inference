@@ -353,7 +353,7 @@ def test_selected_targets_split_group_lasso(n=500,
 def test_selected_targets_logistic_lasso(n=500,
                                           p=200,
                                           signal_fac=1.2,
-                                          s=5,
+                                          s=15,
                                           sigma=2,
                                           rho=0.7,
                                           randomizer_scale=1.,
@@ -416,6 +416,7 @@ def test_selected_targets_logistic_lasso(n=500,
                 intervals = np.asarray(result[['lower_confidence',
                                                'upper_confidence']])
 
+                """
                 # Solve for the target of inference
                 def solve_target():
                     def pi(x):
@@ -435,8 +436,23 @@ def test_selected_targets_logistic_lasso(n=500,
                     beta_opt_res = minimize(fun=objective, jac=grad, x0=estimate, method='BFGS')
 
                     return beta_opt_res.x
+                """
 
-                beta_target = solve_target()
+                # Solving the inferential target
+                def solve_target_restricted():
+                    def pi(x):
+                        return 1 / (1 + np.exp(-x))
+
+                    Y_mean = pi(X.dot(beta))
+
+                    loglike = rr.glm.logistic(X, successes=Y_mean, trials=np.ones(n))
+                    # For LASSO, this is the OLS solution on X_{E,U}
+                    _beta_unpenalized = restricted_estimator(loglike,
+                                                             nonzero)
+                    return _beta_unpenalized
+
+                beta_target = solve_target_restricted()
+
                 coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
 
                 cover.extend(coverage)
@@ -446,3 +462,19 @@ def test_selected_targets_logistic_lasso(n=500,
                 print("Lengths so far ", np.mean(len_))
 
                 break   # Go to next iteration if we have some selection
+
+
+    ## 1. Present plots on coverages + lengths, vary signal strength
+    #   (or use SNR which takes into account sigma)
+    #     Plot empirical confidence intervals from simulation
+    ## 2. Add naive inference.
+    ## 3. Slides:
+    #   explain simulation
+    #   explain variable selection (logistic lasso/group lasso)
+    #   inference: try simplify the math into big pictures: MLE algorithm (1-2 slides)
+    #   show plots: coverage + length
+    #   try both lasso + (group lasso)
+    ## 4. Data carving:
+    #   How to calculate variance after Taylor?
+    #   Write out cancelatiions with K
+

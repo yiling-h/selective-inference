@@ -350,7 +350,8 @@ class lasso(gaussian_query):
                  trials=None,
                  quadratic=None,
                  ridge_term=None,
-                 randomizer_scale=None):
+                 randomizer_scale=None,
+                 perturb=None):
         r"""
         Logistic LASSO with feature weights (before randomization)
 
@@ -416,7 +417,7 @@ class lasso(gaussian_query):
 
         return lasso(loglike, 
                      np.asarray(feature_weights),
-                     ridge_term, randomizer)
+                     ridge_term, randomizer, perturb=perturb)
 
     @staticmethod
     def coxph(X,
