@@ -14,20 +14,29 @@ from ..group_lasso_query import (group_lasso,
 from ...base import (full_targets,
                      selected_targets,
                      debiased_targets)
-from selectinf.randomized.tests.instance import gaussian_group_instance
+from selectinf.randomized.tests.instance import (gaussian_group_instance,
+                                                 logistic_group_instance)
 from selectinf.tests.instance import logistic_instance
 from ...base import restricted_estimator
 import scipy.stats
 
-def naive_inference(X, Y, beta, const, n, level=0.9):
+def naive_inference(X, Y, groups, beta, const,
+                    n, weight_frac=1., level=0.9):
 
     p = X.shape[1]
     sigma_ = np.std(Y)
-    W = 1#np.sqrt(2 * np.log(p)) * sigma_
+    weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
 
-    conv = const(X, Y, W, perturb=np.zeros(p))
+    conv = const(X=X,
+                 successes=Y,
+                 trials=np.ones(n),
+                 groups=groups,
+                 weights=weights,
+                 useJacobian=True,
+                 perturb=np.zeros(p),
+                 ridge_term=0.)
 
-    signs = conv.fit()
+    signs, _ = conv.fit()
     nonzero = signs != 0
 
     # Solving the inferential target
@@ -82,7 +91,8 @@ def naive_inference(X, Y, beta, const, n, level=0.9):
     return None, None
 
 def randomization_inference(X, Y, n, p, beta, const,
-                            randomizer_scale, level=0.9, solve_only = False):
+                            groups, randomizer_scale,
+                            weight_frac=0.1, level=0.9, solve_only = False):
 
     ## solve_only: bool variable indicating whether
     ##              1) we only need the solver's output
@@ -90,14 +100,17 @@ def randomization_inference(X, Y, n, p, beta, const,
     ##              2) we also want inferential results
 
     sigma_ = np.std(Y)
-    W = 1#np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
+    weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
 
-    conv = const(X,
-                 Y,
-                 W,
-                 randomizer_scale=randomizer_scale * sigma_)
+    conv = const(X=X,
+                 successes=Y,
+                 trials=np.ones(n),
+                 groups=groups,
+                 weights=weights,
+                 useJacobian=True,
+                 ridge_term=0.)
 
-    signs = conv.fit()
+    signs, _ = conv.fit()
     nonzero = signs != 0
 
     # Solving the inferential target
@@ -121,7 +134,8 @@ def randomization_inference(X, Y, n, p, beta, const,
         conv.setup_inference(dispersion=1)
 
         target_spec = selected_targets(conv.loglike,
-                                       conv.observed_soln)
+                                       conv.observed_soln,
+                                       dispersion=1)
 
         result = conv.inference(target_spec,
                                 'selective_MLE',
@@ -139,20 +153,22 @@ def randomization_inference(X, Y, n, p, beta, const,
 
     return None, None, None, None
 
-def split_inference(X, Y, n, p, beta, const,
-                    proportion=0.5, level=0.9):
+def split_inference(X, Y, n, p, beta, groups, const,
+                    weight_frac=1., proportion=0.5, level=0.9):
 
     ## selective inference with data carving
 
     sigma_ = np.std(Y)
-    W = np.ones(X.shape[1])#np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
+    weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
 
-    conv = const(X,
-                 Y,
-                 W,
-                 proportion=proportion)
+    conv = const(X=X,
+                 successes=Y,
+                 groups=groups,
+                 weights=weights,
+                 proportion=proportion,
+                 useJacobian=True)
 
-    signs = conv.fit()
+    signs, _ = conv.fit()
     nonzero = signs != 0
 
     # Solving the inferential target
@@ -172,7 +188,8 @@ def split_inference(X, Y, n, p, beta, const,
         conv.setup_inference(dispersion=1)
 
         target_spec = selected_targets(conv.loglike,
-                                       conv.observed_soln)
+                                       conv.observed_soln,
+                                       dispersion=1)
 
         result = conv.inference(target_spec,
                                 'selective_MLE',
@@ -251,17 +268,14 @@ def data_splitting(X, Y, n, p, beta, nonzero,
     # If no variable selected, no inference
     return None, None
 
-
-def test_comparison_logistic_lasso(n=500,
-                                   p=200,
-                                   signal_fac=0.1,
-                                   s=10,
-                                   sigma=2,
-                                   rho=0.5,
-                                   randomizer_scale=1.,
-                                   full_dispersion=True,
-                                   level=0.90,
-                                   iter=100):
+def test_comparison_logistic_group_lasso(n=500,
+                                         p=200,
+                                         signal_fac=0.1,
+                                         s=5,
+                                         rho=0.3,
+                                         randomizer_scale=1.,
+                                         level=0.90,
+                                         iter=100):
     """
     Compare to R randomized lasso
     """
@@ -278,42 +292,42 @@ def test_comparison_logistic_lasso(n=500,
 
             #np.random.seed(i)
 
-            inst, const, const_split = logistic_instance, lasso.logistic, split_lasso.logistic
+            inst, const, const_split = logistic_group_instance, group_lasso.logistic, \
+                                       split_group_lasso.logistic
             signal = np.sqrt(signal_fac * 2 * np.log(p))
             signal_str = str(np.round(signal,decimals=2))
 
             while True:  # run until we get some selection
+                groups = np.arange(50).repeat(4)
                 X, Y, beta = inst(n=n,
                                   p=p,
                                   signal=signal,
-                                  s=s,
-                                  equicorrelated=True,
+                                  sgroup=s,
+                                  groups=groups,
+                                  equicorrelated=False,
                                   rho=rho,
-                                  random_signs=True,
-                                  scale=True)[:3]
-
-                idx = np.arange(p)
-                sigmaX = rho ** np.abs(np.subtract.outer(idx, idx))
-
-                #print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
+                                  random_signs=True)[:3]
 
                 n, p = X.shape
 
                 noselection = False    # flag for a certain method having an empty selected set
-
+                """
                 # MLE inference
                 coverage, length, beta_target, nonzero = \
                     randomization_inference(X=X, Y=Y, n=n, p=p,
                                             beta=beta, const=const,
-                                            randomizer_scale=randomizer_scale)
+                                            groups=groups, randomizer_scale=randomizer_scale)
+
                 noselection = (coverage is None)
+                """
 
                 if not noselection:
                     # carving
                     coverage_s, length_s, beta_target_s, nonzero_s, selection_idx_s = \
                         split_inference(X=X, Y=Y, n=n, p=p,
-                                        beta=beta, const=const_split,
+                                        beta=beta, groups=groups, const=const_split,
                                         proportion=0.5)
+
                     noselection = (coverage_s is None)
 
                 if not noselection:
@@ -326,18 +340,19 @@ def test_comparison_logistic_lasso(n=500,
                 if not noselection:
                     # naive inference
                     coverage_naive, lengths_naive = \
-                        naive_inference(X=X, Y=Y, beta=beta, const=const,
+                        naive_inference(X=X, Y=Y, groups=groups,
+                                        beta=beta, const=const,
                                         n=n, level=level)
                     noselection = (coverage_naive is None)
 
                 if not noselection:
-
+                    """
                     # MLE coverage
                     oper_char["beta size"].append(signal_str)
                     oper_char["coverage rate"].append(np.mean(coverage))
                     oper_char["avg length"].append(np.mean(length))
                     oper_char["method"].append('MLE')
-
+                    """
                     # Carving coverage
                     oper_char["beta size"].append(signal_str)
                     oper_char["coverage rate"].append(np.mean(coverage_s))
@@ -382,20 +397,6 @@ def test_comparison_logistic_lasso(n=500,
     len_plot.set_ylim(5,15)
     plt.show()
 
-    ## 1. Present plots on coverages + lengths, vary signal strength
-    #   (or use SNR which takes into account sigma)
-    #     Plot empirical confidence intervals from simulation
-    ## 2. Add naive inference.
-    ## 3. Slides:
-    #   explain simulation
-    #   explain variable selection (logistic lasso/group lasso)
-    #   inference: try simplify the math into big pictures: MLE algorithm (1-2 slides)
-    #   show plots: coverage + length
-    #   try both lasso + (group lasso)
-    ## 4. Data carving:
-    #   How to calculate variance after Taylor?
-    #   Write out cancelations with K
-
 
 def test_comparison_logistic_lasso_vary_s(n=500,
                                            p=200,
@@ -418,47 +419,46 @@ def test_comparison_logistic_lasso_vary_s(n=500,
     oper_char["avg length"] = []
     oper_char["method"] = []
 
-    for s in [5,10,15,20,25,30]: #[0.01, 0.03, 0.06, 0.1]:
+    for s in [2,5,8,10]: #[0.01, 0.03, 0.06, 0.1]:
         for i in range(iter):
+            # np.random.seed(i)
 
-            #np.random.seed(i)
-
-            inst, const, const_split = logistic_instance, lasso.logistic, split_lasso.logistic
+            inst, const, const_split = logistic_group_instance, group_lasso.logistic, \
+                                       split_group_lasso.logistic
             signal = np.sqrt(signal_fac * 2 * np.log(p))
-            signal_str = str(np.round(signal,decimals=2))
+            signal_str = str(np.round(signal, decimals=2))
 
             while True:  # run until we get some selection
+                groups = np.arange(50).repeat(4)
                 X, Y, beta = inst(n=n,
                                   p=p,
                                   signal=signal,
-                                  s=s,
-                                  equicorrelated=True,
+                                  sgroup=s,
+                                  groups=groups,
+                                  equicorrelated=False,
                                   rho=rho,
-                                  random_signs=True,
-                                  scale=True)[:3]
-
-                idx = np.arange(p)
-                sigmaX = rho ** np.abs(np.subtract.outer(idx, idx))
-
-                #print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
+                                  random_signs=True)[:3]
 
                 n, p = X.shape
 
-                noselection = False    # flag for a certain method having an empty selected set
-
+                noselection = False  # flag for a certain method having an empty selected set
+                """
                 # MLE inference
                 coverage, length, beta_target, nonzero = \
                     randomization_inference(X=X, Y=Y, n=n, p=p,
                                             beta=beta, const=const,
-                                            randomizer_scale=randomizer_scale)
+                                            groups=groups, randomizer_scale=randomizer_scale)
+
                 noselection = (coverage is None)
+                """
 
                 if not noselection:
                     # carving
                     coverage_s, length_s, beta_target_s, nonzero_s, selection_idx_s = \
                         split_inference(X=X, Y=Y, n=n, p=p,
-                                        beta=beta, const=const_split,
+                                        beta=beta, groups=groups, const=const_split,
                                         proportion=0.5)
+
                     noselection = (coverage_s is None)
 
                 if not noselection:
@@ -471,17 +471,19 @@ def test_comparison_logistic_lasso_vary_s(n=500,
                 if not noselection:
                     # naive inference
                     coverage_naive, lengths_naive = \
-                        naive_inference(X=X, Y=Y, beta=beta, const=const,
+                        naive_inference(X=X, Y=Y, groups=groups,
+                                        beta=beta, const=const,
                                         n=n, level=level)
                     noselection = (coverage_naive is None)
 
                 if not noselection:
-
+                    """
                     # MLE coverage
                     oper_char["sparsity size"].append(s)
                     oper_char["coverage rate"].append(np.mean(coverage))
                     oper_char["avg length"].append(np.mean(length))
                     oper_char["method"].append('MLE')
+                    """
 
                     # Carving coverage
                     oper_char["sparsity size"].append(s)

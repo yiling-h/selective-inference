@@ -790,11 +790,8 @@ class split_lasso(lasso):
                                    self.nfeature)) 
         regress_opt[:, ordered_vars] = -cond_cov * signs[None, :] / (dispersion * ratio)
         cond_mean = regress_opt.dot(self.observed_score_state + observed_subgrad)
-
-        ## probably missing a dispersion in the denominator
         prod_score_prec_unnorm = np.identity(self.nfeature) / (dispersion * ratio)
 
-        ## probably missing a multiplicative factor of ratio
         cov_rand = self._unscaled_cov_score * (dispersion * ratio)
 
         M1 = prod_score_prec_unnorm * dispersion

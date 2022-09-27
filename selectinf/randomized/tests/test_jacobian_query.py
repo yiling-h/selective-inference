@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import nose.tools as nt
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 import regreg.api as rr
 
@@ -12,7 +14,8 @@ from ..group_lasso_query import (group_lasso,
 from ...base import (full_targets,
                      selected_targets,
                      debiased_targets)
-from selectinf.randomized.tests.instance import gaussian_group_instance
+from selectinf.randomized.tests.instance import (gaussian_group_instance,
+                                                 logistic_group_instance)
 from selectinf.tests.instance import (gaussian_instance,
                                logistic_instance,
                                poisson_instance,
@@ -182,7 +185,7 @@ def test_split_lasso(n=2000,
 
 def test_selected_targets_group_lasso(n=500,
                                      p=200,
-                                     signal_fac=0.1,
+                                     signal_fac=1.2,
                                      sgroup=3,
                                      groups=np.arange(50).repeat(4),
                                      sigma=3.,
@@ -416,28 +419,6 @@ def test_selected_targets_logistic_lasso(n=500,
                 intervals = np.asarray(result[['lower_confidence',
                                                'upper_confidence']])
 
-                """
-                # Solve for the target of inference
-                def solve_target():
-                    def pi(x):
-                        return 1 / (1 + np.exp(-x))
-
-                    Y_mean = pi(X.dot(beta))
-
-                    X_E = X[:, nonzero]
-
-                    def objective(beta_):
-                        return (- (Y_mean.T @ np.log(pi(X_E @ beta_))
-                                   + (1 - Y_mean).T @ np.log(1 - pi(X_E @ beta_))))
-
-                    def grad(beta_):
-                        return (- X_E.T @ (Y_mean - pi(X_E @ beta_)))
-
-                    beta_opt_res = minimize(fun=objective, jac=grad, x0=estimate, method='BFGS')
-
-                    return beta_opt_res.x
-                """
-
                 # Solving the inferential target
                 def solve_target_restricted():
                     def pi(x):
@@ -478,3 +459,293 @@ def test_selected_targets_logistic_lasso(n=500,
     #   How to calculate variance after Taylor?
     #   Write out cancelatiions with K
 
+def test_selected_targets_split_logistic_lasso(n=500,
+                                               p=200,
+                                               signal_fac=1.2,
+                                               s=15,
+                                               sigma=2,
+                                               rho=0.7,
+                                               proportion=.7,
+                                               full_dispersion=True,
+                                               level=0.90,
+                                               iter=100):
+    """
+    Compare to R randomized lasso
+    """
+
+    cover = []
+    len_ = []
+
+    for i in range(iter):
+
+        np.random.seed(i)
+
+        inst, const = logistic_instance, split_lasso.logistic
+        signal = np.sqrt(signal_fac * 2 * np.log(p))
+
+        while True:  # run until we get somee selection
+            X, Y, beta = inst(n=n,
+                              p=p,
+                              signal=signal,
+                              s=s,
+                              equicorrelated=True,
+                              rho=rho,
+                              random_signs=True)[:3]
+
+            idx = np.arange(p)
+            sigmaX = rho ** np.abs(np.subtract.outer(idx, idx))
+            print("snr", beta.T.dot(sigmaX).dot(beta) / ((sigma ** 2.) * n))
+
+            n, p = X.shape
+
+            sigma_ = np.std(Y)
+            W = np.ones(X.shape[1]) * np.sqrt(2 * np.log(p)) * sigma_
+
+            conv = const(X,
+                         Y,
+                         W,
+                         proportion=proportion)
+
+            signs = conv.fit()
+            nonzero = signs != 0
+            print("dimensions", n, p, nonzero.sum())
+
+            if nonzero.sum() > 0:
+                conv.setup_inference(dispersion=1)
+
+                target_spec = selected_targets(conv.loglike,
+                                               conv.observed_soln)
+
+                result = conv.inference(target_spec,
+                                        'selective_MLE',
+                                        level=level)
+                estimate = result['MLE']
+                pval = result['pvalue']
+                intervals = np.asarray(result[['lower_confidence',
+                                               'upper_confidence']])
+
+                # Solving the inferential target
+                def solve_target_restricted():
+                    def pi(x):
+                        return 1 / (1 + np.exp(-x))
+
+                    Y_mean = pi(X.dot(beta))
+
+                    loglike = rr.glm.logistic(X, successes=Y_mean, trials=np.ones(n))
+                    # For LASSO, this is the OLS solution on X_{E,U}
+                    _beta_unpenalized = restricted_estimator(loglike,
+                                                             nonzero)
+                    return _beta_unpenalized
+
+                beta_target = solve_target_restricted()
+
+                coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
+
+                cover.extend(coverage)
+                len_.extend(intervals[:, 1] - intervals[:, 0])
+
+                print("Coverage so far ", np.mean(cover), )
+                print("Lengths so far ", np.mean(len_))
+
+                break  # Go to next iteration if we have some selection
+
+def test_selected_targets_group_logistic_lasso(n=500,
+                                               p=200,
+                                               signal_fac=1.2,
+                                               sgroup=3,
+                                               groups=np.arange(50).repeat(4),
+                                               rho=0.3,
+                                               weight_frac=1.,
+                                               randomizer_scale=1,
+                                               level=0.90,
+                                               iter=100):
+    # Operating characteristics
+    oper_char = {}
+    oper_char["coverage rate"] = []
+    oper_char["avg length"] = []
+
+    for i in range(iter):
+
+        #np.random.seed(i)
+
+        inst = logistic_group_instance
+        signal = np.sqrt(signal_fac * 2 * np.log(p))
+
+        while True:  # run until we get some selection
+            X, Y, beta = inst(n=n,
+                              p=p,
+                              signal=signal,
+                              sgroup=sgroup,
+                              groups=groups,
+                              equicorrelated=True,
+                              rho=rho,
+                              random_signs=True)[:3]
+
+            n, p = X.shape
+
+            ##estimate noise level in data
+
+            sigma_ = np.std(Y)
+
+            ##solve group LASSO with group penalty weights = weights
+
+            weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
+
+            conv = group_lasso.logistic(X=X,
+                                        successes=Y,
+                                        trials=np.ones(n),
+                                        groups=groups,
+                                        weights=weights,
+                                        useJacobian=True,
+                                        ridge_term=0.)
+
+            signs, _ = conv.fit()
+            nonzero = (signs != 0)
+            print("dimensions", n, p, nonzero.sum())
+
+            if nonzero.sum() > 0:
+
+                # Solving the inferential target
+                def solve_target_restricted():
+                    def pi(x):
+                        return 1 / (1 + np.exp(-x))
+
+                    Y_mean = pi(X.dot(beta))
+
+                    loglike = rr.glm.logistic(X, successes=Y_mean, trials=np.ones(n))
+                    # For LASSO, this is the OLS solution on X_{E,U}
+                    _beta_unpenalized = restricted_estimator(loglike,
+                                                             nonzero)
+                    return _beta_unpenalized
+
+                conv.setup_inference(dispersion=1)
+
+                target_spec = selected_targets(conv.loglike,
+                                               conv.observed_soln,
+                                               dispersion=1)
+
+                result = conv.inference(target_spec,
+                                        method='selective_MLE',
+                                        level=level)
+
+                pval = result['pvalue']
+                intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
+
+                beta_target = solve_target_restricted()
+
+                coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
+
+                # MLE coverage
+                oper_char["coverage rate"].append(np.mean(coverage))
+                oper_char["avg length"].append(np.mean(intervals[:, 1] - intervals[:, 0]))
+
+                print("Coverage so far ", np.mean(oper_char["coverage rate"]))
+                print("Lengths so far ", np.mean(oper_char["avg length"]))
+                #print(np.round(intervals[:, 0],1))
+                #print(np.round(intervals[:, 1], 1))
+                #print(np.round(beta_target, 1))
+
+                break  # Go to next iteration if we have some selection
+
+    oper_char_df = pd.DataFrame.from_dict(oper_char)
+
+    # cov_plot = \
+    sns.boxplot(y=oper_char_df["coverage rate"],
+                meanline=True,
+                orient="v")
+    plt.show()
+
+def test_selected_targets_split_group_logistic_lasso(n=500,
+                                                     p=200,
+                                                     signal_fac=1.2,
+                                                     sgroup=3,
+                                                     groups=np.arange(50).repeat(4),
+                                                     rho=0.3,
+                                                     proportion=0.5,
+                                                     weight_frac=1.,
+                                                     randomizer_scale=1,
+                                                     level=0.90,
+                                                     iter=100):
+    # Operating characteristics
+    oper_char = {}
+    oper_char["coverage rate"] = []
+    oper_char["avg length"] = []
+
+    for i in range(iter):
+
+        #np.random.seed(i)
+
+        inst = logistic_group_instance
+        signal = np.sqrt(signal_fac * 2 * np.log(p))
+
+        while True:  # run until we get some selection
+            X, Y, beta = inst(n=n,
+                              p=p,
+                              signal=signal,
+                              sgroup=sgroup,
+                              groups=groups,
+                              equicorrelated=True,
+                              rho=rho,
+                              random_signs=True)[:3]
+
+            n, p = X.shape
+
+            ##estimate noise level in data
+
+            sigma_ = np.std(Y)
+
+            ##solve group LASSO with group penalty weights = weights
+
+            weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
+
+            conv = split_group_lasso.logistic(X,
+                                              successes=Y,
+                                              groups=groups,
+                                              weights=weights,
+                                              proportion=proportion,
+                                              useJacobian=True)
+
+            signs, _ = conv.fit()
+            nonzero = (signs != 0)
+            print("dimensions", n, p, nonzero.sum())
+
+            if nonzero.sum() > 0:
+
+                # Solving the inferential target
+                def solve_target_restricted():
+                    def pi(x):
+                        return 1 / (1 + np.exp(-x))
+
+                    Y_mean = pi(X.dot(beta))
+
+                    loglike = rr.glm.logistic(X, successes=Y_mean, trials=np.ones(n))
+                    # For LASSO, this is the OLS solution on X_{E,U}
+                    _beta_unpenalized = restricted_estimator(loglike,
+                                                             nonzero)
+                    return _beta_unpenalized
+
+                conv.setup_inference(dispersion=1)
+
+                target_spec = selected_targets(conv.loglike,
+                                               conv.observed_soln,
+                                               dispersion=1)
+
+                result = conv.inference(target_spec,
+                                        method='selective_MLE',
+                                        level=level)
+
+                pval = result['pvalue']
+                intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
+
+                beta_target = solve_target_restricted()
+
+                coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
+
+                # MLE coverage
+                oper_char["coverage rate"].append(np.mean(coverage))
+                oper_char["avg length"].append(np.mean(intervals[:, 1] - intervals[:, 0]))
+
+                print("Coverage so far ", np.mean(oper_char["coverage rate"]))
+                print("Lengths so far ", np.mean(oper_char["avg length"]))
+
+                break  # Go to next iteration if we have some selection

@@ -180,6 +180,7 @@ class gaussian_query(object):
                                 dispersion=1):
         cov_rand, prec = self.randomizer.cov_prec
 
+        # From here
         if np.asarray(prec).shape in [(), (0,)]:
             prod_score_prec_unnorm = self._unscaled_cov_score * prec
         else:
@@ -187,6 +188,7 @@ class gaussian_query(object):
 
         if np.asarray(prec).shape in [(), (0,)]:
             cond_precision = opt_linear.T.dot(opt_linear) * prec
+            #print(cond_precision.shape)
             cond_cov = np.linalg.inv(cond_precision)
             regress_opt = -cond_cov.dot(opt_linear.T) * prec
         else:

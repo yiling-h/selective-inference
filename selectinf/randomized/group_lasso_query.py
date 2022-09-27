@@ -86,11 +86,13 @@ class group_lasso(gaussian_query):
         if self.randomizer is not None:
             _, self.prec_randomizer = self.randomizer.cov_prec
 
+
+        soln = self.observed_soln  # used in the following loop
+
         # now we are collecting the directions and norms of the active groups
         for g in sorted(np.unique(self.groups)):  # g is group label
 
             group_mask = self.groups == g
-            soln = self.observed_soln  # do not need to keep setting this
 
             if norm(soln[group_mask]) > tol * norm(soln):  # is group g appreciably nonzero
                 ordered_groups.append(g)
@@ -276,6 +278,42 @@ class group_lasso(gaussian_query):
                            use_lasso=use_lasso,
                            perturb=perturb)
 
+    @staticmethod
+    def logistic(X,
+                 successes,
+                 groups,
+                 weights,
+                 trials=None,
+                 quadratic=None,
+                 ridge_term=0.,
+                 perturb=None,
+                 useJacobian=True,
+                 use_lasso=True,
+                 randomizer_scale=None):  # should lasso solver be used when applicable - defaults to True
+
+        loglike = rr.glm.logistic(X,
+                                  successes,
+                                  trials=trials,
+                                  quadratic=quadratic)
+        n, p = X.shape
+
+        mean_diag = np.mean((X ** 2).sum(0))
+        if ridge_term is None:
+            ridge_term = np.std(successes) * np.sqrt(mean_diag) / np.sqrt(n - 1)
+        if randomizer_scale is None:
+            randomizer_scale = np.sqrt(mean_diag) * 0.5 * np.std(successes) * np.sqrt(n / (n - 1.))
+
+        randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
+
+        return group_lasso(loglike,
+                           groups,
+                           weights,
+                           ridge_term=ridge_term,
+                           randomizer=randomizer,
+                           useJacobian=useJacobian,
+                           use_lasso=use_lasso,
+                           perturb=perturb)
+
 class split_group_lasso(group_lasso):
 
     """
@@ -335,8 +373,9 @@ class split_group_lasso(group_lasso):
                                       solve_args=solve_args,
                                       perturb=perturb)
 
-        # for data splitting randomization,
-        # we need to estimate a dispersion parameter
+        # exception if no groups are selected
+        if len(self.selection_variable['active_groups']) == 0:
+            return signs, soln
 
         # we then setup up the sampler again
         df_fit = len(self.active)
@@ -475,6 +514,33 @@ class split_group_lasso(group_lasso):
         loglike = rr.glm.gaussian(X,
                                   Y,
                                   coef=1. / sigma ** 2,
+                                  quadratic=quadratic)
+        n, p = X.shape
+
+        return split_group_lasso(loglike,
+                                 groups,
+                                 weights,
+                                 proportion_select=proportion,
+                                 randomizer=None,
+                                 useJacobian=useJacobian,
+                                 use_lasso=use_lasso,
+                                 perturb=perturb)
+
+    @staticmethod
+    def logistic(X,
+                 successes,
+                 groups,
+                 weights,
+                 proportion,
+                 trials=None,
+                 quadratic=None,
+                 perturb=None,
+                 useJacobian=True,
+                 use_lasso=True):  # should lasso solver be used when applicable - defaults to True
+
+        loglike = rr.glm.logistic(X,
+                                  successes,
+                                  trials=trials,
                                   quadratic=quadratic)
         n, p = X.shape
 
