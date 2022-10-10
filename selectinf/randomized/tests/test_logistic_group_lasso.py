@@ -16,7 +16,7 @@ from ...base import (full_targets,
                      debiased_targets)
 from selectinf.randomized.tests.instance import (gaussian_group_instance,
                                                  logistic_group_instance)
-from selectinf.tests.instance import logistic_instance
+
 from ...base import restricted_estimator
 import scipy.stats
 
@@ -92,7 +92,7 @@ def naive_inference(X, Y, groups, beta, const,
 
 def randomization_inference(X, Y, n, p, beta, const,
                             groups, randomizer_scale,
-                            weight_frac=0.1, level=0.9, solve_only = False):
+                            weight_frac=1., level=0.9, solve_only = False):
 
     ## solve_only: bool variable indicating whether
     ##              1) we only need the solver's output
@@ -102,16 +102,17 @@ def randomization_inference(X, Y, n, p, beta, const,
     sigma_ = np.std(Y)
     weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
 
-    conv = const(X=X,
+    conv = group_lasso.logistic(X=X,
                  successes=Y,
                  trials=np.ones(n),
                  groups=groups,
                  weights=weights,
                  useJacobian=True,
-                 ridge_term=0.)
+                 ridge_term=0.,
+                 randomizer_scale=randomizer_scale * sigma_)
 
     signs, _ = conv.fit()
-    nonzero = signs != 0
+    nonzero = (signs != 0)
 
     # Solving the inferential target
     def solve_target_restricted():
@@ -138,9 +139,9 @@ def randomization_inference(X, Y, n, p, beta, const,
                                        dispersion=1)
 
         result = conv.inference(target_spec,
-                                'selective_MLE',
+                                method='selective_MLE',
                                 level=level)
-        estimate = result['MLE']
+
         pval = result['pvalue']
         intervals = np.asarray(result[['lower_confidence',
                                        'upper_confidence']])
@@ -290,10 +291,12 @@ def test_comparison_logistic_group_lasso(n=500,
     for signal_fac in [0.01, 0.03, 0.06, 0.1]: #[0.01, 0.03, 0.06, 0.1]:
         for i in range(iter):
 
-            #np.random.seed(i)
+            np.random.seed(i)
 
-            inst, const, const_split = logistic_group_instance, group_lasso.logistic, \
-                                       split_group_lasso.logistic
+            inst  = logistic_group_instance
+            const = group_lasso.logistic
+            const_split = split_group_lasso.logistic
+
             signal = np.sqrt(signal_fac * 2 * np.log(p))
             signal_str = str(np.round(signal,decimals=2))
 
@@ -311,7 +314,7 @@ def test_comparison_logistic_group_lasso(n=500,
                 n, p = X.shape
 
                 noselection = False    # flag for a certain method having an empty selected set
-                """
+
                 # MLE inference
                 coverage, length, beta_target, nonzero = \
                     randomization_inference(X=X, Y=Y, n=n, p=p,
@@ -319,7 +322,6 @@ def test_comparison_logistic_group_lasso(n=500,
                                             groups=groups, randomizer_scale=randomizer_scale)
 
                 noselection = (coverage is None)
-                """
 
                 if not noselection:
                     # carving
@@ -346,13 +348,13 @@ def test_comparison_logistic_group_lasso(n=500,
                     noselection = (coverage_naive is None)
 
                 if not noselection:
-                    """
-                    # MLE coverage
+
+                    # Isotropic MLE coverage
                     oper_char["beta size"].append(signal_str)
                     oper_char["coverage rate"].append(np.mean(coverage))
                     oper_char["avg length"].append(np.mean(length))
-                    oper_char["method"].append('MLE')
-                    """
+                    oper_char["method"].append('Isotropic')
+
                     # Carving coverage
                     oper_char["beta size"].append(signal_str)
                     oper_char["coverage rate"].append(np.mean(coverage_s))
@@ -394,7 +396,7 @@ def test_comparison_logistic_group_lasso(n=500,
                            hue=oper_char_df["method"],
                            showmeans=True,
                            orient="v")
-    len_plot.set_ylim(5,15)
+    len_plot.set_ylim(5,17)
     plt.show()
 
 
@@ -442,7 +444,7 @@ def test_comparison_logistic_lasso_vary_s(n=500,
                 n, p = X.shape
 
                 noselection = False  # flag for a certain method having an empty selected set
-                """
+
                 # MLE inference
                 coverage, length, beta_target, nonzero = \
                     randomization_inference(X=X, Y=Y, n=n, p=p,
@@ -450,7 +452,6 @@ def test_comparison_logistic_lasso_vary_s(n=500,
                                             groups=groups, randomizer_scale=randomizer_scale)
 
                 noselection = (coverage is None)
-                """
 
                 if not noselection:
                     # carving
@@ -477,13 +478,12 @@ def test_comparison_logistic_lasso_vary_s(n=500,
                     noselection = (coverage_naive is None)
 
                 if not noselection:
-                    """
+
                     # MLE coverage
                     oper_char["sparsity size"].append(s)
                     oper_char["coverage rate"].append(np.mean(coverage))
                     oper_char["avg length"].append(np.mean(length))
-                    oper_char["method"].append('MLE')
-                    """
+                    oper_char["method"].append('Isotropic')
 
                     # Carving coverage
                     oper_char["sparsity size"].append(s)
@@ -526,5 +526,5 @@ def test_comparison_logistic_lasso_vary_s(n=500,
                            hue=oper_char_df["method"],
                            showmeans=True,
                            orient="v")
-    len_plot.set_ylim(5,15)
+    len_plot.set_ylim(5,17)
     plt.show()

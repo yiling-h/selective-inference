@@ -288,8 +288,9 @@ class group_lasso(gaussian_query):
                  ridge_term=0.,
                  perturb=None,
                  useJacobian=True,
-                 use_lasso=True,
-                 randomizer_scale=None):  # should lasso solver be used when applicable - defaults to True
+                 randomizer_scale=None,
+                 cov_rand=None,
+                 use_lasso=True):  # should lasso solver be used when applicable - defaults to True
 
         loglike = rr.glm.logistic(X,
                                   successes,
@@ -303,7 +304,11 @@ class group_lasso(gaussian_query):
         if randomizer_scale is None:
             randomizer_scale = np.sqrt(mean_diag) * 0.5 * np.std(successes) * np.sqrt(n / (n - 1.))
 
-        randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
+        if cov_rand is None:
+            randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
+        else:
+            print("Non-isotropic randomization")
+            randomizer = randomization.gaussian(cov_rand)
 
         return group_lasso(loglike,
                            groups,

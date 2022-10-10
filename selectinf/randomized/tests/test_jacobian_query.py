@@ -551,8 +551,8 @@ def test_selected_targets_split_logistic_lasso(n=500,
 
 def test_selected_targets_group_logistic_lasso(n=500,
                                                p=200,
-                                               signal_fac=1.2,
-                                               sgroup=3,
+                                               signal_fac=0.01,#1.2
+                                               sgroup=5,
                                                groups=np.arange(50).repeat(4),
                                                rho=0.3,
                                                weight_frac=1.,
@@ -566,7 +566,7 @@ def test_selected_targets_group_logistic_lasso(n=500,
 
     for i in range(iter):
 
-        #np.random.seed(i)
+        np.random.seed(i)
 
         inst = logistic_group_instance
         signal = np.sqrt(signal_fac * 2 * np.log(p))
@@ -597,7 +597,8 @@ def test_selected_targets_group_logistic_lasso(n=500,
                                         groups=groups,
                                         weights=weights,
                                         useJacobian=True,
-                                        ridge_term=0.)
+                                        ridge_term=0.,
+                                        randomizer_scale=randomizer_scale * sigma_)
 
             signs, _ = conv.fit()
             nonzero = (signs != 0)
@@ -654,6 +655,169 @@ def test_selected_targets_group_logistic_lasso(n=500,
                 meanline=True,
                 orient="v")
     plt.show()
+
+def test_selected_targets_group_logistic_lasso_hessian(n=500,
+                                                       p=200,
+                                                       signal_fac=1.2,
+                                                       sgroup=3,
+                                                       groups=np.arange(50).repeat(4),
+                                                       rho=0.3,
+                                                       weight_frac=1.,
+                                                       randomizer_scale=1,
+                                                       level=0.90,
+                                                       iter=100):
+    # Operating characteristics
+    oper_char = {}
+    oper_char["coverage rate"] = []
+    oper_char["avg length"] = []
+    # Operating characteristics
+    oper_char_split = {}
+    oper_char_split["coverage rate"] = []
+    oper_char_split["avg length"] = []
+
+    for i in range(iter):
+
+        #np.random.seed(i)
+
+        inst = logistic_group_instance
+        signal = np.sqrt(signal_fac * 2 * np.log(p))
+
+        while True:  # run until we get some selection
+            X, Y, beta = inst(n=n,
+                              p=p,
+                              signal=signal,
+                              sgroup=sgroup,
+                              groups=groups,
+                              equicorrelated=True,
+                              rho=rho,
+                              random_signs=True)[:3]
+
+            n, p = X.shape
+
+            ##estimate noise level in data
+
+            sigma_ = np.std(Y)
+
+            ##solve group LASSO with group penalty weights = weights
+
+            weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
+
+
+            # Hessian calculations
+            proportion = 0.5
+            conv_split = split_group_lasso.logistic(X,
+                                                    successes=Y,
+                                                    groups=groups,
+                                                    weights=weights,
+                                                    proportion=proportion,
+                                                    useJacobian=True)
+
+            signs_split, _ = conv_split.fit()
+            nonzero_split = (signs_split != 0)
+            hess = conv_split._unscaled_cov_score  # hessian
+
+            conv = group_lasso.logistic(X=X,
+                                        successes=Y,
+                                        trials=np.ones(n),
+                                        groups=groups,
+                                        weights=weights,
+                                        useJacobian=True,
+                                        ridge_term=0.,
+                                        cov_rand=hess)
+
+            signs, _ = conv.fit()
+            nonzero = (signs != 0)
+            print("dimensions", n, p, nonzero.sum())
+
+            if nonzero.sum() > 0 and nonzero_split.sum() > 0:
+
+                # Solving the inferential target
+                def solve_target_restricted():
+                    def pi(x):
+                        return 1 / (1 + np.exp(-x))
+
+                    Y_mean = pi(X.dot(beta))
+
+                    loglike = rr.glm.logistic(X, successes=Y_mean, trials=np.ones(n))
+                    # For LASSO, this is the OLS solution on X_{E,U}
+                    _beta_unpenalized = restricted_estimator(loglike,
+                                                             nonzero)
+                    return _beta_unpenalized
+
+                # Solving the inferential target
+                def solve_target_restricted_split():
+                    def pi(x):
+                        return 1 / (1 + np.exp(-x))
+
+                    Y_mean = pi(X.dot(beta))
+
+                    loglike = rr.glm.logistic(X, successes=Y_mean, trials=np.ones(n))
+                    # For LASSO, this is the OLS solution on X_{E,U}
+                    _beta_unpenalized = restricted_estimator(loglike,
+                                                             nonzero_split)
+                    return _beta_unpenalized
+
+                # non--split inference with hessian randomization
+                conv.setup_inference(dispersion=1)
+
+                target_spec = selected_targets(conv.loglike,
+                                               conv.observed_soln,
+                                               dispersion=1)
+
+                result = conv.inference(target_spec,
+                                        method='selective_MLE',
+                                        level=level)
+
+                pval = result['pvalue']
+                intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
+
+                beta_target = solve_target_restricted()
+
+                coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
+
+                # MLE coverage
+                oper_char["coverage rate"].append(np.mean(coverage))
+                oper_char["avg length"].append(np.mean(intervals[:, 1] - intervals[:, 0]))
+
+                # split inference with hessian randomization
+                conv_split.setup_inference(dispersion=1)
+
+                target_spec_split = selected_targets(conv_split.loglike,
+                                                     conv_split.observed_soln,
+                                                     dispersion=1)
+
+                result_split = conv_split.inference(target_spec_split,
+                                                    method='selective_MLE',
+                                                    level=level)
+
+                pval_split = result_split['pvalue']
+                intervals_split = np.asarray(result_split[['lower_confidence', 'upper_confidence']])
+
+                beta_target_split = solve_target_restricted_split()
+
+                coverage_split = (beta_target_split > intervals_split[:, 0]) * \
+                                 (beta_target_split < intervals_split[:, 1])
+
+                # MLE coverage
+                oper_char_split["coverage rate"].append(np.mean(coverage_split))
+                oper_char_split["avg length"].append(np.mean(intervals_split[:, 1] - intervals_split[:, 0]))
+
+                print("Coverage (nonsplit) so far ", np.mean(oper_char["coverage rate"]))
+                print("Lengths (nonsplit) so far ", np.mean(oper_char["avg length"]))
+
+                print("Coverage (split) so far ", np.mean(oper_char_split["coverage rate"]))
+                print("Lengths (split) so far ", np.mean(oper_char_split["avg length"]))
+
+                break  # Go to next iteration if we have some selection
+    """
+    oper_char_df = pd.DataFrame.from_dict(oper_char)
+
+    # cov_plot = \
+    sns.boxplot(y=oper_char_df["coverage rate"],
+                meanline=True,
+                orient="v")
+    plt.show()
+    """
 
 def test_selected_targets_split_group_logistic_lasso(n=500,
                                                      p=200,
