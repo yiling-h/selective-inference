@@ -307,7 +307,6 @@ class group_lasso(gaussian_query):
         if cov_rand is None:
             randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
         else:
-            print("Non-isotropic randomization")
             randomizer = randomization.gaussian(cov_rand)
 
         return group_lasso(loglike,
