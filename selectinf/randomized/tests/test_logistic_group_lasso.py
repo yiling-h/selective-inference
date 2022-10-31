@@ -608,11 +608,14 @@ def test_plotting(path='selectinf/randomized/tests/oper_char_vary_s.csv'):
 
 def test_plotting_separate(path='selectinf/randomized/tests/oper_char_vary_s.csv'):
     oper_char_df = pd.read_csv(path)
+    naive_flag = oper_char_df["method"] == "Na$\ddot{i}$ve"
+    oper_char_df.loc[naive_flag, "method"] = 'Naive'
+
     #sns.histplot(oper_char_df["sparsity size"])
     #plt.show()
 
     def plot_naive():
-        naive_flag = oper_char_df["method"] == "Naive"
+        naive_flag = oper_char_df["method"] == 'Naive'
 
         print("Mean coverage rate/length:")
         print(oper_char_df.groupby(['sparsity size', 'method']).mean())
@@ -620,10 +623,11 @@ def test_plotting_separate(path='selectinf/randomized/tests/oper_char_vary_s.csv
         cov_plot = sns.boxplot(y=oper_char_df.loc[naive_flag, "coverage rate"],
                                x=oper_char_df.loc[naive_flag, "sparsity size"],
                                # hue=oper_char_df["method"],
-                               palette="pastel",
+                               #palette="pastel",
+                               color='lightcoral',
                                orient="v",
                                linewidth=1)
-        cov_plot.set(title='Coverage')
+        cov_plot.set(title='Coverage of Naive Inference')
         cov_plot.set_ylim(0.5, 1.05)
         # plt.tight_layout()
         cov_plot.axhline(y=0.9, color='k', linestyle='--', linewidth=1)
@@ -642,6 +646,12 @@ def test_plotting_separate(path='selectinf/randomized/tests/oper_char_vary_s.csv
         cov_plot.axhline(y=0.9, color='k', linestyle='--', linewidth=1)
         cov_plot.legend(loc='lower center', ncol=3)
         plt.tight_layout()
+
+        for i in [2,5,8,11]:
+            mybox = cov_plot.artists[i]
+            mybox.set_facecolor('lightcoral')
+        leg = cov_plot.get_legend()
+        leg.legendHandles[2].set_color('lightcoral')
         plt.show()
 
     def plot_len_comparison():
@@ -656,6 +666,12 @@ def test_plotting_separate(path='selectinf/randomized/tests/oper_char_vary_s.csv
         len_plot.legend(loc='lower center', ncol=3)
         len_plot.set_ylim(5, 18)
         plt.tight_layout()
+
+        for i in [2,5,8,11]:
+            mybox = len_plot.artists[i]
+            mybox.set_facecolor('lightcoral')
+        leg = len_plot.get_legend()
+        leg.legendHandles[2].set_color('lightcoral')
         plt.show()
 
     plot_naive()
