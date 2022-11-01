@@ -3,6 +3,7 @@ import pandas as pd
 import nose.tools as nt
 import seaborn as sns
 import matplotlib.pyplot as plt
+import time
 
 import regreg.api as rr
 
@@ -299,6 +300,7 @@ def test_comparison_logistic_group_lasso(n=500,
     oper_char["coverage rate"] = []
     oper_char["avg length"] = []
     oper_char["method"] = []
+    oper_char["runtime"] = []
 
     for signal_fac in [0.01, 0.03, 0.06, 0.1]: #[0.01, 0.03, 0.06, 0.1]:
         for i in range(iter):
@@ -370,6 +372,7 @@ def test_comparison_logistic_group_lasso(n=500,
                     oper_char["coverage rate"].append(np.mean(coverage))
                     oper_char["avg length"].append(np.mean(length))
                     oper_char["method"].append('MLE')
+                    oper_char["runtime"].append(0)
 
                     """
                     # Carving coverage
@@ -384,12 +387,14 @@ def test_comparison_logistic_group_lasso(n=500,
                     oper_char["coverage rate"].append(np.mean(coverage_ds))
                     oper_char["avg length"].append(np.mean(lengths_ds))
                     oper_char["method"].append('Data splitting')
+                    oper_char["runtime"].append(0)
 
                     # Naive coverage
                     oper_char["beta size"].append(signal_str)
                     oper_char["coverage rate"].append(np.mean(coverage_naive))
                     oper_char["avg length"].append(np.mean(lengths_naive))
                     oper_char["method"].append('Naive')
+                    oper_char["runtime"].append(0)
 
                     break  # Go to next iteration if we have some selection
 
@@ -439,6 +444,7 @@ def test_comparison_logistic_lasso_vary_s(n=500,
     oper_char["coverage rate"] = []
     oper_char["avg length"] = []
     oper_char["method"] = []
+    oper_char["runtime"] = []
 
     for s in [5,8,10,15]: #[0.01, 0.03, 0.06, 0.1]:
         for i in range(iter):
@@ -481,11 +487,14 @@ def test_comparison_logistic_lasso_vary_s(n=500,
 
                 if not noselection:
                     # MLE inference
+                    start = time.perf_counter()
                     coverage, length, beta_target, nonzero = \
                         randomization_inference(X=X, Y=Y, n=n, p=p,
                                                 beta=beta, const=const,
                                                 groups=groups, hess=hessian)
-
+                    end = time.perf_counter()
+                    MLE_runtime = end - start
+                    print(MLE_runtime)
                     noselection = (coverage is None)
                     if noselection:
                         print('No selection for MLE')
@@ -516,6 +525,7 @@ def test_comparison_logistic_lasso_vary_s(n=500,
                     oper_char["coverage rate"].append(np.mean(coverage))
                     oper_char["avg length"].append(np.mean(length))
                     oper_char["method"].append('MLE')
+                    oper_char["runtime"].append(MLE_runtime)
 
                     """
                     # Carving coverage
@@ -530,12 +540,14 @@ def test_comparison_logistic_lasso_vary_s(n=500,
                     oper_char["coverage rate"].append(np.mean(coverage_ds))
                     oper_char["avg length"].append(np.mean(lengths_ds))
                     oper_char["method"].append('Data splitting')
+                    oper_char["runtime"].append(0)
 
                     # Naive coverage
                     oper_char["sparsity size"].append(s)
                     oper_char["coverage rate"].append(np.mean(coverage_naive))
                     oper_char["avg length"].append(np.mean(lengths_naive))
                     oper_char["method"].append('Naive')
+                    oper_char["runtime"].append(0)
 
                     break  # Go to next iteration if we have some selection
 
@@ -608,14 +620,13 @@ def test_plotting(path='selectinf/randomized/tests/oper_char_vary_s.csv'):
 
 def test_plotting_separate(path='selectinf/randomized/tests/oper_char_vary_s.csv'):
     oper_char_df = pd.read_csv(path)
-    naive_flag = oper_char_df["method"] == "Na$\ddot{i}$ve"
-    oper_char_df.loc[naive_flag, "method"] = 'Naive'
 
     #sns.histplot(oper_char_df["sparsity size"])
     #plt.show()
 
     def plot_naive():
         naive_flag = oper_char_df["method"] == 'Naive'
+        print(np.sum(naive_flag))
 
         print("Mean coverage rate/length:")
         print(oper_char_df.groupby(['sparsity size', 'method']).mean())
@@ -647,9 +658,11 @@ def test_plotting_separate(path='selectinf/randomized/tests/oper_char_vary_s.csv
         cov_plot.legend(loc='lower center', ncol=3)
         plt.tight_layout()
 
+        """
         for i in [2,5,8,11]:
             mybox = cov_plot.artists[i]
             mybox.set_facecolor('lightcoral')
+        """
         leg = cov_plot.get_legend()
         leg.legendHandles[2].set_color('lightcoral')
         plt.show()
@@ -667,13 +680,34 @@ def test_plotting_separate(path='selectinf/randomized/tests/oper_char_vary_s.csv
         len_plot.set_ylim(5, 18)
         plt.tight_layout()
 
+        """
         for i in [2,5,8,11]:
             mybox = len_plot.artists[i]
             mybox.set_facecolor('lightcoral')
+        """
         leg = len_plot.get_legend()
         leg.legendHandles[2].set_color('lightcoral')
+        plt.show()
+
+    def plot_MLE_runtime():
+        plt.figure(figsize=(8, 5))
+        MLE_flag = oper_char_df["method"] == 'MLE'
+
+        runtime_plot = sns.boxplot(y=oper_char_df.loc[MLE_flag, "runtime"],
+                                   x=oper_char_df.loc[MLE_flag, "sparsity size"],
+                                   # hue=oper_char_df["method"],
+                                   # palette="pastel",
+                                   #color='lightcoral',
+                                   color='lightskyblue',
+                                   orient="v",
+                                   linewidth=1)
+        runtime_plot.set(title='Runtime in Seconds for MLE')
+        runtime_plot.set_ylim(0, 1.)
+        # plt.tight_layout()
+        #runtime_plot.axhline(y=0.9, color='k', linestyle='--', linewidth=1)
         plt.show()
 
     plot_naive()
     plot_comparison()
     plot_len_comparison()
+    plot_MLE_runtime()
