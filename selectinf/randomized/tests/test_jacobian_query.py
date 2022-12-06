@@ -15,7 +15,8 @@ from ...base import (full_targets,
                      selected_targets,
                      debiased_targets)
 from selectinf.randomized.tests.instance import (gaussian_group_instance,
-                                                 logistic_group_instance)
+                                                 logistic_group_instance,
+                                                 poisson_group_instance)
 from selectinf.tests.instance import (gaussian_instance,
                                logistic_instance,
                                poisson_instance,
@@ -913,3 +914,109 @@ def test_selected_targets_split_group_logistic_lasso(n=500,
                 print("Lengths so far ", np.mean(oper_char["avg length"]))
 
                 break  # Go to next iteration if we have some selection
+
+def test_selected_targets_group_poisson_lasso(n=500,
+                                              p=200,
+                                              signal_fac=0.1,  # 1.2
+                                              sgroup=5,
+                                              groups=np.arange(50).repeat(4),
+                                              rho=0.3,
+                                              weight_frac=1.,
+                                              randomizer_scale=1,
+                                              level=0.90,
+                                              iter=10):
+    # Operating characteristics
+    oper_char = {}
+    oper_char["coverage rate"] = []
+    oper_char["avg length"] = []
+
+    for i in range(iter):
+
+        np.random.seed(i)
+
+        inst = logistic_group_instance
+        signal = np.sqrt(signal_fac * 2 * np.log(p))
+
+        while True:  # run until we get some selection
+            X, Y, beta = inst(n=n,
+                              p=p,
+                              signal=signal,
+                              sgroup=sgroup,
+                              groups=groups,
+                              ndiscrete=0,
+                              sdiscrete=0,
+                              equicorrelated=True,
+                              rho=rho,
+                              random_signs=True)[:3]
+
+            n, p = X.shape
+
+            ##estimate noise level in data
+
+            sigma_ = np.std(Y)
+
+            ##solve group LASSO with group penalty weights = weights
+
+            weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
+
+            conv = group_lasso.poisson(X=X,
+                                       counts=Y,
+                                       groups=groups,
+                                       weights=weights,
+                                       useJacobian=True,
+                                       ridge_term=0.,
+                                       randomizer_scale=randomizer_scale * sigma_)
+
+            signs, _ = conv.fit()
+            nonzero = (signs != 0)
+            print("dimensions", n, p, nonzero.sum())
+
+            if nonzero.sum() > 0:
+
+                # Solving the inferential target
+                def solve_target_restricted():
+
+                    Y_mean = np.exp(X.dot(beta))
+
+                    loglike = rr.glm.poisson(X, counts=Y_mean)
+                    # For LASSO, this is the OLS solution on X_{E,U}
+                    _beta_unpenalized = restricted_estimator(loglike,
+                                                             nonzero)
+                    return _beta_unpenalized
+
+                conv.setup_inference(dispersion=1)
+
+                target_spec = selected_targets(conv.loglike,
+                                               conv.observed_soln,
+                                               dispersion=1)
+
+                result = conv.inference(target_spec,
+                                        method='selective_MLE',
+                                        level=level)
+
+                pval = result['pvalue']
+                intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
+
+                beta_target = solve_target_restricted()
+
+                coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
+
+                # MLE coverage
+                oper_char["coverage rate"].append(np.mean(coverage))
+                oper_char["avg length"].append(np.mean(intervals[:, 1] - intervals[:, 0]))
+
+                print("Coverage so far ", np.mean(oper_char["coverage rate"]))
+                print("Lengths so far ", np.mean(oper_char["avg length"]))
+                #print(np.round(intervals[:, 0],1))
+                #print(np.round(intervals[:, 1], 1))
+                #print(np.round(beta_target, 1))
+
+                break  # Go to next iteration if we have some selection
+
+    oper_char_df = pd.DataFrame.from_dict(oper_char)
+
+    # cov_plot = \
+    sns.boxplot(y=oper_char_df["coverage rate"],
+                meanline=True,
+                orient="v")
+    plt.show()

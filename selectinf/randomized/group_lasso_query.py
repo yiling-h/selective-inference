@@ -318,6 +318,45 @@ class group_lasso(gaussian_query):
                            use_lasso=use_lasso,
                            perturb=perturb)
 
+    @staticmethod
+    def poisson(X,
+                counts,
+                groups,
+                weights,
+                quadratic=None,
+                ridge_term=0.,
+                perturb=None,
+                useJacobian=True,
+                randomizer_scale=None,
+                cov_rand=None,
+                use_lasso=True):  # should lasso solver be used when applicable - defaults to True
+
+        n, p = X.shape
+        loglike = rr.glm.poisson(X, counts, quadratic=quadratic)
+
+        # scale for randomizer
+        mean_diag = np.mean((X ** 2).sum(0))
+
+        if ridge_term is None:
+            ridge_term = np.sqrt(mean_diag) / np.sqrt(n - 1)
+
+        if randomizer_scale is None:
+            randomizer_scale = np.sqrt(mean_diag) * 0.5 * np.std(counts) * np.sqrt(n / (n - 1.))
+
+        if cov_rand is None:
+            randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
+        else:
+            randomizer = randomization.gaussian(cov_rand)
+
+        return group_lasso(loglike,
+                           groups,
+                           weights,
+                           ridge_term=ridge_term,
+                           randomizer=randomizer,
+                           useJacobian=useJacobian,
+                           use_lasso=use_lasso,
+                           perturb=perturb)
+
 class split_group_lasso(group_lasso):
 
     """
@@ -547,6 +586,29 @@ class split_group_lasso(group_lasso):
                                   trials=trials,
                                   quadratic=quadratic)
         n, p = X.shape
+
+        return split_group_lasso(loglike,
+                                 groups,
+                                 weights,
+                                 proportion_select=proportion,
+                                 randomizer=None,
+                                 useJacobian=useJacobian,
+                                 use_lasso=use_lasso,
+                                 perturb=perturb)
+
+    @staticmethod
+    def poisson(X,
+                counts,
+                groups,
+                weights,
+                proportion,
+                quadratic=None,
+                perturb=None,
+                useJacobian=True,
+                use_lasso=True):  # should lasso solver be used when applicable - defaults to True
+
+        n, p = X.shape
+        loglike = rr.glm.poisson(X, counts, quadratic=quadratic)
 
         return split_group_lasso(loglike,
                                  groups,
