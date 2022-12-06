@@ -131,6 +131,11 @@ def gaussian_group_instance(n=100, p=200, sgroup=7, sigma=5, rho=0., signal=7,
     beta /= np.sqrt(n)
 
     if scale:
+        # ----SCALE----
+        # scales X by sqrt(n) and sd
+        # if we need original X, uncomment the following line
+        # X_indi_raw = X_indi
+        # ----SCALE----
         scaling = X.std(0) * np.sqrt(n)
         X /= scaling[None, :]
         beta *= np.sqrt(n)
@@ -145,6 +150,13 @@ def gaussian_group_instance(n=100, p=200, sgroup=7, sigma=5, rho=0., signal=7,
         return tdist.rvs(df, size=n) / sd_t
 
     Y = (X.dot(beta) + _noise(n, df)) * sigma
+    # ----SCALE----
+    # uncomment line 158 if we need unscaled data
+    # note that in the usage of the function,
+    # we should now take "X, Y, beta, X_raw = inst(...)[:4]",
+    # where inst = gaussian_group_instance
+    # return X, Y, beta * sigma, X_raw, np.nonzero(active)[0], sigma, sigmaX
+    # ----SCALE----
     return X, Y, beta * sigma, np.nonzero(active)[0], sigma, sigmaX
 
 def logistic_group_instance(n=100, p=200, sgroup=7,
@@ -254,6 +266,11 @@ def logistic_group_instance(n=100, p=200, sgroup=7,
         X_indi = gen_discrete_variables()
 
         if scale:
+            # ----SCALE----
+            # scales X by sqrt(n) and sd
+            # if we need original X, uncomment the following line
+            # X_indi_raw = X_indi
+            # ----SCALE----
             scaling = X_indi.std(0) * np.sqrt(n)
             X_indi /= scaling[None, :]
 
@@ -300,6 +317,11 @@ def logistic_group_instance(n=100, p=200, sgroup=7,
             X -= X.mean(0)[None, :]
 
         if scale:
+            # ----SCALE----
+            # scales X by sqrt(n) and sd
+            # if we need original X, uncomment the following line
+            # X_raw = X
+            # ----SCALE----
             scaling = X.std(0) * np.sqrt(n)
             X /= scaling[None, :]
             beta *= np.sqrt(n)
@@ -313,6 +335,11 @@ def logistic_group_instance(n=100, p=200, sgroup=7,
             X -= X.mean(0)[None, :]
 
         if scale:
+            # ----SCALE----
+            # scales X by sqrt(n) and sd
+            # if we need original X, uncomment the following line
+            # X_raw = X
+            # ----SCALE----
             scaling = X.std(0) * np.sqrt(n)
             X /= scaling[None, :]
             beta *= np.sqrt(n)
@@ -320,11 +347,24 @@ def logistic_group_instance(n=100, p=200, sgroup=7,
 
         X = np.concatenate((X_indi,X),axis=1)
 
+    # ----SCALE----
+    # raw data
+    # uncomment if we need unscaled data
+    # X_raw = np.concatenate((X_indi_raw,X_raw),axis=1)
+    # ----SCALE----
+
     eta = linpred = np.dot(X, beta)
     pi = np.exp(eta) / (1 + np.exp(eta))
 
     Y = np.random.binomial(1, pi)
 
+    # ----SCALE----
+    # uncomment line 366 if we need unscaled data
+    # note that in the usage of the function,
+    # we should now take "X, Y, beta, X_raw = inst(...)[:4]",
+    # where inst = logistic_group_instance
+    # return X, Y, beta, X_raw, np.nonzero(active)[0], sigmaX
+    # ----SCALE----
     return X, Y, beta, np.nonzero(active)[0], sigmaX
 
 def poisson_group_instance(n=100, p=200, sgroup=7,
