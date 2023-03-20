@@ -399,6 +399,9 @@ def poisson_group_instance(n=100, p=200, sgroup=7,
     ndiscrete: int
         Among the active groups, how many of them correspond to a discrete variable
 
+    sdiscrete: int
+        Among the discrete variables, how many of them correspond to a nonzero slope
+
     nlevels: int
         How many levels of values does the discrete variables take?
         If the groups are uniformly of size k, then nlevels = k + 1
@@ -544,5 +547,277 @@ def poisson_group_instance(n=100, p=200, sgroup=7,
     lambda_ = np.exp(eta)
 
     Y = np.random.poisson(lam=lambda_)
+    print("lambda:", lambda_)
+
+    return X, Y, beta, np.nonzero(active)[0], sigmaX
+
+def quasi_poisson_group_instance(n=100, p=200, sgroup=7,
+                                 ndiscrete=4, nlevels=None, sdiscrete=2,
+                                 rho=0.3, signal=7, x_variance = 1, x_center = 0,
+                                 phi=2, # overdispersion parameter
+                                 random_signs=False,
+                                 scale=True, center=True,
+                                 groups=np.arange(20).repeat(10),
+                                 equicorrelated=True):
+    """A testing instance for the Poisson group LASSO.
+
+
+    If equicorrelated is True design is equi-correlated in the population,
+    normalized to have columns of norm 1.
+    If equicorrelated is False design is auto-regressive.
+    For the default settings, a $\\lambda$ of around 13.5
+    corresponds to the theoretical $E(\\|X^T\\epsilon\\|_{\\infty})$
+
+    Parameters
+    ----------
+
+    n : int
+        Sample size
+
+    p : int
+        Number of features
+
+    sgroup : int or list
+        True sparsity (number of active groups).
+        If a list, which groups are active
+
+    ndiscrete: int
+        Among the active groups, how many of them correspond to a discrete variable
+
+    sdiscrete: int
+        Among the discrete variables, how many of them correspond to a nonzero slope
+
+    nlevels: int
+        How many levels of values does the discrete variables take?
+        If the groups are uniformly of size k, then nlevels = k + 1
+
+    groups : array_like (1d, size == p)
+        Assignment of features to (non-overlapping) groups
+
+    rho : float
+        Equicorrelation value (must be in interval [0,1])
+
+    signal : float or (float, float)
+        Sizes for the coefficients. If a tuple -- then coefficients
+        are equally spaced between these values using np.linspace.
+        Note: the size of signal is for a "normalized" design, where np.diag(X.T.dot(X)) == np.ones(n).
+        If scale=False, this signal is divided by np.sqrt(n), otherwise it is unchanged.
+
+    x_variance : float
+        Variance of the entries of x (default 1)
+        How much we should scale up X.
+
+    x_center : float
+        Mean of the entries of x (default 0)
+        How much we should shift X.
+
+    random_signs : bool
+        If true, assign random signs to coefficients.
+        Else they are all positive
+
+    equicorrelated: bool
+        If true, design in equi-correlated,
+        Else design is AR.
+
+    Returns
+    -------
+
+    X : np.float((n,p))
+        Design matrix.
+
+    y : np.float(n)
+        Response vector.
+
+    beta : np.float(p)
+        True coefficients.
+
+    active : np.int(s)
+        Non-zero pattern.
+
+    sigma : float
+        Noise level.
+
+    sigmaX : np.ndarray((p,p))
+        Row covariance.
+    """
+    all_discrete = False
+    all_cts = False
+    if ndiscrete == 0:
+        all_cts = True
+    else:
+        if ndiscrete * (nlevels-1) == p:
+            all_discrete = True
+
+    def gen_one_variable():
+        probabilities = 1 / nlevels * np.ones(nlevels)
+        sample = np.random.choice(np.arange(nlevels), n, p=probabilities)
+        X = np.zeros((n, nlevels - 1))
+        for i in np.arange(nlevels):
+            if i != 0:
+                X[:, i - 1] = (sample == i).astype(int)
+
+        return X
+
+    def gen_discrete_variables():
+        X = None
+        for i in np.arange(ndiscrete):
+            if i == 0:
+                X = gen_one_variable()
+            else:
+                X = np.concatenate((X,gen_one_variable()),axis=1)
+        return X
+
+    if not all_cts:
+        X_indi = gen_discrete_variables()
+
+        if scale:
+            scaling = np.sqrt(n)
+            X_indi /= scaling
+    else:
+        X_indi = None
+
+    beta = np.zeros(p)
+    signal = np.atleast_1d(signal)
+
+    group_labels = np.unique(groups)
+
+    ## We mark the first `ndiscrete` groups to correspond to discrete r.v.s
+    if isinstance(sgroup, list):
+        group_active = sgroup
+    else:
+        if all_cts:
+            group_active = np.random.choice(group_labels, sgroup, replace=False)
+        elif all_discrete:
+            group_active = np.random.choice(group_labels, sdiscrete, replace=False)
+            #print("None null discrete variables:", np.sort(group_active))
+        else:
+            group_active = np.random.choice(np.arange(ndiscrete), sdiscrete, replace=False)
+            #print("None null discrete variables:", np.sort(group_active))
+            non_discrete_groups = np.setdiff1d(group_labels,np.arange(ndiscrete))
+            group_active = np.append(group_active,
+                                     np.random.choice(non_discrete_groups, sgroup-sdiscrete, replace=False))
+    #print('true active groups:', np.sort(group_active))
+
+    active = np.isin(groups, group_active)
+    #print("signal strength", signal)
+    if signal.shape == (1,):
+        beta[active] = signal[0]
+    else:
+        beta[active] = np.linspace(signal[0], signal[1], active.sum())
+    if random_signs:
+        beta[active] *= (2 * np.random.binomial(1, 0.5, size=(active.sum(),)) - 1.)
+    #print("most original beta scale:",  np.linalg.norm(beta))
+    beta /= np.sqrt(n) # beta / sqrt(n)
+
+    def gen_cts_variables(X_indi, beta_loop):
+
+        if all_discrete:
+            X = X_indi
+            sigmaX = None
+        elif all_cts:
+            from selectinf.tests.instance import _design
+            X, sigmaX = _design(n, p, rho, equicorrelated)[:2]
+            X *= np.sqrt(x_variance)
+            X += np.sqrt(x_center)
+            sigmaX *= x_variance
+
+            if center:
+                X -= X.mean(0)[None, :]
+
+            if scale:
+                scaling = X.std(0) * np.sqrt(n)
+                X /= scaling[None, :]
+                # beta_loop *= np.sqrt(n)
+                sigmaX = sigmaX / np.multiply.outer(scaling, scaling)
+        else:
+            from selectinf.tests.instance import _design
+            X, sigmaX = _design(n, p - ndiscrete * (nlevels - 1),
+                                rho, equicorrelated)[:2]
+            X *= np.sqrt(x_variance)
+            X += np.sqrt(x_center)
+            sigmaX *= x_variance
+
+            if center:
+                X -= X.mean(0)[None, :]
+
+            if scale:
+                scaling = X.std(0) * np.sqrt(n)
+                X /= scaling[None, :]
+                # beta_loop *= np.sqrt(n)
+                sigmaX = sigmaX / np.multiply.outer(scaling, scaling)
+
+            X = np.concatenate((X_indi,X),axis=1)
+
+        return X, beta_loop, sigmaX
+
+    X, _, sigmaX = gen_cts_variables(X_indi, beta)
+    beta_new = np.zeros(beta.shape)
+    if scale:
+        beta_new = beta * np.sqrt(n)
+    else:
+        beta_new = beta
+
+    eta = linpred = np.dot(X, beta_new)
+    lambda_ = np.exp(eta)
+    #print("mean X, var X before loop", np.mean(X), np.var(X))
+    #print("beta norm before loop", np.linalg.norm(beta))
+    #print("mean lambda before loop", np.mean(lambda_))
+    #print("lambda > 1", (lambda_ > 1).sum())
+
+    # reject sampling: guarantee exp(eta*beta) > 1
+    while (lambda_ > 5).sum() < n:
+        #print("lambda > 5", (lambda_ > 5).sum())
+        #print(X.shape)
+        # Generate indicators
+        if not all_cts:
+            X_indi_new = gen_discrete_variables()
+            if scale:
+                scaling = np.sqrt(n)
+                X_indi_new /= scaling
+        else:
+            X_indi_new = None
+        # Generate continuous variables
+        X_new, _, _ = gen_cts_variables(X_indi_new,beta)
+        # beta_new is proportional to beta, by a factor of sqrt(n)
+        # depending on the variable 'scale'
+        beta_new = np.zeros(beta.shape)
+        if scale:
+            beta_new = beta * np.sqrt(n)
+        else:
+            beta_new = beta
+        X = np.concatenate((X,X_new), axis=0)
+        # print('new X dimension:', X.shape)
+        eta = linpred = np.dot(X, beta_new)
+        lambda_ = np.exp(eta)
+        #print("mean lambda in loop", np.mean(lambda_))
+        # print("mean X, var X in loop", np.mean(X), np.var(X))
+        # print("beta norm in loop", np.linalg.norm(beta))
+    if scale:
+        beta *= np.sqrt(n)
+        # print("beta norm after scaling", np.linalg.norm(beta))
+    # Truncate X to the first n valid samples
+    X = X[(lambda_ > 5)]
+    X = X[0:n]
+    #print("mean X, var X at the end", np.mean(X), np.var(X))
+    #print("beta norm at the end", np.linalg.norm(beta))
+    eta = linpred = np.dot(X, beta)
+    lambda_ = np.exp(eta)
+    #print("lambda:", lambda_)
+    #print("mean lambda at the end", np.mean(lambda_))
+    #print("lambda > 5 at the end", (lambda_ > 5).sum())
+
+    def random_quasi_poisson(n_sample, mu, phi):
+        assert mu>5
+        #print("true mean", (mu / (phi - 1)) * (1 - 1 / phi) * phi)
+        #print("mean: ", np.round(mu / (phi - 1)) * (1 - 1 / phi) * phi)
+        #print("true var: ", np.round(mu / (phi - 1)) * (1 - 1 / phi) * phi)
+        #print("var: ", np.round(mu / (phi - 1)) * (1 - 1 / phi) * phi ** 2)
+        return np.random.negative_binomial(n=np.round(mu / (phi - 1)), p=1 / phi,
+                                           size=n_sample)
+
+    Y = np.zeros((n,))
+    for i in range(n):
+        Y[i] = random_quasi_poisson(n_sample=1, mu = lambda_[i], phi=phi)
+    #print(Y)
 
     return X, Y, beta, np.nonzero(active)[0], sigmaX
