@@ -27,162 +27,189 @@ from ...base import restricted_estimator
 
 def test_possion_vs_quasi_solutions(n=500,
                                     p=200,
-                                    signal_fac=1,  # 1.2
+                                    signal_fac=0.1,  # 1.2
                                     sgroup=5,
                                     groups=np.arange(50).repeat(4),
                                     rho=0.3,
                                     weight_frac=1.,
-                                    randomizer_scale=1,
+                                    randomizer_scale=0.71,
                                     level=0.90,
-                                    iter=5):
+                                    iter=50):
         # Operating characteristics
-        oper_char_p = {}
-        oper_char_p["coverage rate"] = []
-        oper_char_p["avg length"] = []
-        oper_char_q = {}
-        oper_char_q["coverage rate"] = []
-        oper_char_q["avg length"] = []
+        oper_char = {}
+        oper_char["coverage rate"] = []
+        oper_char["avg length"] = []
+        oper_char["sparsity size"] = []
+        oper_char["method"] = []
 
-        for i in range(iter):
+        for s in [5]:#[2, 5, 8, 10]:
+            for i in range(iter):
 
-            inst = quasi_poisson_group_instance
-            signal = np.sqrt(signal_fac * 2 * np.log(p))
-            print("signal:", signal)
+                inst = quasi_poisson_group_instance
+                signal = np.sqrt(signal_fac * 2 * np.log(p))
+                print("signal:", signal)
 
-            while True:  # run until we get some selection
-                X, Y, beta = inst(n=n,
-                                  p=p,
-                                  signal=signal,
-                                  sgroup=sgroup,
-                                  groups=groups,
-                                  ndiscrete=0,
-                                  sdiscrete=0,
-                                  equicorrelated=True,
-                                  rho=rho,
-                                  random_signs=False, # changed
-                                  center=False,
-                                  scale=True)[:3]     # changed
-                print("X mean:", np.mean(X), "X var", np.var(X))
-                print("beta norm", np.linalg.norm(beta))
-                print("Y mean:", np.mean(Y))
-                n, p = X.shape
+                while True:  # run until we get some selection
+                    X, Y, beta = inst(n=n,
+                                      p=p,
+                                      signal=signal,
+                                      sgroup=sgroup,
+                                      groups=groups,
+                                      ndiscrete=0,
+                                      sdiscrete=0,
+                                      equicorrelated=False,
+                                      rho=rho,
+                                      phi=1.5,
+                                      random_signs=True, # changed
+                                      center=False,
+                                      scale=True)[:3]     # changed
+                    print("X mean:", np.mean(X), "X var", np.var(X))
+                    print("beta norm", np.linalg.norm(beta))
+                    print("Y mean:", np.mean(Y))
+                    n, p = X.shape
 
-                ##estimate noise level in data
+                    ##estimate noise level in data
 
-                sigma_ = np.std(Y)
+                    sigma_ = np.std(Y)
+                    print(sigma_)
 
-                ##solve group LASSO with group penalty weights = weights
+                    ##solve group LASSO with group penalty weights = weights
 
-                weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
-
-
-                conv = group_lasso.poisson(X=X,
-                                           counts=Y,
-                                           groups=groups,
-                                           weights=weights,
-                                           useJacobian=True,
-                                           ridge_term=0.,
-                                           randomizer_scale=randomizer_scale * sigma_)
+                    weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
 
 
-                signs_poisson, _ = conv.fit()
-                nonzero_poisson = (signs_poisson != 0)
-                #print(nonzero_poisson.shape)
-
-                omega = conv._initial_omega
-
-                conv_quasi = group_lasso_quasi.quasipoisson(X=X,
-                                                            counts=Y,
-                                                            groups=groups,
-                                                            weights=weights,
-                                                            useJacobian=True,
-                                                            ridge_term=0.,
-                                                            perturb=omega,
-                                                            randomizer_scale=randomizer_scale * sigma_)
+                    conv = group_lasso.poisson(X=X,
+                                               counts=Y,
+                                               groups=groups,
+                                               weights=weights,
+                                               useJacobian=True,
+                                               ridge_term=0.,
+                                               randomizer_scale=randomizer_scale * sigma_)
 
 
-                signs_quasi, _ = conv_quasi.fit()
-                nonzero_quasi = (signs_quasi != 0)
+                    signs_poisson, _ = conv.fit()
+                    nonzero_poisson = (signs_poisson != 0)
+                    #print(nonzero_poisson.shape)
 
-                if nonzero_quasi.sum() > 0 and nonzero_poisson.sum() > 0:
-                    # Solving the inferential target
-                    def solve_target_restricted():
-                        Y_mean = np.exp(X.dot(beta))
+                    omega = conv._initial_omega
 
-                        loglike = rr.glm.poisson(X, counts=Y_mean)
-                        # For LASSO, this is the OLS solution on X_{E,U}
-                        _beta_unpenalized = restricted_estimator(loglike,
-                                                                 nonzero_quasi)
-                        return _beta_unpenalized
+                    conv_quasi = group_lasso_quasi.quasipoisson(X=X,
+                                                                counts=Y,
+                                                                groups=groups,
+                                                                weights=weights,
+                                                                useJacobian=True,
+                                                                ridge_term=0.,
+                                                                perturb=omega,
+                                                                randomizer_scale=randomizer_scale * sigma_)
 
-                    # Quasi-poisson inference
-                    conv_quasi.setup_inference(dispersion=1)
 
-                    #cov_score_quasi = conv_quasi._unscaled_cov_score
-                    cov_score_quasi = conv_quasi._unscaled_cov_score
+                    signs_quasi, _ = conv_quasi.fit()
+                    nonzero_quasi = (signs_quasi != 0)
 
-                    target_spec_quasi = selected_targets_quasi(loglike=conv_quasi.loglike,
-                                                               solution=conv_quasi.observed_soln,
-                                                               cov_score=cov_score_quasi,
-                                                               dispersion=1)
+                    if nonzero_quasi.sum() > 0 and nonzero_poisson.sum() > 0:
+                        # Solving the inferential target
+                        def solve_target_restricted():
+                            Y_mean = np.exp(X.dot(beta))
 
-                    def estimate_phi():
-                        def solve_MLE():
-                            loglike = rr.glm.poisson(X, counts=Y)
+                            loglike = rr.glm.poisson(X, counts=Y_mean)
                             # For LASSO, this is the OLS solution on X_{E,U}
-                            beta_hat = restricted_estimator(loglike, np.ones(p, dtype=bool))
-                            return beta_hat
+                            _beta_unpenalized = restricted_estimator(loglike,
+                                                                     nonzero_quasi)
+                            return _beta_unpenalized
 
-                        beta_hat = solve_MLE()
-                        mu_hat = np.exp(X @ beta_hat)  # Fitted values
-                        overdispersion = 1 / (n - p) * ((Y - mu_hat) ** 2).T @ (1 / mu_hat)
-                        print("Full data phi:", overdispersion)
-                    # estimate_phi()
+                        # Quasi-poisson inference
+                        conv_quasi.setup_inference(dispersion=1/(conv_quasi.overdispersion)**2)
 
-                    # Poisson inference
-                    conv.setup_inference(dispersion=1)
+                        #cov_score_quasi = conv_quasi._unscaled_cov_score
+                        cov_score_quasi = conv_quasi._unscaled_cov_score
 
-                    target_spec = selected_targets(loglike=conv.loglike,
-                                                   solution=conv.observed_soln,
-                                                   dispersion=1)
-                    result_quasi = conv_quasi.inference(target_spec_quasi,
-                                                        method='selective_MLE',
-                                                        level=level)
-                    result = conv.inference(target_spec,
-                                            method='selective_MLE',
-                                            level=level)
+                        target_spec_quasi = selected_targets_quasi(loglike=conv_quasi.loglike,
+                                                                   solution=conv_quasi.observed_soln,
+                                                                   cov_score=cov_score_quasi,
+                                                                   dispersion=1)
 
-                    # Comparing results
-                    pval = result['pvalue']
-                    intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
-                    pval_quasi = result_quasi['pvalue']
-                    intervals_quasi = np.asarray(result_quasi[['lower_confidence', 'upper_confidence']])
+                        def estimate_phi():
+                            def solve_MLE():
+                                loglike = rr.glm.poisson(X, counts=Y)
+                                # For LASSO, this is the OLS solution on X_{E,U}
+                                beta_hat = restricted_estimator(loglike, np.ones(p, dtype=bool))
+                                return beta_hat
 
-                    beta_target = solve_target_restricted()
-                    coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
-                    coverage_quasi = (beta_target > intervals_quasi[:, 0]) * (beta_target < intervals_quasi[:, 1])
+                            beta_hat = solve_MLE()
+                            mu_hat = np.exp(X @ beta_hat)  # Fitted values
+                            overdispersion = 1 / (n - p) * ((Y - mu_hat) ** 2).T @ (1 / mu_hat)
+                            print("Full data phi:", overdispersion)
+                        # estimate_phi()
 
-                    # Tabulate results
-                    d = {'target': beta_target,
-                         'L_Poisson': intervals[:, 0], 'U_Poisson': intervals[:, 1],
-                         'Coverage_P': coverage,
-                         'L_Quasi': intervals_quasi[:, 0], 'U_Quasi': intervals_quasi[:, 1],
-                         'Coverage_Q': coverage_quasi}
-                    df = pd.DataFrame(data=d)
-                    print(df)
+                        # Poisson inference
+                        conv.setup_inference(dispersion=1)
 
-                    # MLE coverage
-                    oper_char_p["coverage rate"].append(np.mean(coverage))
-                    oper_char_p["avg length"].append(np.mean(intervals[:, 1] - intervals[:, 0]))
-                    oper_char_q["coverage rate"].append(np.mean(coverage_quasi))
-                    oper_char_q["avg length"].append(np.mean(intervals_quasi[:, 1] - intervals_quasi[:, 0]))
+                        target_spec = selected_targets(loglike=conv.loglike,
+                                                       solution=conv.observed_soln,
+                                                       dispersion=1)
+                        result_quasi = conv_quasi.inference(target_spec_quasi,
+                                                            method='selective_MLE',
+                                                            level=level)
+                        result = conv.inference(target_spec,
+                                                method='selective_MLE',
+                                                level=level)
 
-                    print("Coverage so far ", np.mean(oper_char_p["coverage rate"]))
-                    print("Lengths so far ", np.mean(oper_char_p["avg length"]))
-                    print("Coverage so far (quasi) ", np.mean(oper_char_q["coverage rate"]))
-                    print("Lengths so far (quasi) ", np.mean(oper_char_q["avg length"]))
-                    # print(np.round(intervals[:, 0],1))
-                    # print(np.round(intervals[:, 1], 1))
-                    # print(np.round(beta_target, 1))
+                        # Comparing results
+                        pval = result['pvalue']
+                        intervals = np.asarray(result[['lower_confidence', 'upper_confidence']])
+                        pval_quasi = result_quasi['pvalue']
+                        intervals_quasi = np.asarray(result_quasi[['lower_confidence', 'upper_confidence']])
 
-                    break  # Go to next iteration if we have some selection
+                        beta_target = solve_target_restricted()
+                        coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
+                        coverage_quasi = (beta_target > intervals_quasi[:, 0]) * (beta_target < intervals_quasi[:, 1])
+
+                        """
+                        # Tabulate results
+                        d = {'target': beta_target,
+                             'L_Poisson': intervals[:, 0], 'U_Poisson': intervals[:, 1],
+                             'Coverage_P': coverage,
+                             'L_Quasi': intervals_quasi[:, 0], 'U_Quasi': intervals_quasi[:, 1],
+                             'Coverage_Q': coverage_quasi}
+                        df = pd.DataFrame(data=d)
+                        print(df)
+                        """
+
+                        # MLE coverage
+                        oper_char["coverage rate"].append(np.mean(coverage))
+                        oper_char["sparsity size"].append(s)
+                        oper_char["avg length"].append(np.mean(intervals[:, 1] - intervals[:, 0]))
+                        oper_char["method"].append("Poisson")
+
+                        oper_char["coverage rate"].append(np.mean(coverage_quasi))
+                        oper_char["sparsity size"].append(s)
+                        oper_char["avg length"].append(np.mean(intervals_quasi[:, 1] - intervals_quasi[:, 0]))
+                        oper_char["method"].append("Quasi Poisson")
+
+                        # print(np.round(intervals[:, 0],1))
+                        # print(np.round(intervals[:, 1], 1))
+                        # print(np.round(beta_target, 1))
+
+                        break  # Go to next iteration if we have some selection
+        oper_char_df = pd.DataFrame.from_dict(oper_char)
+        oper_char_df.to_csv('selectinf/randomized/tests/oper_char_vary_s_qp_phi1_5.csv', index=False)
+
+def test_plot_from_csv(path='selectinf/randomized/tests/oper_char_vary_s_qp_phi1_5.csv'):
+    oper_char_df = pd.read_csv(path)
+    cov_plot = sns.boxplot(y=oper_char_df["coverage rate"],
+                           x=oper_char_df["sparsity size"],
+                           hue=oper_char_df["method"],
+                           showmeans=True,
+                           orient="v")
+    cov_plot.set_ylim(0.2, 1)
+    cov_plot.set(title='Coverage (phi=1.5)')
+    plt.show()
+
+    len_plot = sns.boxplot(y=oper_char_df["avg length"],
+                           x=oper_char_df["sparsity size"],
+                           hue=oper_char_df["method"],
+                           showmeans=True,
+                           orient="v")
+    len_plot.set_ylim(0, 10)
+    len_plot.set(title='Length (phi=1.5)')
+    plt.show()

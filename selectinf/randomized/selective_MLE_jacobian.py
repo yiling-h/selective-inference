@@ -46,12 +46,6 @@ class mle_inference(object):
             # active_dirs
             JS = self.Jacobian_spec
 
-        # In the context of group Lasso, the quantities U1-U5 are:
-        # U1 =
-        # U2 = A' {\Omega^-1} A = (regress_score_target.T.dot(self.prec_randomizer).dot(regress_score_target))
-        # U3 = \barA' {\bar\Omega^-1} \barA = regress_opt_target.T.dot(prec_opt).dot(regress_opt_target)
-        # U4 =
-        # U5 = \barA' {\bar\Omega^-1}
         U1, U2, U3, U4, U5= target_query_Interactspec(QS,
                                                       TS.regress_target_score,
                                                       TS.cov_target)

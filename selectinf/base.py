@@ -105,6 +105,71 @@ def selected_targets(loglike,
                       regress_target_score,
                       alternatives)
 
+def selected_targets_quasi(loglike,
+                           solution,
+                           cov_score,
+                           features=None,
+                           sign_info={},
+                           dispersion=None,
+                           solve_args={'tol': 1.e-12, 'min_its': 100},
+                           hessian=None):
+
+    if features is None:
+        features = solution != 0
+
+    X, y = loglike.data
+    n, p = X.shape
+
+    # OLS solution: \hat\beta_S = (X_E'X_E)^-1 X_E Y
+    observed_target = restricted_estimator(loglike, features, solve_args=solve_args)
+    linpred = X[:, features].dot(observed_target)
+
+    # Hfeat = _hessian_active = H_{:,E}
+    Hfeat = _compute_hessian(loglike,
+                             solution,
+                             features)[1]
+    # Qfeat = H_{E,E}
+    Qfeat = Hfeat[features]
+    Qinv = np.linalg.inv(Qfeat)
+    #print("Qinv shape", Qinv.shape)
+
+    # Kfeat = K_{E,E}
+    Kfeat = cov_score[:,features]
+    Kfeat = Kfeat[features,:]
+    #print("Kfeat shape", Kfeat.shape)
+
+    print("H norm: ", np.linalg.norm(Qfeat, 'fro'))
+    print("K norm: ", np.linalg.norm(Kfeat, 'fro'))
+    print("H-K norm: ", np.linalg.norm(Qfeat - Kfeat, 'fro'))
+
+    # cov_target: \Sigma_E
+    cov_target = Qinv @ Kfeat @ Qinv
+    print("Sigma_E norm: ", np.linalg.norm(cov_target, 'fro'))
+    print("H^{-1} norm: ", np.linalg.norm(Qinv, 'fro'))
+    print("H^{-1}-Sigma_E norm: ", np.linalg.norm(cov_target - Qinv, 'fro'))
+    #print("Cov target shape", cov_target.shape)
+    alternatives = ['twosided'] * features.sum()
+    features_idx = np.arange(p)[features]
+
+    for i in range(len(alternatives)):
+        if features_idx[i] in sign_info.keys():
+            alternatives[i] = sign_info[features_idx[i]]
+
+    if dispersion is None:  # use Pearson's X^2
+        dispersion = _pearsonX2(y,
+                                linpred,
+                                loglike,
+                                observed_target.shape[0])
+
+    regress_target_score = np.zeros((Qinv.shape[0], p))
+    # regress_target_score = [ (X_E'X_E)^-1  0_{-E} ]
+    regress_target_score[:,features] = Qinv
+
+    return TargetSpec(observed_target,
+                      cov_target * dispersion,
+                      regress_target_score,
+                      alternatives)
+
 def full_targets(loglike, 
                  solution,
                  features=None,
