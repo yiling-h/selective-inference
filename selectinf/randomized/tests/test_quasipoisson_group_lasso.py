@@ -118,7 +118,7 @@ def randomization_inference(X, Y, n, p, beta, groups, K=None,
                                           weights=weights,
                                           useJacobian=True,
                                           ridge_term=0.,
-                                          perturb=np.zeros(p),
+                                          # perturb=np.zeros(p),
                                           cov_rand=K)
 
     signs, _ = conv.fit()
