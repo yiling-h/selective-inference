@@ -30,7 +30,9 @@ def _design(n, p, rho, equicorrelated):
         X = np.random.standard_normal((n, p)).dot(cholX.T)
     return X, sigmaX, cholX
 
-def gaussian_group_instance(n=100, p=200, sgroup=7, sigma=5, rho=0., signal=7,
+def gaussian_group_instance(n=100, p=200, sgroup=7,
+                            ndiscrete=4, nlevels=None, sdiscrete=2,
+                            sigma=5, rho=0., signal=7,
                             random_signs=False, df=np.inf,
                             scale=True, center=True,
                             groups=np.arange(20).repeat(10),
@@ -105,20 +107,65 @@ def gaussian_group_instance(n=100, p=200, sgroup=7, sigma=5, rho=0., signal=7,
     sigmaX : np.ndarray((p,p))
         Row covariance.
     """
-    from selectinf.tests.instance import _design
-    X, sigmaX = _design(n, p, rho, equicorrelated)[:2]
+    all_discrete = False
+    all_cts = False
+    if ndiscrete == 0:
+        all_cts = True
+    elif ndiscrete * (nlevels - 1) == p:
+        all_discrete = True
 
-    if center:
-        X -= X.mean(0)[None, :]
+    def gen_one_variable():
+        probabilities = 1 / nlevels * np.ones(nlevels)
+        sample = np.random.choice(np.arange(nlevels), n, p=probabilities)
+        X = np.zeros((n, nlevels - 1))
+        for i in np.arange(nlevels):
+            if i != 0:
+                X[:, i - 1] = (sample == i).astype(int)
+
+        return X
+
+    def gen_discrete_variables():
+        X = None
+        for i in np.arange(ndiscrete):
+            if i == 0:
+                X = gen_one_variable()
+            else:
+                X = np.concatenate((X, gen_one_variable()), axis=1)
+        return X
+
+    if not all_cts:
+        X_indi = gen_discrete_variables()
+
+        if scale:
+            # ----SCALE----
+            # scales X by sqrt(n) and sd
+            # if we need original X, uncomment the following line
+            # X_indi_raw = X_indi
+            # ----SCALE----
+            scaling = X_indi.std(0) * np.sqrt(n)
+            X_indi /= scaling[None, :]
 
     beta = np.zeros(p)
     signal = np.atleast_1d(signal)
 
     group_labels = np.unique(groups)
+
+    ## We mark the first `ndiscrete` groups to correspond to discrete r.v.s
     if isinstance(sgroup, list):
         group_active = sgroup
     else:
-        group_active = np.random.choice(group_labels, sgroup, replace=False)
+        if all_cts:
+            group_active = np.random.choice(group_labels, sgroup, replace=False)
+        elif all_discrete:
+            group_active = np.random.choice(group_labels, sdiscrete, replace=False)
+            # print("None null discrete variables:", np.sort(group_active))
+        else:
+            group_active = np.random.choice(np.arange(ndiscrete), sdiscrete, replace=False)
+            # print("None null discrete variables:", np.sort(group_active))
+            non_discrete_groups = np.setdiff1d(group_labels, np.arange(ndiscrete))
+            group_active = np.append(group_active,
+                                     np.random.choice(non_discrete_groups, sgroup - sdiscrete, replace=False))
+    # print('true active groups:', np.sort(group_active))
 
     active = np.isin(groups, group_active)
 
@@ -130,16 +177,46 @@ def gaussian_group_instance(n=100, p=200, sgroup=7, sigma=5, rho=0., signal=7,
         beta[active] *= (2 * np.random.binomial(1, 0.5, size=(active.sum(),)) - 1.)
     beta /= np.sqrt(n)
 
-    if scale:
-        # ----SCALE----
-        # scales X by sqrt(n) and sd
-        # if we need original X, uncomment the following line
-        # X_indi_raw = X_indi
-        # ----SCALE----
-        scaling = X.std(0) * np.sqrt(n)
-        X /= scaling[None, :]
-        beta *= np.sqrt(n)
-        sigmaX = sigmaX / np.multiply.outer(scaling, scaling)
+    if all_discrete:
+        X = X_indi
+        sigmaX = None
+    elif all_cts:
+        from selectinf.tests.instance import _design
+        X, sigmaX = _design(n, p, rho, equicorrelated)[:2]
+
+        if center:
+            X -= X.mean(0)[None, :]
+
+        if scale:
+            # ----SCALE----
+            # scales X by sqrt(n) and sd
+            # if we need original X, uncomment the following line
+            # X_raw = X
+            # ----SCALE----
+            scaling = X.std(0) * np.sqrt(n)
+            X /= scaling[None, :]
+            beta *= np.sqrt(n)
+            sigmaX = sigmaX / np.multiply.outer(scaling, scaling)
+    else:
+        from selectinf.tests.instance import _design
+        X, sigmaX = _design(n, p - ndiscrete * (nlevels - 1),
+                            rho, equicorrelated)[:2]
+
+        if center:
+            X -= X.mean(0)[None, :]
+
+        if scale:
+            # ----SCALE----
+            # scales X by sqrt(n) and sd
+            # if we need original X, uncomment the following line
+            # X_raw = X
+            # ----SCALE----
+            scaling = X.std(0) * np.sqrt(n)
+            X /= scaling[None, :]
+            beta *= np.sqrt(n)
+            sigmaX = sigmaX / np.multiply.outer(scaling, scaling)
+
+        X = np.concatenate((X_indi, X), axis=1)
 
     # noise model
     def _noise(n, df=np.inf):

@@ -42,7 +42,7 @@ def test_possion_vs_quasi_solutions(n=500,
         oper_char["sparsity size"] = []
         oper_char["method"] = []
 
-        for s in [5]:#[2, 5, 8, 10]:
+        for s in [2, 5, 8, 10]:
             for i in range(iter):
 
                 inst = quasi_poisson_group_instance
@@ -118,7 +118,7 @@ def test_possion_vs_quasi_solutions(n=500,
                             return _beta_unpenalized
 
                         # Quasi-poisson inference
-                        conv_quasi.setup_inference(dispersion=1/(conv_quasi.overdispersion)**2)
+                        conv_quasi.setup_inference(dispersion=1)#conv_quasi.overdispersion)
 
                         #cov_score_quasi = conv_quasi._unscaled_cov_score
                         cov_score_quasi = conv_quasi._unscaled_cov_score
@@ -126,20 +126,8 @@ def test_possion_vs_quasi_solutions(n=500,
                         target_spec_quasi = selected_targets_quasi(loglike=conv_quasi.loglike,
                                                                    solution=conv_quasi.observed_soln,
                                                                    cov_score=cov_score_quasi,
-                                                                   dispersion=1)
+                                                                   dispersion=1)#conv_quasi.overdispersion)
 
-                        def estimate_phi():
-                            def solve_MLE():
-                                loglike = rr.glm.poisson(X, counts=Y)
-                                # For LASSO, this is the OLS solution on X_{E,U}
-                                beta_hat = restricted_estimator(loglike, np.ones(p, dtype=bool))
-                                return beta_hat
-
-                            beta_hat = solve_MLE()
-                            mu_hat = np.exp(X @ beta_hat)  # Fitted values
-                            overdispersion = 1 / (n - p) * ((Y - mu_hat) ** 2).T @ (1 / mu_hat)
-                            print("Full data phi:", overdispersion)
-                        # estimate_phi()
 
                         # Poisson inference
                         conv.setup_inference(dispersion=1)
@@ -210,6 +198,6 @@ def test_plot_from_csv(path='selectinf/randomized/tests/oper_char_vary_s_qp_phi1
                            hue=oper_char_df["method"],
                            showmeans=True,
                            orient="v")
-    len_plot.set_ylim(0, 10)
+    len_plot.set_ylim(0, 15)
     len_plot.set(title='Length (phi=1.5)')
     plt.show()

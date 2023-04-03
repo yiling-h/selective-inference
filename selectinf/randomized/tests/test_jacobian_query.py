@@ -515,7 +515,8 @@ def test_selected_targets_split_logistic_lasso(n=500,
                 conv.setup_inference(dispersion=1)
 
                 target_spec = selected_targets(conv.loglike,
-                                               conv.observed_soln)
+                                               conv.observed_soln,
+                                               dispersion=1)
 
                 result = conv.inference(target_spec,
                                         'selective_MLE',
@@ -552,7 +553,7 @@ def test_selected_targets_split_logistic_lasso(n=500,
 
 def test_selected_targets_group_logistic_lasso(n=500,
                                                p=200,
-                                               signal_fac=0.01,#1.2
+                                               signal_fac=1,#1.2
                                                sgroup=5,
                                                groups=np.arange(50).repeat(4),
                                                rho=0.3,
@@ -578,6 +579,7 @@ def test_selected_targets_group_logistic_lasso(n=500,
                               signal=signal,
                               sgroup=sgroup,
                               groups=groups,
+                              ndiscrete=0,
                               equicorrelated=True,
                               rho=rho,
                               random_signs=True)[:3]
@@ -917,14 +919,14 @@ def test_selected_targets_split_group_logistic_lasso(n=500,
 
 def test_selected_targets_group_poisson_lasso(n=500,
                                               p=200,
-                                              signal_fac=0.1,  # 1.2
+                                              signal_fac=0.5,  # 1.2
                                               sgroup=5,
                                               groups=np.arange(50).repeat(4),
                                               rho=0.3,
                                               weight_frac=1.,
                                               randomizer_scale=1,
                                               level=0.90,
-                                              iter=10):
+                                              iter=100):
     # Operating characteristics
     oper_char = {}
     oper_char["coverage rate"] = []
@@ -934,7 +936,7 @@ def test_selected_targets_group_poisson_lasso(n=500,
 
         np.random.seed(i)
 
-        inst = logistic_group_instance
+        inst = poisson_group_instance
         signal = np.sqrt(signal_fac * 2 * np.log(p))
 
         while True:  # run until we get some selection
@@ -947,7 +949,7 @@ def test_selected_targets_group_poisson_lasso(n=500,
                               sdiscrete=0,
                               equicorrelated=True,
                               rho=rho,
-                              random_signs=True)[:3]
+                              random_signs=False)[:3]
 
             n, p = X.shape
 
@@ -1007,6 +1009,14 @@ def test_selected_targets_group_poisson_lasso(n=500,
 
                 print("Coverage so far ", np.mean(oper_char["coverage rate"]))
                 print("Lengths so far ", np.mean(oper_char["avg length"]))
+
+                # Tabulate results
+                d = {'target': beta_target,
+                     'Selective MLE': result['MLE'],
+                     'L_Poisson': intervals[:, 0], 'U_Poisson': intervals[:, 1],
+                     'Coverage_P': coverage}
+                df = pd.DataFrame(data=d)
+                print(df)
                 #print(np.round(intervals[:, 0],1))
                 #print(np.round(intervals[:, 1], 1))
                 #print(np.round(beta_target, 1))
@@ -1016,7 +1026,7 @@ def test_selected_targets_group_poisson_lasso(n=500,
     oper_char_df = pd.DataFrame.from_dict(oper_char)
 
     # cov_plot = \
-    sns.boxplot(y=oper_char_df["coverage rate"],
-                meanline=True,
-                orient="v")
-    plt.show()
+    # sns.boxplot(y=oper_char_df["coverage rate"],
+    #             meanline=True,
+    #             orient="v")
+    # plt.show()

@@ -124,12 +124,12 @@ class group_lasso(gaussian_query):
         self.observed_opt_state = np.hstack(ordered_opt)  # gammas as array
         num_opt_var = self.observed_opt_state.shape[0]
 
-        _beta_unpenalized = restricted_estimator(self.loglike,  # refit OLS on E
+        _beta_unpenalized = restricted_estimator(self.loglike,  # refit OLS (MLE) on E
                                                  overall,
                                                  solve_args=solve_args)
 
         beta_bar = np.zeros(self.nfeature)
-        beta_bar[overall] = _beta_unpenalized  # refit OLS beta with zeros
+        beta_bar[overall] = _beta_unpenalized  # refit OLS (MLE) beta with zeros
         self._beta_full = beta_bar
 
         X, y = self.loglike.data
@@ -149,7 +149,7 @@ class group_lasso(gaussian_query):
         self.active = active
 
         # compute part of hessian
-
+        # Not very much useful for non-carving inference
         _hessian, _hessian_active, _hessian_unpen = _compute_hessian(self.loglike,
                                                                      beta_bar,
                                                                      active,
@@ -255,6 +255,7 @@ class group_lasso(gaussian_query):
                  perturb=None,
                  useJacobian=True,
                  use_lasso=True,  # should lasso solver be used when applicable - defaults to True
+                 cov_rand=None,
                  randomizer_scale=None):
 
         loglike = rr.glm.gaussian(X, Y, coef=1. / sigma ** 2, quadratic=quadratic)
@@ -267,7 +268,10 @@ class group_lasso(gaussian_query):
         if randomizer_scale is None:
             randomizer_scale = np.sqrt(mean_diag) * 0.5 * np.std(Y) * np.sqrt(n / (n - 1.))
 
-        randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
+        if cov_rand is None:
+            randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
+        else:
+            randomizer = randomization.gaussian(cov_rand)
 
         return group_lasso(loglike,
                            groups,
@@ -370,9 +374,11 @@ class split_group_lasso(group_lasso):
                  proportion_select,
                  randomizer,
                  ridge_term=0,
+                 cov_rand=None,
                  useJacobian=True,
                  use_lasso=True,  # should lasso solver be used where applicable - defaults to True
                  perturb=None,
+                 perturb_objective=None,
                  estimate_dispersion=True):
 
         (self.loglike,
@@ -398,9 +404,18 @@ class split_group_lasso(group_lasso):
             self.penalty = rr.group_lasso(groups,
                                           weights=weights,
                                           lagrange=1.)
+        # If we want to solve a randomized objective on a subset of data instead
+        if cov_rand is not None:
+            self.randomizer = randomization.gaussian(cov_rand)
+            self._initial_omega = self.randomizer.sample()
+        else:
+            self.randomizer = randomizer # None
 
-        self._initial_omega = perturb
-        self.randomizer = randomizer
+        # If we have both cov_rand and perturb_objective, prioritize perturb_objective
+        if perturb_objective is None:
+            self._initial_omega = 0
+        else:
+            self._initial_omega = perturb_objective
 
         # Whether a Jacobian is needed for gaussian_query
         # this should always be true for group Lasso
@@ -525,7 +540,7 @@ class split_group_lasso(group_lasso):
         inv_frac = 1 / self.proportion_select
         quad = rr.identity_quadratic(self.ridge_term,
                                      0,
-                                     0,
+                                     -self._initial_omega, # typically 0, unless perturbation is enforced
                                      0)
 
         randomized_loss = self.loglike.subsample(self._selection_idx)
@@ -548,6 +563,7 @@ class split_group_lasso(group_lasso):
                  groups,
                  weights,
                  proportion,
+                 cov_rand=None,
                  sigma=1.,
                  quadratic=None,
                  perturb=None,
@@ -564,6 +580,7 @@ class split_group_lasso(group_lasso):
                                  groups,
                                  weights,
                                  proportion_select=proportion,
+                                 cov_rand=cov_rand,
                                  randomizer=None,
                                  useJacobian=useJacobian,
                                  use_lasso=use_lasso,
@@ -575,6 +592,7 @@ class split_group_lasso(group_lasso):
                  groups,
                  weights,
                  proportion,
+                 cov_rand=None,
                  trials=None,
                  quadratic=None,
                  perturb=None,
@@ -590,6 +608,7 @@ class split_group_lasso(group_lasso):
         return split_group_lasso(loglike,
                                  groups,
                                  weights,
+                                 cov_rand=cov_rand,
                                  proportion_select=proportion,
                                  randomizer=None,
                                  useJacobian=useJacobian,
@@ -602,6 +621,7 @@ class split_group_lasso(group_lasso):
                 groups,
                 weights,
                 proportion,
+                cov_rand=None,
                 quadratic=None,
                 perturb=None,
                 useJacobian=True,
@@ -613,6 +633,7 @@ class split_group_lasso(group_lasso):
         return split_group_lasso(loglike,
                                  groups,
                                  weights,
+                                 cov_rand=cov_rand,
                                  proportion_select=proportion,
                                  randomizer=None,
                                  useJacobian=useJacobian,

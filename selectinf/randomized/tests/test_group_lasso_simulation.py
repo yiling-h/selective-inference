@@ -7,16 +7,11 @@ import time
 
 import regreg.api as rr
 
-from ..lasso import (lasso,
-                     split_lasso)
 from ..group_lasso_query import (group_lasso,
                                  split_group_lasso)
 
-from ...base import (full_targets,
-                     selected_targets,
-                     debiased_targets)
-from selectinf.randomized.tests.instance import (gaussian_group_instance,
-                                                 logistic_group_instance)
+from ...base import selected_targets
+from selectinf.randomized.tests.instance import gaussian_group_instance
 
 from ...base import restricted_estimator
 import scipy.stats
@@ -39,18 +34,26 @@ def calculate_F1_score(beta_true, selection):
 
 def naive_inference(X, Y, groups, beta, const,
                     n, weight_frac=1, level=0.9):
+    n, p = X.shape
 
-    p = X.shape[1]
+    ##estimate noise level in data
+
     sigma_ = np.std(Y)
-    #weights = dict([(i, 0.5) for i in np.unique(groups)])
+    if n > p:
+        dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+    else:
+        dispersion = sigma_ ** 2
+
+    sigma_ = np.sqrt(dispersion)
+
+    ##solve group LASSO with group penalty weights = weights
     weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
 
     conv = const(X=X,
-                 successes=Y,
-                 trials=np.ones(n),
+                 Y=Y,
                  groups=groups,
                  weights=weights,
-                 useJacobian=True,
+                 useJacobian=False,
                  perturb=np.zeros(p),
                  ridge_term=0.)
 
@@ -59,50 +62,39 @@ def naive_inference(X, Y, groups, beta, const,
 
     print('Naive selection', conv._ordered_groups)
 
-    # Solving the inferential target
-    def solve_target_restricted():
-        def pi(x):
-            return 1 / (1 + np.exp(-x))
-
-        Y_mean = pi(X.dot(beta))
-
-        loglike_Mean = rr.glm.logistic(X, successes=Y_mean, trials=np.ones(n))
-        # For LASSO, this is the OLS solution on X_{E,U}
-        _beta_unpenalized = restricted_estimator(loglike_Mean,
-                                                 nonzero)
-        return _beta_unpenalized
-
-    target = solve_target_restricted()
-
     if nonzero.sum() > 0:
         # E: nonzero flag
-
         X_E = X[:, nonzero]
+        E_size = nonzero.sum()
 
-        def pi_hess(x):
-            return np.exp(x) / (1 + np.exp(x)) ** 2
-
-        loglike = rr.glm.logistic(X, successes=Y, trials=np.ones(n))
+        loglike = rr.glm.gaussian(X, Y)
         # For LASSO, this is the OLS solution on X_{E,U}
         beta_MLE = restricted_estimator(loglike, nonzero)
 
-        # Calculation the asymptotic covariance of the MLE
-        W = np.diag(pi_hess(X_E @ beta_MLE))
+        def solve_target_restricted():
+            Y_mean = X.dot(beta)
+            loglike = rr.glm.gaussian(X, Y_mean)
+            # For LASSO, this is the OLS solution on X_{E,U}
+            _beta_unpenalized = restricted_estimator(loglike,
+                                                     nonzero)
+            return _beta_unpenalized
 
-        f_info = X_E.T @ W @ X_E
-        cov = np.linalg.inv(f_info)
+        target = solve_target_restricted()
+
+        f_info = X_E.T @ X_E
+        cov = np.linalg.inv(f_info) * dispersion
 
         # Standard errors
         sd = np.sqrt(np.diag(cov))
 
         # Normal quantiles
-        z_low = scipy.stats.norm.ppf((1 - level) / 2)
-        z_up = scipy.stats.norm.ppf(1 - (1 - level) / 2)
-        assert np.abs(np.abs(z_low) - np.abs(z_up)) < 10e-6
+        qt_low = scipy.stats.t.ppf((1 - level) / 2, df=n-E_size)
+        qt_up = scipy.stats.t.ppf(1 - (1 - level) / 2, df=n-E_size)
+        assert np.abs(np.abs(qt_low) - np.abs(qt_up)) < 10e-6
 
         # Construct confidence intervals
-        intervals_low = beta_MLE + z_low * sd
-        intervals_up = beta_MLE + z_up * sd
+        intervals_low = beta_MLE + qt_low * sd
+        intervals_up = beta_MLE + qt_up * sd
 
         coverage = (target > intervals_low) * (target < intervals_up)
 
@@ -110,8 +102,8 @@ def naive_inference(X, Y, groups, beta, const,
 
     return None, None, None, None, None, None
 
-def randomization_inference(X, Y, n, p, beta,
-                            groups, hess=None,
+def randomization_inference(X, Y, n, p, beta, groups, hess=None,
+                            randomizer_scale=1.,
                             weight_frac=1, level=0.9, solve_only = False):
 
     ## solve_only: bool variable indicating whether
@@ -119,32 +111,34 @@ def randomization_inference(X, Y, n, p, beta,
     ##              or
     ##              2) we also want inferential results
 
+    ##estimate noise level in data
+
     sigma_ = np.std(Y)
+    if n > p:
+        dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+    else:
+        dispersion = sigma_ ** 2
+
+    sigma_ = np.sqrt(dispersion)
+
     #weights = dict([(i, 0.5) for i in np.unique(groups)])
     weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
 
-    conv = group_lasso.logistic(X=X,
-                                successes=Y,
-                                trials=np.ones(n),
+    conv = group_lasso.gaussian(X=X,
+                                Y=Y,
                                 groups=groups,
                                 weights=weights,
-                                useJacobian=True,
-                                ridge_term=0.,
-                                cov_rand=hess)
+                                useJacobian=False,
+                                randomizer_scale=randomizer_scale * sigma_)
 
     signs, _ = conv.fit()
     nonzero = (signs != 0)
 
     print("MLE selection:", conv._ordered_groups)
 
-    # Solving the inferential target
     def solve_target_restricted():
-        def pi(x):
-            return 1 / (1 + np.exp(-x))
-
-        Y_mean = pi(X.dot(beta))
-
-        loglike = rr.glm.logistic(X, successes=Y_mean, trials=np.ones(n))
+        Y_mean = X.dot(beta)
+        loglike = rr.glm.gaussian(X, Y_mean)
         # For LASSO, this is the OLS solution on X_{E,U}
         _beta_unpenalized = restricted_estimator(loglike,
                                                  nonzero)
@@ -155,11 +149,11 @@ def randomization_inference(X, Y, n, p, beta,
         return None,None,solve_target_restricted(),nonzero,None,None
 
     if nonzero.sum() > 0:
-        conv.setup_inference(dispersion=1)
+        conv.setup_inference(dispersion=dispersion)
 
         target_spec = selected_targets(conv.loglike,
                                        conv.observed_soln,
-                                       dispersion=1)
+                                       dispersion=dispersion)
 
         result = conv.inference(target_spec,
                                 method='selective_MLE',
@@ -186,16 +180,23 @@ def randomization_inference_fast(X, Y, n, p, beta, proportion,
     ## but inference is carried out as if data carving were intended
     ## The two inference approaches are asymptotically the same
 
+    ##estimate noise level in data
     sigma_ = np.std(Y)
+    if n > p:
+        dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+    else:
+        dispersion = sigma_ ** 2
+
+    sigma_ = np.sqrt(dispersion)
+
     #weights = dict([(i, 0.5) for i in np.unique(groups)])
     weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
 
-    conv = split_group_lasso.logistic(X=X,
-                                      successes=Y,
-                                      trials=np.ones(n),
+    conv = split_group_lasso.gaussian(X=X,
+                                      Y=Y,
                                       groups=groups,
                                       weights=weights,
-                                      useJacobian=True,
+                                      useJacobian=False,
                                       proportion=proportion,
                                       cov_rand=hess)
 
@@ -206,23 +207,19 @@ def randomization_inference_fast(X, Y, n, p, beta, proportion,
 
     # Solving the inferential target
     def solve_target_restricted():
-        def pi(x):
-            return 1 / (1 + np.exp(-x))
-
-        Y_mean = pi(X.dot(beta))
-
-        loglike = rr.glm.logistic(X, successes=Y_mean, trials=np.ones(n))
+        Y_mean = X.dot(beta)
+        loglike = rr.glm.gaussian(X, Y_mean)
         # For LASSO, this is the OLS solution on X_{E,U}
         _beta_unpenalized = restricted_estimator(loglike,
                                                  nonzero)
         return _beta_unpenalized
 
     if nonzero.sum() > 0:
-        conv.setup_inference(dispersion=1)
+        conv.setup_inference(dispersion=dispersion)
 
         target_spec = selected_targets(conv.loglike,
                                        conv.observed_soln,
-                                       dispersion=1)
+                                       dispersion=dispersion)
 
         result = conv.inference(target_spec,
                                 method='selective_MLE',
@@ -246,46 +243,50 @@ def split_inference(X, Y, n, p, beta, groups, const,
 
     ## selective inference with data carving
 
+    ##estimate noise level in data
     sigma_ = np.std(Y)
+    if n > p:
+        dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+    else:
+        dispersion = sigma_ ** 2
+
+    sigma_ = np.sqrt(dispersion)
+
     #weights = dict([(i, 0.5) for i in np.unique(groups)])
     weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
 
     conv = const(X=X,
-                 successes=Y,
+                 Y=Y,
                  groups=groups,
                  weights=weights,
                  proportion=proportion, # proportion of data used for selection (n1/n)
-                 useJacobian=True)
+                 useJacobian=False)
 
     signs, _ = conv.fit()
     nonzero = signs != 0
 
-    print("Carving selection", conv._ordered_groups)
+    # print("Carving selection", conv._ordered_groups)
 
     # Solving the inferential target
     def solve_target_restricted():
-        def pi(x):
-            return 1 / (1 + np.exp(-x))
-
-        Y_mean = pi(X.dot(beta))
-
-        loglike = rr.glm.logistic(X, successes=Y_mean, trials=np.ones(n))
+        Y_mean = X.dot(beta)
+        loglike = rr.glm.gaussian(X, Y_mean)
         # For LASSO, this is the OLS solution on X_{E,U}
         _beta_unpenalized = restricted_estimator(loglike,
                                                  nonzero)
         return _beta_unpenalized
 
     if nonzero.sum() > 0:
-        conv.setup_inference(dispersion=1)
+        conv.setup_inference(dispersion=dispersion)
 
         target_spec = selected_targets(conv.loglike,
                                        conv.observed_soln,
-                                       dispersion=1)
+                                       dispersion=dispersion)
 
         result = conv.inference(target_spec,
                                 'selective_MLE',
                                 level=level)
-        estimate = result['MLE']
+
         pval = result['pvalue']
         intervals = np.asarray(result[['lower_confidence',
                                        'upper_confidence']])
@@ -309,12 +310,8 @@ def data_splitting(X, Y, n, p, beta, nonzero,
     if nonzero.sum() > 0:
         # Solving the inferential target
         def solve_target_restricted():
-            def pi(x):
-                return 1 / (1 + np.exp(-x))
-
-            Y_mean = pi(X.dot(beta))
-
-            loglike = rr.glm.logistic(X, successes=Y_mean, trials=np.ones(n))
+            Y_mean = X.dot(beta)
+            loglike = rr.glm.gaussian(X, Y_mean)
             # For LASSO, this is the OLS solution on X_{E,U}
             _beta_unpenalized = restricted_estimator(loglike,
                                                      nonzero)
@@ -328,32 +325,29 @@ def data_splitting(X, Y, n, p, beta, nonzero,
         # E: nonzero flag
 
         X_notS_E = X_notS[:, nonzero]
+        E_size = nonzero.sum()
 
         # Solve for the unpenalized MLE
-        def pi_hess(x):
-            return np.exp(x) / (1 + np.exp(x)) ** 2
-
-        loglike = rr.glm.logistic(X_notS, successes=Y_notS, trials=np.ones(n2))
+        loglike = rr.glm.gaussian(X_notS, Y_notS)
         # For LASSO, this is the OLS solution on X_{E,U}
         beta_MLE_notS = restricted_estimator(loglike, nonzero)
 
         # Calculation the asymptotic covariance of the MLE
-        W = np.diag(pi_hess(X_notS_E @ beta_MLE_notS))
-
-        f_info = X_notS_E.T @ W @ X_notS_E
-        cov = np.linalg.inv(f_info)
+        dispersion_notS_E = np.linalg.norm(Y_notS - X_notS_E @ beta_MLE_notS) ** 2 / (n2 - E_size)
+        f_info = X_notS_E.T @ X_notS_E
+        cov = np.linalg.inv(f_info) * dispersion_notS_E
 
         # Standard errors
         sd = np.sqrt(np.diag(cov))
 
         # Normal quantiles
-        z_low = scipy.stats.norm.ppf((1 - level) / 2)
-        z_up = scipy.stats.norm.ppf(1 - (1 - level) / 2)
-        assert np.abs(np.abs(z_low) - np.abs(z_up)) < 10e-6
+        qt_low = scipy.stats.t.ppf((1 - level) / 2, df=n2 - E_size)
+        qt_up = scipy.stats.t.ppf(1 - (1 - level) / 2, df=n2 - E_size)
+        assert np.abs(np.abs(qt_low) - np.abs(qt_up)) < 10e-6
 
         # Construct confidence intervals
-        intervals_low = beta_MLE_notS + z_low * sd
-        intervals_up = beta_MLE_notS + z_up * sd
+        intervals_low = beta_MLE_notS + qt_low * sd
+        intervals_up = beta_MLE_notS + qt_up * sd
 
         coverage = (target > intervals_low) * (target < intervals_up)
 
@@ -362,14 +356,14 @@ def data_splitting(X, Y, n, p, beta, nonzero,
     # If no variable selected, no inference
     return None, None, None, None
 
-def test_comparison_logistic_group_lasso(n=500,
-                                         p=200,
-                                         signal_fac=0.1,
-                                         s=5,
-                                         rho=0.3,
-                                         randomizer_scale=1.,
-                                         level=0.90,
-                                         iter=10):
+def test_comparison_group_lasso(n=500,
+                                p=200,
+                                signal_fac=0.1,
+                                s=5,
+                                rho=0.3,
+                                randomizer_scale=1.,
+                                level=0.90,
+                                iter=10):
     """
     Compare to R randomized lasso
     """
@@ -390,9 +384,9 @@ def test_comparison_logistic_group_lasso(n=500,
 
             #np.random.seed(i)
 
-            inst  = logistic_group_instance
-            const = group_lasso.logistic
-            const_split = split_group_lasso.logistic
+            inst  = gaussian_group_instance
+            const = group_lasso.gaussian
+            const_split = split_group_lasso.gaussian
 
             signal = np.sqrt(signal_fac * 2 * np.log(p))
             signal_str = str(np.round(signal,decimals=2))
@@ -527,10 +521,10 @@ def test_comparison_logistic_group_lasso(n=500,
                     break  # Go to next iteration if we have some selection
 
     oper_char_df = pd.DataFrame.from_dict(oper_char)
-    oper_char_df.to_csv('selectinf/randomized/tests/logis_vary_signal.csv', index=False)
+    oper_char_df.to_csv('selectinf/randomized/tests/gaussian_vary_signal.csv', index=False)
     colnames = ['Index'] + ['target'] + ['LCB'] + ['UCB'] + ['TP'] + ['beta size'] + ['F1'] + ['Method']
     confint_df.columns = colnames
-    confint_df.to_csv('selectinf/randomized/tests/logis_CI_vary_signal.csv', index=False)
+    confint_df.to_csv('selectinf/randomized/tests/gaussian_CI_vary_signal.csv', index=False)
 
     #sns.histplot(oper_char_df["beta size"])
     #plt.show()
@@ -563,7 +557,7 @@ def test_comparison_logistic_group_lasso(n=500,
     plt.show()
 
 
-def test_comparison_logistic_lasso_vary_s(n=500,
+def test_comparison_gaussian_lasso_vary_s(n=500,
                                            p=200,
                                            signal_fac=0.1,
                                            s=5,
@@ -592,8 +586,8 @@ def test_comparison_logistic_lasso_vary_s(n=500,
         for i in range(iter):
             #np.random.seed(i)
 
-            inst, const, const_split = logistic_group_instance, group_lasso.logistic, \
-                                       split_group_lasso.logistic
+            inst, const, const_split = gaussian_group_instance, group_lasso.gaussian, \
+                                       split_group_lasso.gaussian
             signal = np.sqrt(signal_fac * 2 * np.log(p))
             signal_str = str(np.round(signal, decimals=2))
 
@@ -735,10 +729,10 @@ def test_comparison_logistic_lasso_vary_s(n=500,
                     break  # Go to next iteration if we have some selection
 
     oper_char_df = pd.DataFrame.from_dict(oper_char)
-    oper_char_df.to_csv('selectinf/randomized/tests/logis_vary_sparsity.csv',index=False)
+    oper_char_df.to_csv('selectinf/randomized/tests/gaussian_vary_sparsity.csv',index=False)
     colnames = ['Index'] + ['target'] + ['LCB'] + ['UCB'] + ['TP'] + ['sparsity size'] + ['F1'] + ['Method']
     confint_df.columns = colnames
-    confint_df.to_csv('selectinf/randomized/tests/logis_CI_vary_sparsity.csv', index=False)
+    confint_df.to_csv('selectinf/randomized/tests/gaussian_CI_vary_sparsity.csv', index=False)
 
     #sns.histplot(oper_char_df["sparsity size"])
     #plt.show()
@@ -812,7 +806,7 @@ def test_plotting(path='selectinf/randomized/tests/oper_char_vary_s.csv'):
 
     plt.show()
 
-def test_plotting_separate(path='selectinf/randomized/tests/logis_vary_sparsity.csv'):
+def test_plotting_separate(path='selectinf/randomized/tests/gaussian_vary_sparsity.csv'):
     oper_char_df = pd.read_csv(path)
 
     #sns.histplot(oper_char_df["sparsity size"])
@@ -871,7 +865,7 @@ def test_plotting_separate(path='selectinf/randomized/tests/logis_vary_sparsity.
         len_plot.set(title='Length')
         # len_plot.set_ylim(0, 100)
         len_plot.legend(loc='lower center', ncol=3)
-        len_plot.set_ylim(5, 20)
+        #len_plot.set_ylim(15, 25)
         plt.tight_layout()
 
         """
