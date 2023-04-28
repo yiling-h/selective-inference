@@ -2,6 +2,7 @@ from typing import NamedTuple
 import numpy as np, pandas as pd
 
 from ..constraints.affine import constraints
+from .posterior_inference_jacobian import (posterior, langevin_sampler)
 from .selective_MLE_jacobian import mle_inference
 
 class QuerySpec(NamedTuple):
@@ -255,8 +256,77 @@ class gaussian_query(object):
             return G.solve_estimating_eqn(alternatives=target_spec.alternatives,
                                           level=level)[0]
 
+        elif method == 'posterior':
+            # Jacobian-based inference not implemented yet
+            # assert (self.useJacobian == False)
+            if self.useJacobian:
+                return _posterior(query_spec,
+                                  target_spec,
+                                  self.useJacobian,
+                                  Jacobian_spec,
+                                  **method_args)[1]
+            else:
+                return _posterior(query_spec,
+                                  target_spec,
+                                  **method_args)[1]
 
 
+
+def _posterior(query_spec,
+               target_spec,
+               useJacobian,
+               Jacobian_spec,
+               level=0.90,
+               dispersion=1,
+               prior=None,
+               solve_args={'tol': 1.e-12},
+               nsample=2000, # 2000
+               nburnin=500): # 500
+    """
+    Parameters
+    ----------
+    target_spec : TargetSpec
+        Information needed to specify the target.
+    level : float
+        Level for credible interval.
+    dispersion : float, optional
+        Dispersion parameter for log-likelihood.
+    prior : callable
+        A callable object that takes a single argument
+        `parameter` of the same shape as `observed_target`
+        and returns (value of log prior, gradient of log prior)
+    solve_args : dict, optional
+        Arguments passed to solver.
+    """
+
+    if prior is None:
+        Di = 1. / (200 * np.diag(target_spec.cov_target))
+
+        def prior(target_parameter):
+            grad_prior = -target_parameter * Di
+            log_prior = -0.5 * np.sum(target_parameter ** 2 * Di)
+            return log_prior, grad_prior
+
+    posterior_repr =  posterior(query_spec,
+                                target_spec,
+                                useJacobian,
+                                Jacobian_spec,
+                                dispersion,
+                                prior,
+                                solve_args=solve_args)
+
+    samples = langevin_sampler(posterior_repr,
+                               nsample=nsample,
+                               nburnin=nburnin)
+
+    delta = 0.5 * (1 - level) * 100
+    lower = np.percentile(samples, delta, axis=0)
+    upper = np.percentile(samples, 100 - delta, axis=0)
+    mean = np.mean(samples, axis=0)
+
+    return samples, pd.DataFrame({'estimate':mean,
+                                  'lower_credible':lower,
+                                  'upper_credible':upper})
 
 
 

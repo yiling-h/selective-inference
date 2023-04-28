@@ -11,7 +11,7 @@ import pandas as pd
 
 import regreg.api as rr
 from .randomization import randomization
-from .query import gaussian_query
+from .query_jacobian import gaussian_query
 from ..base import (restricted_estimator,
                     _compute_hessian,
                     _pearsonX2)

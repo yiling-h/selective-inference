@@ -32,7 +32,7 @@ def test_possion_vs_quasi_solutions(n=500,
                                     groups=np.arange(50).repeat(4),
                                     rho=0.3,
                                     weight_frac=1.,
-                                    randomizer_scale=0.71,
+                                    randomizer_scale=1,
                                     level=0.90,
                                     iter=50):
         # Operating characteristics
@@ -118,7 +118,7 @@ def test_possion_vs_quasi_solutions(n=500,
                             return _beta_unpenalized
 
                         # Quasi-poisson inference
-                        conv_quasi.setup_inference(dispersion=1)#conv_quasi.overdispersion)
+                        conv_quasi.setup_inference(dispersion=1)
 
                         #cov_score_quasi = conv_quasi._unscaled_cov_score
                         cov_score_quasi = conv_quasi._unscaled_cov_score
@@ -126,7 +126,7 @@ def test_possion_vs_quasi_solutions(n=500,
                         target_spec_quasi = selected_targets_quasi(loglike=conv_quasi.loglike,
                                                                    solution=conv_quasi.observed_soln,
                                                                    cov_score=cov_score_quasi,
-                                                                   dispersion=1)#conv_quasi.overdispersion)
+                                                                   dispersion=1)
 
 
                         # Poisson inference

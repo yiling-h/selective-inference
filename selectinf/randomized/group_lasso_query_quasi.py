@@ -133,10 +133,10 @@ class group_lasso_quasi(gaussian_query):
         self.observed_opt_state = np.hstack(ordered_opt)  # gammas as array
         num_opt_var = self.observed_opt_state.shape[0]
 
+        # Restricted MLE
         _beta_unpenalized = restricted_estimator(self.loglike,  # refit OLS (MLE) on E
                                                  overall,
                                                  solve_args=solve_args)
-
         beta_bar = np.zeros(self.nfeature)
         beta_bar[overall] = _beta_unpenalized  # refit OLS (MLE) beta with zeros
         self._beta_full = beta_bar
@@ -144,6 +144,25 @@ class group_lasso_quasi(gaussian_query):
         X, y = self.loglike.data
         n, p = X.shape
         W = self._W = self.loglike.saturated_loss.hessian(X.dot(beta_bar))  # all 1's for LS
+
+        # FULL MLE:
+        beta_MLE_full = restricted_estimator(self.loglike,  # refit OLS (MLE)
+                                             active=np.array([True] * self.nfeature),
+                                             solve_args=solve_args)
+        mu_hat_full = np.exp(X @ beta_MLE_full)
+
+        active_signs = np.sign(self.observed_soln)
+        active = np.flatnonzero(active_signs)
+        self.active_signs = active_signs
+        # self.active_signs[unpenalized] = np.nan
+        self.active = active
+
+        # compute part of hessian
+        # Not very much useful for non-carving inference
+        _hessian, _hessian_active, _hessian_unpen = _compute_hessian(self.loglike,
+                                                                     beta_bar,
+                                                                     active,
+                                                                     unpenalized)
 
         ## Estimate the overdispersion parameter
         ## TODO: CHECK FOR CORRECTNESS
@@ -153,31 +172,33 @@ class group_lasso_quasi(gaussian_query):
             nonzero = (signs != 0)
             E_card = nonzero.sum()
             mu_hat = np.exp(X @ beta_bar)  # Fitted values
-            overdispersion = (1 / (n - E_card)) * ((y - mu_hat) ** 2).T @ (1 / mu_hat)
-            self.overdispersion = overdispersion
-            # print("phi:", overdispersion)
-            # print("MSE:", (1 / (n - E_card)) * ((y - mu_hat) ** 2).sum())
+            # overdispersion = (1 / (n - E_card)) * ((y - mu_hat) ** 2).T @ (1 / mu_hat)
+            # self.overdispersion = overdispersion
+
+            # For setting up implied Gaussian
+            ## Estimating the covariance matrix (K) of the score vector
+            ## TODO: Generalize to other link functions
+            if self.overdispersed:
+                # print("K estimated")
+                W_tilde_full = (y - mu_hat_full) ** 2 # Full model
+                W_tilde = (y - mu_hat) ** 2 # Sub-model
+
+                # print("Norm of diagonal:", np.linalg.norm(W_tilde))
+                # W_tilde = np.diag((y - mu_hat) ** 2)
+                # self._unscaled_cov_score = X.T @ W_tilde @ X  # / (self.overdispersion)**2
+                self.K = np.dot(X.T, X * W_tilde[:, np.newaxis])
+                self.K_full = np.dot(X.T, X * W_tilde_full[:, np.newaxis])
+                self.hessian = _hessian
+                self._unscaled_cov_score = self.K # _hessian # (debugging)
+            else:
+                self._unscaled_cov_score = _hessian
 
         opt_linearNoU = np.dot(X.T, X[:, ordered_vars] * W[:, np.newaxis])
-
         for i, var in enumerate(ordered_vars):
             opt_linearNoU[var, i] += self.ridge_term
 
         self.observed_score_state = -opt_linearNoU.dot(_beta_unpenalized)
         self.observed_score_state[~overall] += self.loglike.smooth_objective(beta_bar, 'grad')[~overall]
-
-        active_signs = np.sign(self.observed_soln)
-        active = np.flatnonzero(active_signs)
-        self.active_signs = active_signs
-        #self.active_signs[unpenalized] = np.nan
-        self.active = active
-
-        # compute part of hessian
-        # Not very much useful for non-carving inference
-        _hessian, _hessian_active, _hessian_unpen = _compute_hessian(self.loglike,
-                                                                     beta_bar,
-                                                                     active,
-                                                                     unpenalized)
 
         def compute_Vg(ug):
             pg = ug.size  # figure out size of g'th group
@@ -220,24 +241,6 @@ class group_lasso_quasi(gaussian_query):
         self.linear_part = -np.eye(self.observed_opt_state.shape[0])
         self.offset = np.zeros(self.observed_opt_state.shape[0])
 
-
-        # For setting up implied Gaussian
-        ## Estimating the covariance matrix (K) of the score vector
-        ## TODO: Generalize to other link functions
-        if self.overdispersed:
-            # print("K estimated")
-            W_tilde = np.diag((y - mu_hat) ** 2)
-            # print("Norm of diagonal:", np.linalg.norm(W_tilde))
-            self._unscaled_cov_score = X.T @ W_tilde @ X # / (overdispersion)**2
-            # print("K shape", self._unscaled_cov_score.shape)
-
-            #self._unscaled_cov_score = _hessian * overdispersion
-            """
-            print('K set to H')
-            self._unscaled_cov_score = _hessian
-            """
-        else:
-            self._unscaled_cov_score = _hessian
         self.num_opt_var = num_opt_var
 
         self._setup_sampler_data = (self.linear_part,
@@ -376,18 +379,21 @@ class split_group_lasso_quasi(group_lasso_quasi):
             self.penalty = rr.group_lasso(groups,
                                           weights=weights,
                                           lagrange=1.)
-        # If we want to solve a randomized objective on a subset of data instead
-        if cov_rand is not None:
-            self.randomizer = randomization.gaussian(cov_rand)
-            self._initial_omega = self.randomizer.sample()
-        else:
-            self.randomizer = randomizer # None
 
         # If we have both cov_rand and perturb_objective, prioritize perturb_objective
         if perturb_objective is None:
-            self._initial_omega = 0
+            # If we want to solve a randomized objective on a subset of data instead
+            if cov_rand is not None:
+                self.randomizer = randomization.gaussian(cov_rand)
+                self._initial_omega = self.randomizer.sample()
+                self.randomized = True
+            else:
+                self.randomizer = randomizer  # None
+                self._initial_omega = 0
+                self.randomized = False
         else:
             self._initial_omega = perturb_objective
+            self.randomized = True
 
         # Whether a Jacobian is needed for gaussian_query
         # this should always be true for group Lasso
@@ -500,14 +506,21 @@ class split_group_lasso_quasi(group_lasso_quasi):
         if perturb is not None:
             self._selection_idx = perturb
         if not hasattr(self, "_selection_idx"):
-            X, y = self.loglike.data
-            total_size = n = X.shape[0]
-            pi_s = self.proportion_select
-            self._selection_idx = np.zeros(n, np.bool)
-            self._selection_idx[:int(pi_s * n)] = True
-            np.random.shuffle(self._selection_idx)
+            if self.randomized:
+                X, y = self.loglike.data
+                total_size = n = X.shape[0]
+                self._selection_idx = np.zeros(n, np.bool)
+                self._selection_idx[:n] = True
+                inv_frac = 1.
+            else:
+                X, y = self.loglike.data
+                total_size = n = X.shape[0]
+                pi_s = self.proportion_select
+                self._selection_idx = np.zeros(n, np.bool)
+                self._selection_idx[:int(pi_s * n)] = True
+                np.random.shuffle(self._selection_idx)
+                inv_frac = 1 / self.proportion_select
 
-        inv_frac = 1 / self.proportion_select
         quad = rr.identity_quadratic(self.ridge_term,
                                      0,
                                      -self._initial_omega, # typically 0, unless perturbation is enforced
@@ -543,15 +556,15 @@ class split_group_lasso_quasi(group_lasso_quasi):
         loglike = rr.glm.poisson(X, counts, quadratic=quadratic)
 
         return split_group_lasso_quasi(loglike,
-                                 groups,
-                                 weights,
-                                 cov_rand=cov_rand,
-                                 overdispersed=True,
-                                 proportion_select=proportion,
-                                 randomizer=None,
-                                 useJacobian=useJacobian,
-                                 use_lasso=use_lasso,
-                                 perturb=perturb)
+                                       groups,
+                                       weights,
+                                       cov_rand=cov_rand,
+                                       overdispersed=True,
+                                       proportion_select=proportion,
+                                       randomizer=None,
+                                       useJacobian=useJacobian,
+                                       use_lasso=use_lasso,
+                                       perturb=perturb)
 
 def _check_groups(groups):
     """Make sure that the user-specific groups are ok

@@ -269,6 +269,96 @@ def test_selected_targets_group_lasso(n=500,
 
                 break   # Go to next iteration if we have some selection
 
+def test_selected_targets_posterior_group_lasso(n=500,
+                                     p=200,
+                                     signal_fac=1.2,
+                                     sgroup=3,
+                                     groups=np.arange(50).repeat(4),
+                                     sigma=3.,
+                                     rho=0.3,
+                                     randomizer_scale=1,
+                                     weight_frac=1.2,
+                                     level=0.90,
+                                     iter=1):
+    cover = []
+    len_ = []
+
+    for i in range(iter):
+
+        np.random.seed(i)
+
+        inst = gaussian_group_instance
+        signal = np.sqrt(signal_fac * 2 * np.log(p))
+
+        while True:  # run until we get somee selection
+            X, Y, beta = inst(n=n,
+                              p=p,
+                              signal=signal,
+                              sgroup=sgroup,
+                              groups=groups,
+                              ndiscrete=0,
+                              nlevels=0,
+                              sdiscrete=0,  # s-3, # How many discrete rvs are not null
+                              equicorrelated=False,
+                              rho=rho,
+                              sigma=sigma,
+                              random_signs=True,
+                              center=False,
+                              scale=True)[:3]
+
+            n, p = X.shape
+
+            ##estimate noise level in data
+
+            sigma_ = np.std(Y)
+            if n > p:
+                dispersion = np.linalg.norm(Y - X.dot(np.linalg.pinv(X).dot(Y))) ** 2 / (n - p)
+            else:
+                dispersion = sigma_ ** 2
+
+            sigma_ = np.sqrt(dispersion)
+
+            ##solve group LASSO with group penalty weights = weights
+
+            weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
+            conv = group_lasso.gaussian(X,
+                                        Y,
+                                        groups=groups,
+                                        weights=weights,
+                                        useJacobian=True,
+                                        randomizer_scale=randomizer_scale * sigma_)
+
+            signs, _ = conv.fit()
+            nonzero = (signs != 0)
+            print("dimensions", n, p, nonzero.sum())
+
+            if nonzero.sum() > 0:
+
+                beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
+
+                conv.setup_inference(dispersion=dispersion)
+
+                target_spec = selected_targets(conv.loglike,
+                                               conv.observed_soln,
+                                               dispersion=dispersion)
+
+                result = conv.inference(target_spec,
+                                        method='posterior',
+                                        level=0.90)
+
+                # pval = result['pvalue']
+                intervals = np.asarray(result[['lower_credible', 'upper_credible']])
+
+                coverage = (beta_target > intervals[:, 0]) * (beta_target < intervals[:, 1])
+
+                cover.extend(coverage)
+                len_.extend(intervals[:, 1] - intervals[:, 0])
+
+                print("Coverage so far ", np.mean(cover), )
+                print("Lengths so far ", np.mean(len_))
+
+                break   # Go to next iteration if we have some selection
+
 def test_selected_targets_split_group_lasso(n=500,
                                              p=200,
                                              signal_fac=1.2,

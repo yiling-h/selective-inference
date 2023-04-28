@@ -113,6 +113,11 @@ def selected_targets_quasi(loglike,
                            dispersion=None,
                            solve_args={'tol': 1.e-12, 'min_its': 100},
                            hessian=None):
+    """
+    cov_score: the K matrix, estimated with the selected model
+    loglike: log-likelihood object with the full X, Y
+    solution: solution to the randomized objective
+    """
 
     if features is None:
         features = solution != 0
