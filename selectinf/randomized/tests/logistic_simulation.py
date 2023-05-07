@@ -55,7 +55,7 @@ def comparison_logistic(range):
 
     for s in [5, 8, 10]:  # [0.01, 0.03, 0.06, 0.1]:
         for i in range:
-            # np.random.seed(i)
+            np.random.seed(i)
 
             inst, const, const_split = logistic_group_instance, group_lasso.logistic, \
                                        split_group_lasso.logistic
@@ -204,16 +204,7 @@ def comparison_logistic(range):
     print("task done")
     return oper_char_df, confint_df
 
-def test_comparison_logistic_group_lasso_vary_s_parallel(n=500,
-                                                         p=200,
-                                                         signal_fac=0.1,
-                                                         s=5,
-                                                         sigma=2,
-                                                         rho=0.3,
-                                                         randomizer_scale=1.,
-                                                         full_dispersion=True,
-                                                         level=0.90,
-                                                         iter=2,
+def test_comparison_logistic_group_lasso_vary_s_parallel(iter=2,
                                                          ncore=2):
     print(iter)
     print(ncore)
