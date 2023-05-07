@@ -145,12 +145,6 @@ class group_lasso_quasi(gaussian_query):
         n, p = X.shape
         W = self._W = self.loglike.saturated_loss.hessian(X.dot(beta_bar))  # all 1's for LS
 
-        # FULL MLE:
-        beta_MLE_full = restricted_estimator(self.loglike,  # refit OLS (MLE)
-                                             active=np.array([True] * self.nfeature),
-                                             solve_args=solve_args)
-        mu_hat_full = np.exp(X @ beta_MLE_full)
-
         active_signs = np.sign(self.observed_soln)
         active = np.flatnonzero(active_signs)
         self.active_signs = active_signs
@@ -165,31 +159,19 @@ class group_lasso_quasi(gaussian_query):
                                                                      unpenalized)
 
         ## Estimate the overdispersion parameter
-        ## TODO: CHECK FOR CORRECTNESS
-        ## TODO: FUTURE: GENERALIZE TO OTHER LINK FUNCTIONS
         if self.overdispersed:
             signs = np.sign(self.observed_soln)
             nonzero = (signs != 0)
-            E_card = nonzero.sum()
             mu_hat = np.exp(X @ beta_bar)  # Fitted values
-            # overdispersion = (1 / (n - E_card)) * ((y - mu_hat) ** 2).T @ (1 / mu_hat)
-            # self.overdispersion = overdispersion
 
             # For setting up implied Gaussian
             ## Estimating the covariance matrix (K) of the score vector
-            ## TODO: Generalize to other link functions
             if self.overdispersed:
-                # print("K estimated")
-                W_tilde_full = (y - mu_hat_full) ** 2 # Full model
                 W_tilde = (y - mu_hat) ** 2 # Sub-model
 
-                # print("Norm of diagonal:", np.linalg.norm(W_tilde))
-                # W_tilde = np.diag((y - mu_hat) ** 2)
-                # self._unscaled_cov_score = X.T @ W_tilde @ X  # / (self.overdispersion)**2
                 self.K = np.dot(X.T, X * W_tilde[:, np.newaxis])
-                self.K_full = np.dot(X.T, X * W_tilde_full[:, np.newaxis])
                 self.hessian = _hessian
-                self._unscaled_cov_score = self.K # _hessian # (debugging)
+                self._unscaled_cov_score = self.K
             else:
                 self._unscaled_cov_score = _hessian
 
@@ -473,11 +455,15 @@ class split_group_lasso_quasi(group_lasso_quasi):
 
         ordered_vars = self.ordered_vars
 
-        cond_precision = opt_linear.T.dot(prec.dot(opt_linear))
+        # cond_precision = opt_linear.T.dot(prec.dot(opt_linear))
+        cond_precision = (opt_linear[ordered_vars]).T.dot(self.U) / (dispersion * ratio)
         assert (np.linalg.norm(cond_precision - cond_precision.T) /
                 np.linalg.norm(cond_precision) < 1.e-6)
         cond_cov = np.linalg.inv(cond_precision)
-        regress_opt = -cond_cov.dot(opt_linear.T).dot(prec)
+        # regress_opt = -cond_cov.dot(opt_linear.T).dot(prec)
+        regress_opt = np.zeros((cond_cov.shape[0],
+                                self.nfeature))
+        regress_opt[:, ordered_vars] = -cond_cov.dot(self.U.T) / (dispersion * ratio)
 
         cond_mean = regress_opt.dot(self.observed_score_state + observed_subgrad)
 

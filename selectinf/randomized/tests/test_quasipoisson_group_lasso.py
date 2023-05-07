@@ -10,7 +10,7 @@ import regreg.api as rr
 from selectinf.randomized.group_lasso_query import (group_lasso,split_group_lasso)
 from selectinf.randomized.group_lasso_query_quasi import (group_lasso_quasi, split_group_lasso_quasi)
 
-from ...base import (selected_targets,selected_targets_quasi)
+from ...base import (selected_targets,selected_targets_quasi,full_targets_quasi)
 from selectinf.randomized.tests.instance import (quasi_poisson_group_instance,
                                                  poisson_group_instance)
 
@@ -72,6 +72,19 @@ def naive_inference(X, Y, groups, beta, const,
 
     target = solve_target_restricted()
 
+    _compare_H_K = False
+    if _compare_H_K:
+        H_K_EE_true_quality = {}
+        H_K_EE_true_quality["H_EE* hat norm"] = []
+        H_K_EE_true_quality["K_EE*_hat_sub norm"] = []
+        H_K_EE_true_quality["K_EE*_hat_full norm"] = []
+        H_K_EE_true_quality["H_EE* - K_EE*_hat_sub norm"] = []
+        H_K_EE_true_quality["H_EE* - K_EE*_hat_full norm"] = []
+        H_K_EE_true_quality["K_EE*_hat_sub - K_EE*_hat_full norm"] = []
+        H_K_EE_true_quality["H_EE*(sub)_hat_inv - cov_sub norm"] = []
+        H_K_EE_true_quality["H_EE*(sub)_hat_inv - cov_full norm"] = []
+        H_K_EE_true_quality["cov_sub - cov_full norm"] = []
+
     if nonzero.sum() > 0:
         # E: nonzero flag
 
@@ -80,17 +93,41 @@ def naive_inference(X, Y, groups, beta, const,
         loglike = rr.glm.poisson(X, counts=Y)
         # For LASSO, this is the OLS solution on X_{E,U}
         beta_MLE = restricted_estimator(loglike, nonzero)
+        beta_MLE_full = restricted_estimator(loglike,  # refit OLS (MLE)
+                                             active=np.array([True] * p))
 
-        """
-        # Calculation the asymptotic covariance of the MLE
-        W_H = np.diag(np.exp(X_E @ beta_MLE))
-        W_K = np.diag((Y - np.exp(X_E @ beta_MLE))**2)
+        if _compare_H_K:
+            # Calculation the asymptotic covariance of the MLE
+            W_H = np.exp(X_E @ beta_MLE) # np.diag(np.exp(X_E @ beta_MLE))
+            W_K = (Y - np.exp(X_E @ beta_MLE))**2 #np.diag((Y - np.exp(X_E @ beta_MLE))**2)
+            W_K_full = (Y - np.exp(X @ beta_MLE_full))**2 #np.diag((Y - np.exp(X @ beta_MLE_full))**2)
 
-        H_EE = X_E.T @ W_H @ X_E
-        H_EE_inv = np.linalg.inv(H_EE)
-        K_EE = X_E.T @ W_K @ X_E
-        cov = H_EE_inv @ K_EE @ H_EE_inv
-        """
+            """H_EE = X_E.T @ W_H @ X_E
+            H_EE_inv = np.linalg.inv(H_EE)
+            K_EE = X_E.T @ W_K @ X_E
+            cov = H_EE_inv @ K_EE @ H_EE_inv"""
+
+            H_EE_hat = np.dot(X_E.T, X_E * W_H[:, np.newaxis])#X_E.T @ W_H @ X_E
+            H_EE_hat_inv = np.linalg.inv(H_EE_hat)
+            K_EE_hat_sub = np.dot(X_E.T, X_E * W_K[:, np.newaxis])#X_E.T @ W_K @ X_E
+            K_EE_hat_sub_inv = np.linalg.inv(K_EE_hat_sub)
+            cov_sub = H_EE_hat_inv @ K_EE_hat_sub @ H_EE_hat_inv
+            K_EE_hat_full = np.dot(X_E.T, X_E * W_K_full[:, np.newaxis])#X_E.T @ W_K_full @ X_E
+            K_EE_hat_full_inv = np.linalg.inv(K_EE_hat_full)
+            cov_full = H_EE_hat_inv @ K_EE_hat_full @ H_EE_hat_inv
+
+            H_K_EE_true_quality["H_EE* hat norm"].append(np.linalg.norm(H_EE_hat, 'fro'))
+            H_K_EE_true_quality["K_EE*_hat_sub norm"].append(np.linalg.norm(K_EE_hat_sub, 'fro'))
+            H_K_EE_true_quality["K_EE*_hat_full norm"].append(np.linalg.norm(K_EE_hat_full, 'fro'))
+            H_K_EE_true_quality["H_EE* - K_EE*_hat_sub norm"].append(np.linalg.norm(H_EE_hat - K_EE_hat_sub, 'fro'))
+            H_K_EE_true_quality["H_EE* - K_EE*_hat_full norm"].append(np.linalg.norm(H_EE_hat - K_EE_hat_full, 'fro'))
+            H_K_EE_true_quality["K_EE*_hat_sub - K_EE*_hat_full norm"].append(np.linalg.norm(K_EE_hat_sub - K_EE_hat_full, 'fro'))
+            H_K_EE_true_quality["H_EE*(sub)_hat_inv - cov_sub norm"].append(np.linalg.norm(H_EE_hat_inv - cov_sub, 'fro'))
+            H_K_EE_true_quality["H_EE*(sub)_hat_inv - cov_full norm"].append(np.linalg.norm(H_EE_hat_inv - cov_full, 'fro'))
+            H_K_EE_true_quality["cov_sub - cov_full norm"].append(np.linalg.norm(cov_sub - cov_full, 'fro'))
+            H_K_EE_true_df = pd.DataFrame.from_dict(H_K_EE_true_quality)
+            H_K_EE_true_df.to_csv('selectinf/randomized/tests/H_K_EE_true_df_vary_sparsity.csv', index=False)
+
         W_K = np.diag((Y - np.exp(X_E @ beta_MLE)) ** 2)
         cov_score = X.T @ W_K @ X
         if nonzero_true is not None:
@@ -260,7 +297,7 @@ def data_splitting_poisson(X, Y, n, p, const, beta, nonzero=None, subset_select=
         # Calculation the asymptotic covariance of the MLE
         W = np.diag(np.exp(X_notS_E @ beta_MLE_notS))
 
-        f_info = X_notS_E.T @ W @ X_notS_E
+        f_info = X_notS_E.T @ W @ X_notS_E * (n / n2)
         cov = np.linalg.inv(f_info)
 
         # Standard errors
@@ -319,10 +356,18 @@ def randomization_inference(X, Y, n, p, beta, groups, K=None,
         W_K_E = np.diag(np.exp(X @ observed_soln))
         return X.T @ W_K_E @ X
 
+    def estimate_H():
+        loglike = rr.glm.poisson(X, counts=Y)
+        # For LASSO, this is the OLS solution on X_{E,U}
+        beta_full = restricted_estimator(loglike, np.array([True] * p))
+        W_H = np.diag(np.exp(X @ beta_full))
+        return X.T @ W_H @ X
+
     if K is None:
         # print("(MLE) K estimated with full model")
         K = estimate_K()
         K_sub = estimate_K_submodel()
+        H = estimate_H()
         print("K_sub norm", np.linalg.norm(K_sub, 'fro'))
         print("K norm", np.linalg.norm(K, 'fro'))
         print("K-K_sub norm", np.linalg.norm(K-K_sub, 'fro'))
@@ -339,6 +384,7 @@ def randomization_inference(X, Y, n, p, beta, groups, K=None,
     # weights = dict([(i, 0.5) for i in np.unique(groups)])
     weights = dict([(i, weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
 
+    randomizer_scale = 1.
     conv = group_lasso_quasi.quasipoisson(X=X,
                                           counts=Y,
                                           groups=groups,
@@ -346,8 +392,9 @@ def randomization_inference(X, Y, n, p, beta, groups, K=None,
                                           useJacobian=True,
                                           ridge_term=0.,
                                           # perturb=np.zeros(p),
-                                          cov_rand=K_sub
-                                          # cov_rand=hess
+                                          # cov_rand=K_sub
+                                          cov_rand=hess
+                                          # randomizer_scale=randomizer_scale * sigma_
                                           )
 
     signs, _ = conv.fit()
@@ -374,6 +421,10 @@ def randomization_inference(X, Y, n, p, beta, groups, K=None,
 
         cov_score = conv.K
 
+        """target_spec = full_targets_quasi(loglike=conv.loglike,
+                                             solution=conv.observed_soln,
+                                             cov_score=cov_score,
+                                             dispersion=1)"""
         target_spec = selected_targets_quasi(loglike=conv.loglike,
                                              solution=conv.observed_soln,
                                              cov_score=cov_score,
@@ -424,12 +475,23 @@ def randomization_inference(X, Y, n, p, beta, groups, K=None,
     return None, None, None, None, None, None, None, None, None
 
 # Remain to be implemented
-def randomization_inference_fast(X, Y, n, p, beta, groups, proportion, K=None,
+def randomization_inference_fast(X, Y, n, p, beta, groups, proportion, cov_rand=None,
                                  weight_frac=1, level=0.9, solve_only=False):
     ## solve_only: bool variable indicating whether
     ##              1) we only need the solver's output
     ##              or
     ##              2) we also want inferential results
+
+    if cov_rand is None:
+        def estimate_hess():
+            loglike = rr.glm.poisson(X, counts=Y)
+            # For LASSO, this is the OLS solution on X_{E,U}
+            beta_full = restricted_estimator(loglike, np.array([True] * p))
+            W_H = np.diag(np.exp(X @ beta_full))
+            return X.T @ W_H @ X
+
+        hess = estimate_hess()
+        cov_rand = hess
 
     sigma_ = np.std(Y)
     # weights = dict([(i, 0.5) for i in np.unique(groups)])
@@ -441,7 +503,7 @@ def randomization_inference_fast(X, Y, n, p, beta, groups, proportion, K=None,
                                                 weights=weights,
                                                 useJacobian=True,
                                                 proportion=proportion,
-                                                cov_rand=K)
+                                                cov_rand=cov_rand)
 
     signs, _ = conv.fit()
     nonzero = (signs != 0)
@@ -550,7 +612,7 @@ def split_inference(X, Y, n, p, beta, groups, const,
 
 
 def data_splitting(X, Y, n, p, const, beta, nonzero=None, subset_select=None, groups=None,
-                   weight_frac=1., proportion=0.5, level=0.9):
+                   weight_frac=1., proportion=0.67, level=0.9):
     if (nonzero is None) or (subset_select is None):
         print("(Data Splitting) Selection done without carving")
         pi_s = proportion
@@ -835,8 +897,8 @@ def test_comparison_quasipoisson_group_lasso(n=500,
     F1_plot.set_ylim(0, 1)
     plt.show()
 
-def test_comparison_quasipoisson_group_lasso_vary_s(n=500,
-                                                    p=200,
+def test_comparison_quasipoisson_group_lasso_vary_s(n=1000,
+                                                    p=100,
                                                     signal_fac=0.1,
                                                     s=5,
                                                     sigma=2,
@@ -858,22 +920,6 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=500,
     oper_char["F1 score"] = []
     #oper_char["runtime"] = []
 
-    H_K_quality = {}
-    H_K_quality["H hat norm"] = []
-    H_K_quality["K_hat_sub norm"] = []
-    H_K_quality["K_hat_full norm"] = []
-    H_K_quality["H - K_hat_sub norm"] = []
-    H_K_quality["H - K_hat_full norm"] = []
-    H_K_quality["K_hat_sub - K_hat_full norm"] = []
-
-    H_K_EE_quality = {}
-    H_K_EE_quality["H_EE hat norm"] = []
-    H_K_EE_quality["K_EE_hat_sub norm"] = []
-    H_K_EE_quality["K_EE_hat_full norm"] = []
-    H_K_EE_quality["H_EE - K_EE_hat_sub norm"] = []
-    H_K_EE_quality["H_EE - K_EE_hat_full norm"] = []
-    H_K_EE_quality["K_EE_hat_sub - K_EE_hat_full norm"] = []
-
 
     confint_df = pd.DataFrame()
 
@@ -881,7 +927,7 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=500,
         for i in range(iter):
             # np.random.seed(i)
 
-            # inst = quasi_poisson_group_instance
+            inst = quasi_poisson_group_instance
             inst_p = poisson_group_instance
             const = group_lasso_quasi.quasipoisson
             const_p = group_lasso.poisson
@@ -891,26 +937,26 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=500,
             signal_str = str(np.round(signal, decimals=2))
 
             while True:  # run until we get some selection
-                groups = np.arange(50).repeat(4)
-                """
+                groups = np.arange(25).repeat(4)
+
                 X, Y, beta = inst(n=n,
                                   p=p,
                                   signal=signal,
                                   sgroup=s,
                                   groups=groups,
-                                  ndiscrete=0,
-                                  nlevels=0,
-                                  sdiscrete=0,  # s-3, # How many discrete rvs are not null
+                                  ndiscrete=4,
+                                  nlevels=5,
+                                  sdiscrete=2,  # s-3, # How many discrete rvs are not null
                                   equicorrelated=False,
                                   rho=rho,
                                   phi=1.5,
                                   random_signs=True,
                                   center=False,
                                   scale=True)[:3]
-                                  """
+
                 # print(X)
 
-                X, Y, beta = inst_p(n=n,
+                """X, Y, beta = inst_p(n=n,
                                   p=p,
                                   signal=signal,
                                   sgroup=s,
@@ -922,7 +968,7 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=500,
                                   rho=rho,
                                   random_signs=True,
                                   center=False,
-                                  scale=True)[:3]
+                                  scale=True)[:3]"""
 
                 n, p = X.shape
 
@@ -943,10 +989,9 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=500,
                 """
                 if not noselection:
                     # MLE inference
-                    coverage, length, beta_target, nonzero, conf_low, conf_up, \
-                    K_hat_sub, K_hat_full, H_hat = \
-                        randomization_inference(X=X, Y=Y, n=n, p=p, #proportion=0.5,
-                                                beta=beta, groups=groups)
+                    coverage, length, beta_target, nonzero, conf_low, conf_up = \
+                        randomization_inference_fast(X=X, Y=Y, n=n, p=p, proportion=0.5,
+                                                     beta=beta, groups=groups, cov_rand=None)
 
                     noselection = (coverage is None)
                     print("MLE noselection", noselection)
@@ -965,14 +1010,14 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=500,
                     # data splitting poisson
                     coverage_dsp, lengths_dsp, conf_low_dsp, conf_up_dsp, nonzero_dsp, beta_target_dsp = \
                         data_splitting_poisson(X=X, Y=Y, n=n, p=p, const=const_p, groups=groups,
-                                               beta=beta, proportion=0.5, level=0.9)
+                                               beta=beta, proportion=0.67, level=0.9)
                     noselection = (coverage_dsp is None)
 
                 if not noselection:
                     # data splitting
                     coverage_ds, lengths_ds, conf_low_ds, conf_up_ds, nonzero_ds, beta_target_ds = \
                         data_splitting(X=X, Y=Y, n=n, p=p, const=const, groups=groups, beta=beta,
-                                       proportion=0.5, level=0.9)
+                                       proportion=0.67, level=0.9)
                     noselection = (coverage_ds is None)
                     print("Data splitting noselection", noselection)
 
@@ -982,31 +1027,11 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=500,
                         beta_target_naive = \
                         naive_inference(X=X, Y=Y, groups=groups,
                                         beta=beta, const=const,
-                                        n=n, level=level, nonzero_true=(beta != 0))
+                                        n=n, level=level)
                     noselection = (coverage_naive is None)
                     print("Naive noselection", noselection)
 
                 if not noselection:
-                    # Estimation quality of H and K:
-                    # K_hat_sub, K_hat_full, H_hat
-                    H_K_quality["H hat norm"].append(np.linalg.norm(H_hat, 'fro'))
-                    H_K_quality["K_hat_sub norm"].append(np.linalg.norm(K_hat_sub, 'fro'))
-                    H_K_quality["K_hat_full norm"].append(np.linalg.norm(K_hat_full, 'fro'))
-                    H_K_quality["H - K_hat_sub norm"].append(np.linalg.norm(H_hat - K_hat_sub, 'fro'))
-                    H_K_quality["H - K_hat_full norm"].append(np.linalg.norm(H_hat - K_hat_full, 'fro'))
-                    H_K_quality["K_hat_sub - K_hat_full norm"].append(np.linalg.norm(K_hat_sub - K_hat_full, 'fro'))
-
-                    K_EE_hat_sub = K_hat_sub[np.ix_(nonzero,nonzero)]
-                    K_EE_hat_full = K_hat_full[np.ix_(nonzero,nonzero)]
-                    H_EE_hat = H_hat[np.ix_(nonzero,nonzero)]
-                    print(H_EE_hat.shape)
-                    H_K_EE_quality["H_EE hat norm"].append(np.linalg.norm(H_EE_hat, 'fro'))
-                    H_K_EE_quality["K_EE_hat_sub norm"].append(np.linalg.norm(K_EE_hat_sub, 'fro'))
-                    H_K_EE_quality["K_EE_hat_full norm"].append(np.linalg.norm(K_EE_hat_full, 'fro'))
-                    H_K_EE_quality["H_EE - K_EE_hat_sub norm"].append(np.linalg.norm(H_EE_hat - K_EE_hat_sub, 'fro'))
-                    H_K_EE_quality["H_EE - K_EE_hat_full norm"].append(np.linalg.norm(H_EE_hat - K_EE_hat_full, 'fro'))
-                    H_K_EE_quality["K_EE_hat_sub - K_EE_hat_full norm"].append(np.linalg.norm(K_EE_hat_sub - K_EE_hat_full, 'fro'))
-
                     # F1 scores
                     # F1_s = calculate_F1_score(beta, selection=nonzero_s)
                     F1 = calculate_F1_score(beta, selection=nonzero)
@@ -1125,10 +1150,6 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=500,
     colnames = ['Index'] + ['target'] + ['LCB'] + ['UCB'] + ['TP'] + ['sparsity size'] + ['F1'] + ['Method']
     confint_df.columns = colnames
     confint_df.to_csv('selectinf/randomized/tests/quasipois_CI_vary_sparsity.csv', index=False)
-    H_K_df = pd.DataFrame.from_dict(H_K_quality)
-    H_K_df.to_csv('selectinf/randomized/tests/H_K_df_vary_sparsity.csv', index=False)
-    H_K_EE_df = pd.DataFrame.from_dict(H_K_EE_quality)
-    H_K_EE_df.to_csv('selectinf/randomized/tests/H_K_EE_df_vary_sparsity.csv', index=False)
 
     #sns.histplot(oper_char_df["sparsity size"])
     #plt.show()
