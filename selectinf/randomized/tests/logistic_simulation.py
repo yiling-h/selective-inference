@@ -63,7 +63,7 @@ def comparison_logistic(range):
             signal_str = str(np.round(signal, decimals=2))
 
             while True:  # run until we get some selection
-                groups = np.arange(40).repeat(4)
+                groups = np.arange(50).repeat(4)
                 X, Y, beta = inst(n=n,
                                   p=p,
                                   signal=signal,
