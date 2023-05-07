@@ -204,10 +204,8 @@ def comparison_logistic(range):
     print("task done")
     return oper_char_df, confint_df
 
-def test_comparison_logistic_group_lasso_vary_s_parallel(iter=20,
-                                                         ncore=2):
-    print(iter)
-    print(ncore)
+def test_comparison_logistic_group_lasso_vary_s_parallel(iter=1000,
+                                                         ncore=20):
     def n_range_to_k(n, k):
         l = []
         for i in range(k):
@@ -281,12 +279,51 @@ def test_comparison_logistic_group_lasso_vary_s_parallel(iter=20,
     #print_results(oper_char_df)
 
 
-"""def test_save():
-    mat = np.random.normal(size=(100,10))
-    data = pd.DataFrame(mat)
-    data.to_csv('test_save.csv', index=False)"""
+def test_plotting(path='selectinf/randomized/tests/logis_vary_sparsity.csv'):
+    oper_char_df = pd.read_csv(path)
+    #sns.histplot(oper_char_df["sparsity size"])
+    #plt.show()
+
+    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(12,5))
+
+    print("Mean coverage rate/length:")
+    print(oper_char_df.groupby(['sparsity size', 'method']).mean())
+
+    cov_plot = sns.boxplot(y=oper_char_df["coverage rate"],
+                           x=oper_char_df["sparsity size"],
+                           hue=oper_char_df["method"],
+                           palette="pastel",
+                           orient="v", ax=ax1,
+                           linewidth=1)
+    cov_plot.set(title='Coverage')
+    cov_plot.set_ylim(0.6, 1.05)
+    #plt.tight_layout()
+    cov_plot.axhline(y=0.9, color='k', linestyle='--', linewidth=1)
+    #ax1.set_ylabel("")  # remove y label, but keep ticks
+
+    len_plot = sns.boxplot(y=oper_char_df["avg length"],
+                           x=oper_char_df["sparsity size"],
+                           hue=oper_char_df["method"],
+                           palette="pastel",
+                           orient="v", ax=ax2,
+                           linewidth=1)
+    len_plot.set(title='Length')
+    #len_plot.set_ylim(0, 100)
+    len_plot.set_ylim(7, 17)
+    #plt.tight_layout()
+    #ax2.set_ylabel("")  # remove y label, but keep ticks
+
+    handles, labels = ax2.get_legend_handles_labels()
+    #fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.2)
+    fig.subplots_adjust(bottom=0.2)
+    fig.legend(handles, labels, loc='lower center', ncol=4)
+
+    cov_plot.legend_.remove()
+    len_plot.legend_.remove()
+
+    plt.savefig('selectinf/randomized/tests/logis_vary_sparsity_plot.png')
 
 if __name__ == '__main__':
     test_comparison_logistic_group_lasso_vary_s_parallel()
-    # test_save()
+    test_plotting()
 
