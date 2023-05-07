@@ -204,7 +204,7 @@ def comparison_logistic(range):
     print("task done")
     return oper_char_df, confint_df
 
-def test_comparison_logistic_group_lasso_vary_s_parallel(iter=2,
+def test_comparison_logistic_group_lasso_vary_s_parallel(iter=20,
                                                          ncore=2):
     print(iter)
     print(ncore)
@@ -249,8 +249,8 @@ def test_comparison_logistic_group_lasso_vary_s_parallel(iter=2,
 
     #oper_char_df.to_csv('selectinf/randomized/tests/logis_vary_sparsity.csv', index=False)
     #confint_df.to_csv('selectinf/randomized/tests/logis_CI_vary_sparsity.csv', index=False)
-    oper_char_df.to_csv('logis_vary_sparsity.csv', index=False)
-    confint_df.to_csv('logis_CI_vary_sparsity.csv', index=False)
+    oper_char_df.to_csv('selectinf/randomized/tests/logis_vary_sparsity.csv', index=False)
+    confint_df.to_csv('selectinf/randomized/tests/logis_CI_vary_sparsity.csv', index=False)
 
     def print_results(oper_char_df):
         print("Mean coverage rate/length:")
