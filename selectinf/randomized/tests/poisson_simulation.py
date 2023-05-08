@@ -12,24 +12,23 @@ import regreg.api as rr
 
 from selectinf.randomized.lasso import (lasso, split_lasso)
 from selectinf.randomized.group_lasso_query import (group_lasso,
-                                 split_group_lasso)
+                                                    split_group_lasso)
 
 from selectinf.base import (full_targets,
                      selected_targets,
                      debiased_targets)
-from selectinf.randomized.tests.instance import (gaussian_group_instance,
-                                                 logistic_group_instance)
+from selectinf.randomized.tests.instance import (poisson_group_instance)
 
 from selectinf.base import restricted_estimator
 import scipy.stats
 
-from selectinf.randomized.tests.test_logistic_group_lasso import (calculate_F1_score,
+from selectinf.randomized.tests.test_poisson_group_lasso import(calculate_F1_score,
                                                                   naive_inference,
                                                                   randomization_inference,
                                                                   randomization_inference_fast,
                                                                   split_inference, data_splitting)
 
-def comparison_logistic(range):
+def comparison_poisson(range):
     """
         Compare to R randomized lasso
         """
@@ -57,8 +56,8 @@ def comparison_logistic(range):
         for i in range:
             np.random.seed(i)
 
-            inst, const, const_split = logistic_group_instance, group_lasso.logistic, \
-                                       split_group_lasso.logistic
+            inst, const, const_split = poisson_group_instance, group_lasso.poisson, \
+                                       split_group_lasso.poisson
             signal = np.sqrt(signal_fac * 2 * np.log(p))
             signal_str = str(np.round(signal, decimals=2))
 
@@ -204,7 +203,7 @@ def comparison_logistic(range):
     print("task done")
     return oper_char_df, confint_df
 
-def test_comparison_logistic_group_lasso_vary_s_parallel(iter=100,
+def test_comparison_logistic_group_lasso_vary_s_parallel(iter=1000,
                                                          ncore=20):
     def n_range_to_k(n, k):
         l = []
