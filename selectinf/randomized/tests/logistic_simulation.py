@@ -279,7 +279,7 @@ def test_comparison_logistic_group_lasso_vary_s_parallel(iter=100,
     #print_results(oper_char_df)
 
 
-def test_plotting(path='selectinf/randomized/tests/logis_vary_sparsity.csv'):
+def test_plotting(path='logis_vary_sparsity.csv'):
     oper_char_df = pd.read_csv(path)
     #sns.histplot(oper_char_df["sparsity size"])
     #plt.show()
@@ -321,7 +321,7 @@ def test_plotting(path='selectinf/randomized/tests/logis_vary_sparsity.csv'):
     cov_plot.legend_.remove()
     len_plot.legend_.remove()
 
-    plt.savefig('selectinf/randomized/tests/logis_vary_sparsity_plot.png')
+    plt.savefig('logis_vary_sparsity_plot.png')
 
 if __name__ == '__main__':
     test_comparison_logistic_group_lasso_vary_s_parallel()

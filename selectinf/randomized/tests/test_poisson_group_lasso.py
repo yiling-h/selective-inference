@@ -721,6 +721,7 @@ def test_comparison_poisson_lasso_vary_s(n=500,
     print("Mean coverage rate/length:")
     print(oper_char_df.groupby(['sparsity size', 'method']).mean())
 
+    """
     sns.boxplot(y=oper_char_df["coverage rate"],
                 x=oper_char_df["sparsity size"],
                 hue=oper_char_df["method"],
@@ -742,6 +743,11 @@ def test_comparison_poisson_lasso_vary_s(n=500,
                           orient="v")
     F1_plot.set_ylim(0, 1)
     plt.show()
+    """
+
+if __name__ == '__main__':
+    test_comparison_poisson_lasso_vary_s()
+    # test_plotting()
 
 
 def test_plotting(path='selectinf/randomized/tests/oper_char_vary_s_poisson.csv'):

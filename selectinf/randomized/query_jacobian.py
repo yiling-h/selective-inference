@@ -257,8 +257,6 @@ class gaussian_query(object):
                                           level=level)[0]
 
         elif method == 'posterior':
-            # Jacobian-based inference not implemented yet
-            # assert (self.useJacobian == False)
             if self.useJacobian:
                 return _posterior(query_spec,
                                   target_spec,
@@ -280,8 +278,8 @@ def _posterior(query_spec,
                dispersion=1,
                prior=None,
                solve_args={'tol': 1.e-12},
-               nsample=2000, # 2000
-               nburnin=500): # 500
+               nsample=200, # 2000
+               nburnin=50): # 500
     """
     Parameters
     ----------
