@@ -282,11 +282,11 @@ def comparison_poisson_lasso_vary_s(n=500,
                                           signal_fac=0.1,
                                           s=5,
                                           sigma=2,
-                                          rho=0.5,
+                                          rho=0.3,
                                           randomizer_scale=1.,
                                           full_dispersion=True,
                                           level=0.90,
-                                          iter=10):
+                                          range=range(0,100)):
     """
     Compare to R randomized lasso
     """
@@ -302,8 +302,8 @@ def comparison_poisson_lasso_vary_s(n=500,
 
     confint_df = pd.DataFrame()
 
-    for s in [5, 8, 10, 15]:  # [0.01, 0.03, 0.06, 0.1]:
-        for i in range(iter):
+    for s in [5, 8, 10]:  # [0.01, 0.03, 0.06, 0.1]:
+        for i in range:
             # np.random.seed(i)
 
             inst = poisson_group_instance
@@ -332,7 +332,7 @@ def comparison_poisson_lasso_vary_s(n=500,
 
                 noselection = False  # flag for a certain method having an empty selected set
 
-                if not noselection:
+                """if not noselection:
                     # carving
                     coverage_s, length_s, beta_target_s, nonzero_s, \
                     selection_idx_s, hessian, conf_low_s, conf_up_s = \
@@ -342,24 +342,20 @@ def comparison_poisson_lasso_vary_s(n=500,
 
                     noselection = (coverage_s is None)
                     if noselection:
-                        print('No selection for carving')
+                        print('No selection for carving')"""
 
                 if not noselection:
                     # MLE inference
-                    start = time.perf_counter()
                     coverage, length, beta_target, nonzero, conf_low, conf_up = \
                         randomization_inference_fast(X=X, Y=Y, n=n, p=p, proportion=0.67,
-                                                     beta=beta, groups=groups, hess=hessian)
-                    end = time.perf_counter()
-                    MLE_runtime = end - start
-                    # print(MLE_runtime)
+                                                     beta=beta, groups=groups)
                     noselection = (coverage is None)
 
                 if not noselection:
                     # data splitting
-                    coverage_ds, lengths_ds, conf_low_ds, conf_up_ds = \
-                        data_splitting(X=X, Y=Y, n=n, p=p, beta=beta, nonzero=nonzero_s,
-                                       subset_select=selection_idx_s, level=0.9)
+                    coverage_ds, lengths_ds, conf_low_ds, conf_up_ds, nonzero_ds, beta_target_ds = \
+                        data_splitting(X=X, Y=Y, n=n, p=p, beta=beta, groups=groups,
+                                       proportion=0.67, level=0.9)
                     noselection = (coverage_ds is None)
 
                 if not noselection:
@@ -373,9 +369,9 @@ def comparison_poisson_lasso_vary_s(n=500,
 
                 if not noselection:
                     # F1 scores
-                    F1_s = calculate_F1_score(beta, selection=nonzero_s)
+                    # F1_s = calculate_F1_score(beta, selection=nonzero_s)
                     F1 = calculate_F1_score(beta, selection=nonzero)
-                    F1_ds = calculate_F1_score(beta, selection=nonzero_s)
+                    F1_ds = calculate_F1_score(beta, selection=nonzero_ds)
                     F1_naive = calculate_F1_score(beta, selection=nonzero_naive)
 
                     # MLE coverage
@@ -395,7 +391,7 @@ def comparison_poisson_lasso_vary_s(n=500,
                                         ], axis=1)
                     confint_df = pd.concat([confint_df, df_MLE], axis=0)
 
-                    # Carving coverage
+                    """# Carving coverage
                     oper_char["sparsity size"].append(s)
                     oper_char["coverage rate"].append(np.mean(coverage_s))
                     oper_char["avg length"].append(np.mean(length_s))
@@ -411,7 +407,7 @@ def comparison_poisson_lasso_vary_s(n=500,
                                       pd.DataFrame(np.ones(nonzero_s.sum()) * F1_s),
                                       pd.DataFrame(["Carving"] * nonzero_s.sum())
                                       ], axis=1)
-                    confint_df = pd.concat([confint_df, df_s], axis=0)
+                    confint_df = pd.concat([confint_df, df_s], axis=0)"""
 
                     # Data splitting coverage
                     oper_char["sparsity size"].append(s)
@@ -419,14 +415,14 @@ def comparison_poisson_lasso_vary_s(n=500,
                     oper_char["avg length"].append(np.mean(lengths_ds))
                     oper_char["F1 score"].append(F1_ds)
                     oper_char["method"].append('Data splitting')
-                    df_ds = pd.concat([pd.DataFrame(np.ones(nonzero_s.sum()) * i),
-                                       pd.DataFrame(beta_target_s),
+                    df_ds = pd.concat([pd.DataFrame(np.ones(nonzero_ds.sum()) * i),
+                                       pd.DataFrame(beta_target_ds),
                                        pd.DataFrame(conf_low_ds),
                                        pd.DataFrame(conf_up_ds),
-                                       pd.DataFrame(beta[nonzero_s] != 0),
-                                       pd.DataFrame(np.ones(nonzero_s.sum()) * s),
-                                       pd.DataFrame(np.ones(nonzero_s.sum()) * F1_ds),
-                                       pd.DataFrame(["Data splitting"] * nonzero_s.sum())
+                                       pd.DataFrame(beta[nonzero_ds] != 0),
+                                       pd.DataFrame(np.ones(nonzero_ds.sum()) * s),
+                                       pd.DataFrame(np.ones(nonzero_ds.sum()) * F1_ds),
+                                       pd.DataFrame(["Data splitting"] * nonzero_ds.sum())
                                        ], axis=1)
                     confint_df = pd.concat([confint_df, df_ds], axis=0)
 
@@ -450,87 +446,14 @@ def comparison_poisson_lasso_vary_s(n=500,
                     break  # Go to next iteration if we have some selection
 
     oper_char_df = pd.DataFrame.from_dict(oper_char)
-    oper_char_df.to_csv('selectinf/randomized/tests/pois_vary_sparsity.csv', index=False)
+    oper_char_df.to_csv('pois_vary_sparsity.csv', index=False)
     colnames = ['Index'] + ['target'] + ['LCB'] + ['UCB'] + ['TP'] + ['sparsity size'] + ['F1'] + ['Method']
     confint_df.columns = colnames
-    confint_df.to_csv('selectinf/randomized/tests/pois_CI_vary_sparsity.csv', index=False)
+    confint_df.to_csv('pois_CI_vary_sparsity.csv', index=False)
 
-    #sns.histplot(oper_char_df["sparsity size"])
-    #plt.show()
+    print("Range", range.start, "-", range.stop, "done")
 
-    print("Mean coverage rate/length:")
-    print(oper_char_df.groupby(['sparsity size', 'method']).mean())
-
-    """
-    sns.boxplot(y=oper_char_df["coverage rate"],
-                x=oper_char_df["sparsity size"],
-                hue=oper_char_df["method"],
-                orient="v")
-    plt.show()
-
-    len_plot = sns.boxplot(y=oper_char_df["avg length"],
-                           x=oper_char_df["sparsity size"],
-                           hue=oper_char_df["method"],
-                           showmeans=True,
-                           orient="v")
-    len_plot.set_ylim(0, 8)
-    plt.show()
-
-    F1_plot = sns.boxplot(y=oper_char_df["F1 score"],
-                          x=oper_char_df["sparsity size"],
-                          hue=oper_char_df["method"],
-                          showmeans=True,
-                          orient="v")
-    F1_plot.set_ylim(0, 1)
-    plt.show()
-    """
-
-
-def plotting(path='selectinf/randomized/tests/logis_vary_sparsity.csv'):
-    oper_char_df = pd.read_csv(path)
-    #sns.histplot(oper_char_df["sparsity size"])
-    #plt.show()
-
-    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(12,5))
-
-    print("Mean coverage rate/length:")
-    print(oper_char_df.groupby(['sparsity size', 'method']).mean())
-
-    cov_plot = sns.boxplot(y=oper_char_df["coverage rate"],
-                           x=oper_char_df["sparsity size"],
-                           hue=oper_char_df["method"],
-                           palette="pastel",
-                           orient="v", ax=ax1,
-                           linewidth=1)
-    cov_plot.set(title='Coverage')
-    cov_plot.set_ylim(0.6, 1.05)
-    #plt.tight_layout()
-    cov_plot.axhline(y=0.9, color='k', linestyle='--', linewidth=1)
-    #ax1.set_ylabel("")  # remove y label, but keep ticks
-
-    len_plot = sns.boxplot(y=oper_char_df["avg length"],
-                           x=oper_char_df["sparsity size"],
-                           hue=oper_char_df["method"],
-                           palette="pastel",
-                           orient="v", ax=ax2,
-                           linewidth=1)
-    len_plot.set(title='Length')
-    #len_plot.set_ylim(0, 100)
-    len_plot.set_ylim(7, 17)
-    #plt.tight_layout()
-    #ax2.set_ylabel("")  # remove y label, but keep ticks
-
-    handles, labels = ax2.get_legend_handles_labels()
-    #fig.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.2)
-    fig.subplots_adjust(bottom=0.2)
-    fig.legend(handles, labels, loc='lower center', ncol=4)
-
-    cov_plot.legend_.remove()
-    len_plot.legend_.remove()
-
-    plt.savefig('selectinf/randomized/tests/logis_vary_sparsity_plot.png')
 
 if __name__ == '__main__':
     comparison_poisson_lasso_vary_s()
-    #test_plotting()
 

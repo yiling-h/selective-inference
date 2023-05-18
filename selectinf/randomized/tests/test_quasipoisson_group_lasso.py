@@ -72,7 +72,7 @@ def naive_inference(X, Y, groups, beta, const,
 
     target = solve_target_restricted()
 
-    _compare_H_K = False
+    """_compare_H_K = False
     if _compare_H_K:
         H_K_EE_true_quality = {}
         H_K_EE_true_quality["H_EE* hat norm"] = []
@@ -83,7 +83,7 @@ def naive_inference(X, Y, groups, beta, const,
         H_K_EE_true_quality["K_EE*_hat_sub - K_EE*_hat_full norm"] = []
         H_K_EE_true_quality["H_EE*(sub)_hat_inv - cov_sub norm"] = []
         H_K_EE_true_quality["H_EE*(sub)_hat_inv - cov_full norm"] = []
-        H_K_EE_true_quality["cov_sub - cov_full norm"] = []
+        H_K_EE_true_quality["cov_sub - cov_full norm"] = []"""
 
     if nonzero.sum() > 0:
         # E: nonzero flag
@@ -95,38 +95,6 @@ def naive_inference(X, Y, groups, beta, const,
         beta_MLE = restricted_estimator(loglike, nonzero)
         beta_MLE_full = restricted_estimator(loglike,  # refit OLS (MLE)
                                              active=np.array([True] * p))
-
-        if _compare_H_K:
-            # Calculation the asymptotic covariance of the MLE
-            W_H = np.exp(X_E @ beta_MLE) # np.diag(np.exp(X_E @ beta_MLE))
-            W_K = (Y - np.exp(X_E @ beta_MLE))**2 #np.diag((Y - np.exp(X_E @ beta_MLE))**2)
-            W_K_full = (Y - np.exp(X @ beta_MLE_full))**2 #np.diag((Y - np.exp(X @ beta_MLE_full))**2)
-
-            """H_EE = X_E.T @ W_H @ X_E
-            H_EE_inv = np.linalg.inv(H_EE)
-            K_EE = X_E.T @ W_K @ X_E
-            cov = H_EE_inv @ K_EE @ H_EE_inv"""
-
-            H_EE_hat = np.dot(X_E.T, X_E * W_H[:, np.newaxis])#X_E.T @ W_H @ X_E
-            H_EE_hat_inv = np.linalg.inv(H_EE_hat)
-            K_EE_hat_sub = np.dot(X_E.T, X_E * W_K[:, np.newaxis])#X_E.T @ W_K @ X_E
-            K_EE_hat_sub_inv = np.linalg.inv(K_EE_hat_sub)
-            cov_sub = H_EE_hat_inv @ K_EE_hat_sub @ H_EE_hat_inv
-            K_EE_hat_full = np.dot(X_E.T, X_E * W_K_full[:, np.newaxis])#X_E.T @ W_K_full @ X_E
-            K_EE_hat_full_inv = np.linalg.inv(K_EE_hat_full)
-            cov_full = H_EE_hat_inv @ K_EE_hat_full @ H_EE_hat_inv
-
-            H_K_EE_true_quality["H_EE* hat norm"].append(np.linalg.norm(H_EE_hat, 'fro'))
-            H_K_EE_true_quality["K_EE*_hat_sub norm"].append(np.linalg.norm(K_EE_hat_sub, 'fro'))
-            H_K_EE_true_quality["K_EE*_hat_full norm"].append(np.linalg.norm(K_EE_hat_full, 'fro'))
-            H_K_EE_true_quality["H_EE* - K_EE*_hat_sub norm"].append(np.linalg.norm(H_EE_hat - K_EE_hat_sub, 'fro'))
-            H_K_EE_true_quality["H_EE* - K_EE*_hat_full norm"].append(np.linalg.norm(H_EE_hat - K_EE_hat_full, 'fro'))
-            H_K_EE_true_quality["K_EE*_hat_sub - K_EE*_hat_full norm"].append(np.linalg.norm(K_EE_hat_sub - K_EE_hat_full, 'fro'))
-            H_K_EE_true_quality["H_EE*(sub)_hat_inv - cov_sub norm"].append(np.linalg.norm(H_EE_hat_inv - cov_sub, 'fro'))
-            H_K_EE_true_quality["H_EE*(sub)_hat_inv - cov_full norm"].append(np.linalg.norm(H_EE_hat_inv - cov_full, 'fro'))
-            H_K_EE_true_quality["cov_sub - cov_full norm"].append(np.linalg.norm(cov_sub - cov_full, 'fro'))
-            H_K_EE_true_df = pd.DataFrame.from_dict(H_K_EE_true_quality)
-            H_K_EE_true_df.to_csv('selectinf/randomized/tests/H_K_EE_true_df_vary_sparsity.csv', index=False)
 
         W_K = np.diag((Y - np.exp(X_E @ beta_MLE)) ** 2)
         cov_score = X.T @ W_K @ X
@@ -475,7 +443,7 @@ def randomization_inference(X, Y, n, p, beta, groups, K=None,
     return None, None, None, None, None, None, None, None, None
 
 # Remain to be implemented
-def randomization_inference_fast(X, Y, n, p, beta, groups, proportion, cov_rand=None,
+def randomization_inference_fast(X, Y, n, p, beta, groups, proportion=0.5, cov_rand=None,
                                  weight_frac=1, level=0.9, solve_only=False):
     ## solve_only: bool variable indicating whether
     ##              1) we only need the solver's output
@@ -488,7 +456,7 @@ def randomization_inference_fast(X, Y, n, p, beta, groups, proportion, cov_rand=
             # For LASSO, this is the OLS solution on X_{E,U}
             beta_full = restricted_estimator(loglike, np.array([True] * p))
             W_H = np.diag(np.exp(X @ beta_full))
-            return X.T @ W_H @ X
+            return X.T @ W_H @ X * (1-proportion) / proportion
 
         hess = estimate_hess()
         cov_rand = hess
@@ -614,7 +582,7 @@ def split_inference(X, Y, n, p, beta, groups, const,
 def data_splitting(X, Y, n, p, const, beta, nonzero=None, subset_select=None, groups=None,
                    weight_frac=1., proportion=0.67, level=0.9):
     if (nonzero is None) or (subset_select is None):
-        print("(Data Splitting) Selection done without carving")
+        # print("(Data Splitting) Selection done without carving")
         pi_s = proportion
         subset_select = np.zeros(n, np.bool)
         subset_select[:int(pi_s * n)] = True
@@ -645,7 +613,7 @@ def data_splitting(X, Y, n, p, const, beta, nonzero=None, subset_select=None, gr
     n1 = subset_select.sum()
     n2 = n - n1
 
-    print("Data splitting |E|:", nonzero.sum())
+    # print("Data splitting |E|:", nonzero.sum())
 
     if nonzero.sum() > 0:
         # Solving the inferential target
@@ -944,9 +912,9 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=1000,
                                   signal=signal,
                                   sgroup=s,
                                   groups=groups,
-                                  ndiscrete=4,
+                                  ndiscrete=10,
                                   nlevels=5,
-                                  sdiscrete=2,  # s-3, # How many discrete rvs are not null
+                                  sdiscrete=s-3, # How many discrete rvs are not null
                                   equicorrelated=False,
                                   rho=rho,
                                   phi=1.5,
@@ -990,28 +958,28 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=1000,
                 if not noselection:
                     # MLE inference
                     coverage, length, beta_target, nonzero, conf_low, conf_up = \
-                        randomization_inference_fast(X=X, Y=Y, n=n, p=p, proportion=0.5,
+                        randomization_inference_fast(X=X, Y=Y, n=n, p=p, proportion=0.67,
                                                      beta=beta, groups=groups, cov_rand=None)
 
                     noselection = (coverage is None)
                     print("MLE noselection", noselection)
 
 
-                # Poisson inference, to be deleted
+                """# Poisson inference, to be deleted
                 if not noselection:
                     # MLE inference (Poisson)
                     coverage_p, length_p, beta_target_p, nonzero_p, conf_low_p, conf_up_p = \
                         randomization_inference_poisson(X=X, Y=Y, n=n, p=p, #proportion=0.5,
                                                         beta=beta, groups=groups)
-                    noselection = (coverage_p is None)
+                    noselection = (coverage_p is None)"""
 
-                # Poisson data splitting, to be deleted
+                """# Poisson data splitting, to be deleted
                 if not noselection:
                     # data splitting poisson
                     coverage_dsp, lengths_dsp, conf_low_dsp, conf_up_dsp, nonzero_dsp, beta_target_dsp = \
                         data_splitting_poisson(X=X, Y=Y, n=n, p=p, const=const_p, groups=groups,
                                                beta=beta, proportion=0.67, level=0.9)
-                    noselection = (coverage_dsp is None)
+                    noselection = (coverage_dsp is None)"""
 
                 if not noselection:
                     # data splitting
@@ -1037,8 +1005,8 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=1000,
                     F1 = calculate_F1_score(beta, selection=nonzero)
                     F1_ds = calculate_F1_score(beta, selection=nonzero_ds)
                     F1_naive = calculate_F1_score(beta, selection=nonzero_naive)
-                    F1_p = calculate_F1_score(beta, selection=nonzero_p)
-                    F1_dsp = calculate_F1_score(beta, selection=nonzero_dsp)
+                    #F1_p = calculate_F1_score(beta, selection=nonzero_p)
+                    #F1_dsp = calculate_F1_score(beta, selection=nonzero_dsp)
 
                     # MLE coverage
                     oper_char["sparsity size"].append(s)
@@ -1075,7 +1043,7 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=1000,
                                       ], axis=1)
                     confint_df = pd.concat([confint_df, df_s], axis=0)"""
 
-                    # MLE (Poisson) coverage
+                    """# MLE (Poisson) coverage
                     oper_char["sparsity size"].append(s)
                     oper_char["coverage rate"].append(np.mean(coverage_p))
                     oper_char["avg length"].append(np.mean(length_p))
@@ -1090,7 +1058,7 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=1000,
                                       pd.DataFrame(np.ones(nonzero_p.sum()) * F1_p),
                                       pd.DataFrame(["MLE (Poisson)"] * nonzero_p.sum())
                                       ], axis=1)
-                    confint_df = pd.concat([confint_df, df_p], axis=0)
+                    confint_df = pd.concat([confint_df, df_p], axis=0)"""
 
                     # Data splitting coverage
                     oper_char["sparsity size"].append(s)
@@ -1109,7 +1077,7 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=1000,
                                        ], axis=1)
                     confint_df = pd.concat([confint_df, df_ds], axis=0)
 
-                    # Data splitting (poisson) coverage
+                    """# Data splitting (poisson) coverage
                     oper_char["sparsity size"].append(s)
                     oper_char["coverage rate"].append(np.mean(coverage_dsp))
                     oper_char["avg length"].append(np.mean(lengths_dsp))
@@ -1124,7 +1092,7 @@ def test_comparison_quasipoisson_group_lasso_vary_s(n=1000,
                                        pd.DataFrame(np.ones(nonzero_dsp.sum()) * F1_dsp),
                                        pd.DataFrame(["Data splitting (Poisson)"] * nonzero_dsp.sum())
                                        ], axis=1)
-                    confint_df = pd.concat([confint_df, df_ds], axis=0)
+                    confint_df = pd.concat([confint_df, df_ds], axis=0)"""
 
                     # Naive coverage
                     oper_char["sparsity size"].append(s)

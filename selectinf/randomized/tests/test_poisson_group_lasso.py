@@ -106,6 +106,16 @@ def randomization_inference(X, Y, n, p, beta, groups, hess=None,
     ##              1) we only need the solver's output
     ##              or
     ##              2) we also want inferential results
+    def estimate_hess():
+        loglike = rr.glm.poisson(X, counts=Y)
+        # For LASSO, this is the OLS solution on X_{E,U}
+        beta_full = restricted_estimator(loglike, np.array([True] * p))
+        W_H = np.diag(np.exp(X @ beta_full))
+        return X.T @ W_H @ X
+
+    if hess is None:
+        print("(MLE Poisson) H estimated with full model")
+        hess = estimate_hess()
 
     sigma_ = np.std(Y)
     # weights = dict([(i, 0.5) for i in np.unique(groups)])
@@ -168,6 +178,17 @@ def randomization_inference_fast(X, Y, n, p, beta, groups, proportion, hess=None
     ##              1) we only need the solver's output
     ##              or
     ##              2) we also want inferential results
+
+    def estimate_hess():
+        loglike = rr.glm.poisson(X, counts=Y)
+        # For LASSO, this is the OLS solution on X_{E,U}
+        beta_full = restricted_estimator(loglike, np.array([True] * p))
+        W_H = np.diag(np.exp(X @ beta_full))
+        return X.T @ W_H @ X * (1 - proportion) / proportion
+
+    if hess is None:
+        # print("(MLE Poisson) H estimated with full model")
+        hess = estimate_hess()
 
     sigma_ = np.std(Y)
     # weights = dict([(i, 0.5) for i in np.unique(groups)])
@@ -282,8 +303,37 @@ def split_inference(X, Y, n, p, beta, groups, const,
     return None, None, None, None, None, None, None, None
 
 
-def data_splitting(X, Y, n, p, beta, nonzero,
-                   subset_select=None, level=0.9):
+def data_splitting(X, Y, n, p, beta, groups, proportion=0.5, weight_frac=1,
+                   nonzero=None, subset_select=None, level=0.9):
+    if (nonzero is None) or (subset_select is None):
+        # print("(Poisson Data Splitting) Selection done without carving")
+        pi_s = proportion
+        subset_select = np.zeros(n, np.bool)
+        subset_select[:int(pi_s * n)] = True
+        n1 = subset_select.sum()
+        n2 = n - n1
+        np.random.shuffle(subset_select)
+        X_S = X[subset_select, :]
+        Y_S = Y[subset_select]
+
+        # Selection on the first subset of data
+        p = X.shape[1]
+        sigma_ = np.std(Y_S)
+        # weights = dict([(i, 0.5) for i in np.unique(groups)])
+        weights = dict([(i, (n1/n)*weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
+
+        conv = group_lasso.poisson(X=X_S,
+                     counts=Y_S,
+                     groups=groups,
+                     weights=weights,
+                     useJacobian=True,
+                     perturb=np.zeros(p),
+                     ridge_term=0.)
+
+        signs, _ = conv.fit()
+        # print("signs",  signs)
+        nonzero = signs != 0
+
     n1 = subset_select.sum()
     n2 = n - n1
 
@@ -331,10 +381,10 @@ def data_splitting(X, Y, n, p, beta, nonzero,
 
         coverage = (target > intervals_low) * (target < intervals_up)
 
-        return coverage, intervals_up - intervals_low, intervals_low, intervals_up
+        return coverage, intervals_up - intervals_low, intervals_low, intervals_up, nonzero, target
 
     # If no variable selected, no inference
-    return None, None, None, None
+    return None, None, None, None, None, None
 
 
 def test_comparison_poisson_group_lasso(n=500,
@@ -542,11 +592,11 @@ def test_comparison_poisson_lasso_vary_s(n=500,
                                           signal_fac=0.1,
                                           s=5,
                                           sigma=2,
-                                          rho=0.5,
+                                          rho=0.3,
                                           randomizer_scale=1.,
                                           full_dispersion=True,
                                           level=0.90,
-                                          iter=100):
+                                          iter=30):
     """
     Compare to R randomized lasso
     """
@@ -562,7 +612,7 @@ def test_comparison_poisson_lasso_vary_s(n=500,
 
     confint_df = pd.DataFrame()
 
-    for s in [5, 8, 10, 15]:  # [0.01, 0.03, 0.06, 0.1]:
+    for s in [5, 8, 10]:  # [0.01, 0.03, 0.06, 0.1]:
         for i in range(iter):
             # np.random.seed(i)
 
@@ -592,7 +642,7 @@ def test_comparison_poisson_lasso_vary_s(n=500,
 
                 noselection = False  # flag for a certain method having an empty selected set
 
-                if not noselection:
+                """if not noselection:
                     # carving
                     coverage_s, length_s, beta_target_s, nonzero_s, \
                     selection_idx_s, hessian, conf_low_s, conf_up_s = \
@@ -602,14 +652,14 @@ def test_comparison_poisson_lasso_vary_s(n=500,
 
                     noselection = (coverage_s is None)
                     if noselection:
-                        print('No selection for carving')
+                        print('No selection for carving')"""
 
                 if not noselection:
                     # MLE inference
                     start = time.perf_counter()
                     coverage, length, beta_target, nonzero, conf_low, conf_up = \
                         randomization_inference_fast(X=X, Y=Y, n=n, p=p, proportion=0.67,
-                                                     beta=beta, groups=groups, hess=hessian)
+                                                     beta=beta, groups=groups)
                     end = time.perf_counter()
                     MLE_runtime = end - start
                     # print(MLE_runtime)
@@ -617,9 +667,9 @@ def test_comparison_poisson_lasso_vary_s(n=500,
 
                 if not noselection:
                     # data splitting
-                    coverage_ds, lengths_ds, conf_low_ds, conf_up_ds = \
-                        data_splitting(X=X, Y=Y, n=n, p=p, beta=beta, nonzero=nonzero_s,
-                                       subset_select=selection_idx_s, level=0.9)
+                    coverage_ds, lengths_ds, conf_low_ds, conf_up_ds, nonzero_ds, beta_target_ds = \
+                        data_splitting(X=X, Y=Y, n=n, p=p, beta=beta, groups=groups,
+                                       proportion=0.67, level=0.9)
                     noselection = (coverage_ds is None)
 
                 if not noselection:
@@ -633,9 +683,9 @@ def test_comparison_poisson_lasso_vary_s(n=500,
 
                 if not noselection:
                     # F1 scores
-                    F1_s = calculate_F1_score(beta, selection=nonzero_s)
+                    # F1_s = calculate_F1_score(beta, selection=nonzero_s)
                     F1 = calculate_F1_score(beta, selection=nonzero)
-                    F1_ds = calculate_F1_score(beta, selection=nonzero_s)
+                    F1_ds = calculate_F1_score(beta, selection=nonzero_ds)
                     F1_naive = calculate_F1_score(beta, selection=nonzero_naive)
 
                     # MLE coverage
@@ -655,7 +705,7 @@ def test_comparison_poisson_lasso_vary_s(n=500,
                                         ], axis=1)
                     confint_df = pd.concat([confint_df, df_MLE], axis=0)
 
-                    # Carving coverage
+                    """# Carving coverage
                     oper_char["sparsity size"].append(s)
                     oper_char["coverage rate"].append(np.mean(coverage_s))
                     oper_char["avg length"].append(np.mean(length_s))
@@ -671,7 +721,7 @@ def test_comparison_poisson_lasso_vary_s(n=500,
                                       pd.DataFrame(np.ones(nonzero_s.sum()) * F1_s),
                                       pd.DataFrame(["Carving"] * nonzero_s.sum())
                                       ], axis=1)
-                    confint_df = pd.concat([confint_df, df_s], axis=0)
+                    confint_df = pd.concat([confint_df, df_s], axis=0)"""
 
                     # Data splitting coverage
                     oper_char["sparsity size"].append(s)
@@ -679,14 +729,14 @@ def test_comparison_poisson_lasso_vary_s(n=500,
                     oper_char["avg length"].append(np.mean(lengths_ds))
                     oper_char["F1 score"].append(F1_ds)
                     oper_char["method"].append('Data splitting')
-                    df_ds = pd.concat([pd.DataFrame(np.ones(nonzero_s.sum()) * i),
-                                       pd.DataFrame(beta_target_s),
+                    df_ds = pd.concat([pd.DataFrame(np.ones(nonzero_ds.sum()) * i),
+                                       pd.DataFrame(beta_target_ds),
                                        pd.DataFrame(conf_low_ds),
                                        pd.DataFrame(conf_up_ds),
-                                       pd.DataFrame(beta[nonzero_s] != 0),
-                                       pd.DataFrame(np.ones(nonzero_s.sum()) * s),
-                                       pd.DataFrame(np.ones(nonzero_s.sum()) * F1_ds),
-                                       pd.DataFrame(["Data splitting"] * nonzero_s.sum())
+                                       pd.DataFrame(beta[nonzero_ds] != 0),
+                                       pd.DataFrame(np.ones(nonzero_ds.sum()) * s),
+                                       pd.DataFrame(np.ones(nonzero_ds.sum()) * F1_ds),
+                                       pd.DataFrame(["Data splitting"] * nonzero_ds.sum())
                                        ], axis=1)
                     confint_df = pd.concat([confint_df, df_ds], axis=0)
 
@@ -750,12 +800,12 @@ if __name__ == '__main__':
     # test_plotting()
 
 
-def test_plotting(path='selectinf/randomized/tests/oper_char_vary_s_poisson.csv'):
+def test_plotting(path='selectinf/randomized/tests/pois_vary_sparsity.csv'):
     oper_char_df = pd.read_csv(path)
     # sns.histplot(oper_char_df["sparsity size"])
     # plt.show()
 
-    fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(12, 5))
+    fig, (ax1, ax2, ax3) = plt.subplots(nrows=1, ncols=3, figsize=(12, 5))
 
     print("Mean coverage rate/length:")
     print(oper_char_df.groupby(['sparsity size', 'method']).mean())
@@ -789,8 +839,17 @@ def test_plotting(path='selectinf/randomized/tests/oper_char_vary_s_poisson.csv'
     fig.subplots_adjust(bottom=0.2)
     fig.legend(handles, labels, loc='lower center', ncol=4)
 
+    F1_plot = sns.boxplot(y=oper_char_df["F1 score"],
+                          x=oper_char_df["sparsity size"],
+                          hue=oper_char_df["method"],
+                          palette="pastel",
+                          orient="v", ax=ax3,
+                          linewidth=1)
+    F1_plot.set(title='F1 score')
+
     cov_plot.legend_.remove()
     len_plot.legend_.remove()
+    F1_plot.legend_.remove()
 
     plt.show()
 

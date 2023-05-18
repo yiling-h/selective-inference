@@ -143,16 +143,8 @@ def selected_targets_quasi(loglike,
     Kfeat = Kfeat[features,:]
     #print("Kfeat shape", Kfeat.shape)
 
-    print("H norm: ", np.linalg.norm(Qfeat, 'fro'))
-    print("K norm: ", np.linalg.norm(Kfeat, 'fro'))
-    print("H-K norm: ", np.linalg.norm(Qfeat - Kfeat, 'fro'))
-
     # cov_target: \Sigma_E
     cov_target = Qinv @ Kfeat @ Qinv
-    print("Sigma_E norm: ", np.linalg.norm(cov_target, 'fro'))
-    print("H^{-1} norm: ", np.linalg.norm(Qinv, 'fro'))
-    print("H^{-1}-Sigma_E norm: ", np.linalg.norm(cov_target - Qinv, 'fro'))
-    #print("Cov target shape", cov_target.shape)
     alternatives = ['twosided'] * features.sum()
     features_idx = np.arange(p)[features]
 

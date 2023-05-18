@@ -175,6 +175,7 @@ def randomization_inference(X, Y, n, p, beta, groups, hess=None,
                             randomizer_scale=1.,
                             weight_frac=1.5, level=0.9, solve_only = False):
 
+    hess = X.T @ X
     ## solve_only: bool variable indicating whether
     ##              1) we only need the solver's output
     ##              or
@@ -198,7 +199,7 @@ def randomization_inference(X, Y, n, p, beta, groups, hess=None,
                                 groups=groups,
                                 weights=weights,
                                 useJacobian=True,
-                                randomizer_scale=randomizer_scale * sigma_)
+                                randomizer_scale=hess)
 
     signs, _ = conv.fit()
     nonzero = (signs != 0)
@@ -244,8 +245,9 @@ def randomization_inference(X, Y, n, p, beta, groups, hess=None,
     return None, None, None, None, None, None
 
 def randomization_inference_fast(X, Y, n, p, beta, proportion,
-                                 groups, hess, weight_frac=1.5, level=0.9):
+                                 groups, hess=None, weight_frac=1.5, level=0.9):
 
+    hess = X.T @ X * (1 - proportion) / proportion
     ## Use split group lasso to solve the hessian-randomized MLE problem efficiently
     ## Selection is consistent with the MLE method with the hessian randomization covariance
     ## but inference is carried out as if data carving were intended
@@ -375,8 +377,38 @@ def split_inference(X, Y, n, p, beta, groups, const,
 
     return None, None, None, None, None, None, None, None
 
-def data_splitting(X, Y, n, p, beta, nonzero,
-                   subset_select=None, level=0.9):
+def data_splitting(X, Y, n, p, beta, groups, weight_frac=1.5,
+                   nonzero=None, subset_select=None,
+                   proportion=0.5, level=0.9):
+    if (nonzero is None) or (subset_select is None):
+        # print("(Poisson Data Splitting) Selection done without carving")
+        pi_s = proportion
+        subset_select = np.zeros(n, np.bool)
+        subset_select[:int(pi_s * n)] = True
+        n1 = subset_select.sum()
+        n2 = n - n1
+        np.random.shuffle(subset_select)
+        X_S = X[subset_select, :]
+        Y_S = Y[subset_select]
+
+        # Selection on the first subset of data
+        p = X.shape[1]
+        sigma_ = np.std(Y_S)
+        # weights = dict([(i, 0.5) for i in np.unique(groups)])
+        weights = dict([(i, (n1/n)*weight_frac * sigma_ * np.sqrt(2 * np.log(p))) for i in np.unique(groups)])
+
+        conv = group_lasso.gaussian(X=X_S,
+                                    Y=Y_S,
+                                    groups=groups,
+                                    weights=weights,
+                                    useJacobian=True,
+                                    perturb=np.zeros(p),
+                                    ridge_term=0.)
+
+        signs, _ = conv.fit()
+        # print("signs",  signs)
+        nonzero = signs != 0
+
     n1 = subset_select.sum()
     n2 = n - n1
 
@@ -424,10 +456,10 @@ def data_splitting(X, Y, n, p, beta, nonzero,
 
         coverage = (target > intervals_low) * (target < intervals_up)
 
-        return coverage, intervals_up - intervals_low, intervals_low, intervals_up
+        return coverage, intervals_up - intervals_low, intervals_low, intervals_up, nonzero, target
 
     # If no variable selected, no inference
-    return None, None, None, None
+    return None, None, None, None, None, None
 
 def test_comparison_group_lasso(n=500,
                                 p=200,
@@ -635,7 +667,7 @@ def test_comparison_gaussian_lasso_vary_s(n=500,
                                            signal_fac=0.1,
                                            s=5,
                                            sigma=2,
-                                           rho=0.5,
+                                           rho=0.3,
                                            randomizer_scale=1.,
                                            full_dispersion=True,
                                            level=0.90,
@@ -683,7 +715,7 @@ def test_comparison_gaussian_lasso_vary_s(n=500,
 
                 noselection = False  # flag for a certain method having an empty selected set
 
-                if not noselection:
+                """if not noselection:
                     # carving
                     coverage_s, length_s, beta_target_s, nonzero_s, \
                     selection_idx_s, hessian, conf_low_s, conf_up_s = \
@@ -691,14 +723,14 @@ def test_comparison_gaussian_lasso_vary_s(n=500,
                                         beta=beta, groups=groups, const=const_split,
                                         proportion=0.67)
 
-                    noselection = (coverage_s is None)
+                    noselection = (coverage_s is None)"""
 
                 if not noselection:
                     # MLE inference
                     start = time.perf_counter()
                     coverage, length, beta_target, nonzero, conf_low, conf_up = \
                         randomization_inference_fast(X=X, Y=Y, n=n, p=p, proportion=0.67,
-                                                     beta=beta, groups=groups, hess=hessian)
+                                                     beta=beta, groups=groups)
                     end = time.perf_counter()
                     MLE_runtime = end - start
                     #print(MLE_runtime)
@@ -706,9 +738,9 @@ def test_comparison_gaussian_lasso_vary_s(n=500,
 
                 if not noselection:
                     # data splitting
-                    coverage_ds, lengths_ds, conf_low_ds, conf_up_ds = \
-                        data_splitting(X=X, Y=Y, n=n, p=p, beta=beta, nonzero=nonzero_s,
-                                       subset_select=selection_idx_s, level=0.9)
+                    coverage_ds, lengths_ds, conf_low_ds, conf_up_ds, nonzero_ds, beta_target_ds = \
+                        data_splitting(X=X, Y=Y, n=n, p=p, beta=beta, groups=groups,
+                                       proportion=0.67, level=0.9)
                     noselection = (coverage_ds is None)
 
                 if not noselection:
@@ -728,9 +760,9 @@ def test_comparison_gaussian_lasso_vary_s(n=500,
 
                 if not noselection:
                     # F1 scores
-                    F1_s = calculate_F1_score(beta, selection=nonzero_s)
+                    # F1_s = calculate_F1_score(beta, selection=nonzero_s)
                     F1 = calculate_F1_score(beta, selection=nonzero)
-                    F1_ds = calculate_F1_score(beta, selection=nonzero_s)
+                    F1_ds = calculate_F1_score(beta, selection=nonzero_ds)
                     F1_naive = calculate_F1_score(beta, selection=nonzero_naive)
                     F1_pos = calculate_F1_score(beta, selection=nonzero_pos)
 
@@ -752,7 +784,7 @@ def test_comparison_gaussian_lasso_vary_s(n=500,
                     confint_df = pd.concat([confint_df, df_MLE], axis=0)
 
 
-                    # Carving coverage
+                    """# Carving coverage
                     oper_char["sparsity size"].append(s)
                     oper_char["coverage rate"].append(np.mean(coverage_s))
                     oper_char["avg length"].append(np.mean(length_s))
@@ -768,7 +800,7 @@ def test_comparison_gaussian_lasso_vary_s(n=500,
                                       pd.DataFrame(np.ones(nonzero_s.sum()) * F1_s),
                                       pd.DataFrame(["Carving"] * nonzero_s.sum())
                                       ], axis=1)
-                    confint_df = pd.concat([confint_df, df_s], axis=0)
+                    confint_df = pd.concat([confint_df, df_s], axis=0)"""
                     
 
                     # Data splitting coverage
@@ -778,14 +810,14 @@ def test_comparison_gaussian_lasso_vary_s(n=500,
                     oper_char["F1 score"].append(F1_ds)
                     oper_char["method"].append('Data splitting')
                     #oper_char["runtime"].append(0)
-                    df_ds = pd.concat([pd.DataFrame(np.ones(nonzero_s.sum()) * i),
-                                       pd.DataFrame(beta_target_s),
+                    df_ds = pd.concat([pd.DataFrame(np.ones(nonzero_ds.sum()) * i),
+                                       pd.DataFrame(beta_target_ds),
                                        pd.DataFrame(conf_low_ds),
                                        pd.DataFrame(conf_up_ds),
-                                       pd.DataFrame(beta[nonzero_s] != 0),
-                                       pd.DataFrame(np.ones(nonzero_s.sum()) * s),
-                                       pd.DataFrame(np.ones(nonzero_s.sum()) * F1_ds),
-                                       pd.DataFrame(["Data splitting"] * nonzero_s.sum())
+                                       pd.DataFrame(beta[nonzero_ds] != 0),
+                                       pd.DataFrame(np.ones(nonzero_ds.sum()) * s),
+                                       pd.DataFrame(np.ones(nonzero_ds.sum()) * F1_ds),
+                                       pd.DataFrame(["Data splitting"] * nonzero_ds.sum())
                                        ], axis=1)
                     confint_df = pd.concat([confint_df, df_ds], axis=0)
 
