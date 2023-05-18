@@ -201,7 +201,7 @@ def comparison_gaussian_lasso_vary_s(n=500,
     oper_char_df.to_csv('gaussian_vary_sparsity.csv', index=False)
     colnames = ['Index'] + ['target'] + ['LCB'] + ['UCB'] + ['TP'] + ['sparsity size'] + ['F1'] + ['Method']
     confint_df.columns = colnames
-    confint_df.to_csv('gaussian_CI_vary_sparsity.csv', index=False)
+    confint_df.to_csv('gaussian_CI_vary_sparsity' + str(range.start) + '_' + str(range.stop) + '.csv', index=False)
 
 
 if __name__ == '__main__':

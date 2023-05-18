@@ -447,7 +447,7 @@ def comparison_logistic_lasso_vary_s(n=500,
     oper_char_df.to_csv('logis_vary_sparsity.csv', index=False)
     colnames = ['Index'] + ['target'] + ['LCB'] + ['UCB'] + ['TP'] + ['sparsity size'] + ['F1'] + ['Method']
     confint_df.columns = colnames
-    confint_df.to_csv('logis_CI_vary_sparsity.csv', index=False)
+    confint_df.to_csv('logis_CI_vary_sparsity' + str(range.start) + '_' + str(range.stop) + '.csv', index=False)
 
     print("Range", range.start, "-", range.stop, "done")
 
