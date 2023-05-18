@@ -7,6 +7,7 @@ import time
 from tqdm import tqdm
 import multiprocessing
 # from multiprocess import Pool
+import sys
 
 import regreg.api as rr
 
@@ -180,4 +181,7 @@ def comparison_quasipoisson_group_lasso_vary_s(n=1000,
     confint_df.to_csv('quasipois_CI_vary_sparsity.csv', index=False)
 
 if __name__ == '__main__':
-    comparison_quasipoisson_group_lasso_vary_s()
+    argv = sys.argv
+    start, end = int(argv[1]), int(argv[2])
+    print("start:", start, ", end:", end)
+    comparison_quasipoisson_group_lasso_vary_s(range=range(start,end))

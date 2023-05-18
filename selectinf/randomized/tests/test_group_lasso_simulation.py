@@ -33,7 +33,7 @@ def calculate_F1_score(beta_true, selection):
         return 0
 
 def naive_inference(X, Y, groups, beta, const,
-                    n, weight_frac=1.5, level=0.9):
+                    n, weight_frac=1.25, level=0.9):
     n, p = X.shape
 
     ##estimate noise level in data
@@ -106,7 +106,7 @@ def naive_inference(X, Y, groups, beta, const,
 
 def posterior_inference(X, Y, n, p, beta, groups,
                         randomizer_scale=1.,
-                        weight_frac=1.5, level=0.9):
+                        weight_frac=1.25, level=0.9):
 
     ## solve_only: bool variable indicating whether
     ##              1) we only need the solver's output
@@ -173,7 +173,7 @@ def posterior_inference(X, Y, n, p, beta, groups,
     return None, None, None, None, None, None
 def randomization_inference(X, Y, n, p, beta, groups, hess=None,
                             randomizer_scale=1.,
-                            weight_frac=1.5, level=0.9, solve_only = False):
+                            weight_frac=1.25, level=0.9, solve_only = False):
 
     hess = X.T @ X
     ## solve_only: bool variable indicating whether
@@ -245,7 +245,7 @@ def randomization_inference(X, Y, n, p, beta, groups, hess=None,
     return None, None, None, None, None, None
 
 def randomization_inference_fast(X, Y, n, p, beta, proportion,
-                                 groups, hess=None, weight_frac=1.5, level=0.9):
+                                 groups, hess=None, weight_frac=1.25, level=0.9):
 
     hess = X.T @ X * (1 - proportion) / proportion
     ## Use split group lasso to solve the hessian-randomized MLE problem efficiently
@@ -313,7 +313,7 @@ def randomization_inference_fast(X, Y, n, p, beta, proportion,
     return None, None, None, None, None, None
 
 def split_inference(X, Y, n, p, beta, groups, const,
-                    weight_frac=1.5, proportion=0.5, level=0.9):
+                    weight_frac=1.25, proportion=0.5, level=0.9):
 
     ## selective inference with data carving
 
@@ -377,7 +377,7 @@ def split_inference(X, Y, n, p, beta, groups, const,
 
     return None, None, None, None, None, None, None, None
 
-def data_splitting(X, Y, n, p, beta, groups, weight_frac=1.5,
+def data_splitting(X, Y, n, p, beta, groups, weight_frac=1.25,
                    nonzero=None, subset_select=None,
                    proportion=0.5, level=0.9):
     if (nonzero is None) or (subset_select is None):

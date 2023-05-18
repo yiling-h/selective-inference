@@ -7,6 +7,7 @@ import time
 from tqdm import tqdm
 import multiprocessing
 # from multiprocess import Pool
+import sys
 
 import regreg.api as rr
 
@@ -304,7 +305,7 @@ def comparison_poisson_lasso_vary_s(n=500,
 
     for s in [5, 8, 10]:  # [0.01, 0.03, 0.06, 0.1]:
         for i in range:
-            # np.random.seed(i)
+            np.random.seed(i)
 
             inst = poisson_group_instance
             const = group_lasso.poisson
@@ -331,18 +332,6 @@ def comparison_poisson_lasso_vary_s(n=500,
                 n, p = X.shape
 
                 noselection = False  # flag for a certain method having an empty selected set
-
-                """if not noselection:
-                    # carving
-                    coverage_s, length_s, beta_target_s, nonzero_s, \
-                    selection_idx_s, hessian, conf_low_s, conf_up_s = \
-                        split_inference(X=X, Y=Y, n=n, p=p,
-                                        beta=beta, groups=groups, const=const_split,
-                                        proportion=0.67)
-
-                    noselection = (coverage_s is None)
-                    if noselection:
-                        print('No selection for carving')"""
 
                 if not noselection:
                     # MLE inference
@@ -391,24 +380,6 @@ def comparison_poisson_lasso_vary_s(n=500,
                                         ], axis=1)
                     confint_df = pd.concat([confint_df, df_MLE], axis=0)
 
-                    """# Carving coverage
-                    oper_char["sparsity size"].append(s)
-                    oper_char["coverage rate"].append(np.mean(coverage_s))
-                    oper_char["avg length"].append(np.mean(length_s))
-                    oper_char["F1 score"].append(F1_s)
-                    oper_char["method"].append('Carving')
-                    #oper_char["runtime"].append(0)
-                    df_s = pd.concat([pd.DataFrame(np.ones(nonzero_s.sum()) * i),
-                                      pd.DataFrame(beta_target_s),
-                                      pd.DataFrame(conf_low_s),
-                                      pd.DataFrame(conf_up_s),
-                                      pd.DataFrame(beta[nonzero_s] != 0),
-                                      pd.DataFrame(np.ones(nonzero_s.sum()) * s),
-                                      pd.DataFrame(np.ones(nonzero_s.sum()) * F1_s),
-                                      pd.DataFrame(["Carving"] * nonzero_s.sum())
-                                      ], axis=1)
-                    confint_df = pd.concat([confint_df, df_s], axis=0)"""
-
                     # Data splitting coverage
                     oper_char["sparsity size"].append(s)
                     oper_char["coverage rate"].append(np.mean(coverage_ds))
@@ -455,5 +426,8 @@ def comparison_poisson_lasso_vary_s(n=500,
 
 
 if __name__ == '__main__':
-    comparison_poisson_lasso_vary_s()
+    argv = sys.argv
+    start, end = int(argv[1]), int(argv[2])
+    print("start:", start, ", end:", end)
+    comparison_poisson_lasso_vary_s(range=range(start, end))
 

@@ -7,6 +7,7 @@ import time
 from tqdm import tqdm
 import multiprocessing
 # from multiprocess import Pool
+import sys
 
 import regreg.api as rr
 
@@ -305,7 +306,7 @@ def comparison_logistic_lasso_vary_s(n=500,
 
     for s in [5, 8, 10]:  # [0.01, 0.03, 0.06, 0.1]:
         for i in range:
-            # np.random.seed(i)
+            np.random.seed(i)
 
             inst, const, const_split = logistic_group_instance, group_lasso.logistic, \
                                        split_group_lasso.logistic
@@ -451,6 +452,9 @@ def comparison_logistic_lasso_vary_s(n=500,
     print("Range", range.start, "-", range.stop, "done")
 
 if __name__ == '__main__':
-    comparison_logistic_lasso_vary_s()
+    argv = sys.argv
+    start, end = int(argv[1]), int(argv[2])
+    print("start:", start, ", end:", end)
+    comparison_logistic_lasso_vary_s(range=range(start,end))
 
 
