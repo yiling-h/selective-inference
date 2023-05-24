@@ -102,6 +102,8 @@ class group_lasso(gaussian_query):
 
                 if self.penalty.weights[g] == 0:
                     unpenalized.append(g)
+                    active_groups.append(g)
+                    active_dirs[g] = soln[group_mask] / norm(soln[group_mask])
 
                 else:
                     active_groups.append(g)
@@ -162,7 +164,7 @@ class group_lasso(gaussian_query):
                 Q, _ = qr(Z)
                 Vg = Q[:, 1:]  # drop the first column
             else:
-                Vg = np.zeros((1, 0))  # if the group is size one, the orthogonal complement is empty
+                Vg = np.zeros((1, 0)) # if the group is size one, the orthogonal complement is empty
             return Vg
 
         def compute_Lg(g):
