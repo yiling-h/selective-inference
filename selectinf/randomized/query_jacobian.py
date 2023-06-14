@@ -278,8 +278,8 @@ def _posterior(query_spec,
                dispersion=1,
                prior=None,
                solve_args={'tol': 1.e-12},
-               nsample=800, # 2000
-               nburnin=200): # 500
+               nsample=2000, # 2000
+               nburnin=50): # 500
     """
     Parameters
     ----------
