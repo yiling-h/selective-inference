@@ -456,7 +456,7 @@ def randomization_inference_fast(X, Y, n, p, beta, groups, proportion=0.5, cov_r
             # For LASSO, this is the OLS solution on X_{E,U}
             beta_full = restricted_estimator(loglike, np.array([True] * p))
             W_H = np.diag(np.exp(X @ beta_full))
-            return X.T @ W_H @ X * (1-proportion) / proportion
+            return X.T @ W_H @ X
 
         hess = estimate_hess()
         cov_rand = hess
