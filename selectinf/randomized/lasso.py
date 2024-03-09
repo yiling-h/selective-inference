@@ -267,6 +267,7 @@ class lasso(gaussian_query):
     @staticmethod
     def gaussian(X,
                  Y,
+                 scaled,
                  feature_weights,
                  sigma=1.,
                  quadratic=None,
@@ -334,6 +335,9 @@ class lasso(gaussian_query):
         if randomizer_scale is None:
             randomizer_scale = np.sqrt(mean_diag) * 0.5 * np.std(Y, ddof=1)
 
+        if not scaled:
+            randomizer_scale *= np.sqrt(n)
+
         randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
 
         return lasso(loglike, 
@@ -344,6 +348,7 @@ class lasso(gaussian_query):
     @staticmethod
     def logistic(X,
                  successes,
+                 scaled,
                  feature_weights,
                  trials=None,
                  quadratic=None,
@@ -410,6 +415,9 @@ class lasso(gaussian_query):
         if randomizer_scale is None:
             randomizer_scale = np.sqrt(mean_diag) * 0.5
 
+        if not scaled:
+            randomizer_scale *= np.sqrt(n)
+
         randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
 
         return lasso(loglike, 
@@ -420,6 +428,7 @@ class lasso(gaussian_query):
     def coxph(X,
               times,
               status,
+              scaled,
               feature_weights,
               quadratic=None,
               ridge_term=None,
@@ -490,6 +499,9 @@ class lasso(gaussian_query):
         if randomizer_scale is None:
             randomizer_scale = np.sqrt(mean_diag) * 0.5 * np.std(Y) * np.sqrt(n / (n - 1.))
 
+        if not scaled:
+            randomizer_scale *= np.sqrt(n)
+
         randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
 
         return lasso(loglike,
@@ -500,6 +512,7 @@ class lasso(gaussian_query):
     @staticmethod
     def poisson(X,
                 counts,
+                scaled,
                 feature_weights,
                 quadratic=None,
                 ridge_term=None,
@@ -561,6 +574,9 @@ class lasso(gaussian_query):
         if randomizer_scale is None:
             randomizer_scale = np.sqrt(mean_diag) * 0.5 * np.std(counts) * np.sqrt(n / (n - 1.))
 
+        if not scaled:
+            randomizer_scale *= np.sqrt(n)
+
         randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
 
         return lasso(loglike,
@@ -571,6 +587,7 @@ class lasso(gaussian_query):
     @staticmethod
     def sqrt_lasso(X,
                    Y,
+                   scaled,
                    feature_weights,
                    quadratic=None,
                    ridge_term=None,
@@ -649,6 +666,9 @@ class lasso(gaussian_query):
 
         if randomizer_scale is None:
             randomizer_scale = 0.5 * np.sqrt(mean_diag) / np.sqrt(n - 1)
+
+        if not scaled:
+            randomizer_scale *= np.sqrt(n)
 
         if perturb is None:
             perturb = np.random.standard_normal(p) * randomizer_scale
